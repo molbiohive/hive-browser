@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bio Browser</title>
+    <link rel="stylesheet" href="/assets/app.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>🧬 Bio Browser</h1>
+            <nav class="tabs">
+                <button class="tab active" onclick="switchTab('search')">Search</button>
+                <button class="tab" onclick="switchTab('scan')">Scan</button>
+            </nav>
+        </header>
+
+        <!-- Search Tab -->
+        <div id="search-tab" class="tab-content active">
+            <div class="controls">
+                <input type="text" id="search-input" placeholder="Enter sequence, feature, or filename...">
+                <button onclick="search()" class="btn-primary">Search</button>
+            </div>
+
+            <div class="filters">
+                <select id="data-type">
+                    <option value="all">All Types</option>
+                    <option value="dna">DNA</option>
+                    <option value="rna">RNA</option>
+                    <option value="protein">Protein</option>
+                </select>
+
+                <select id="from-field">
+                    <option value="any">Any Field</option>
+                    <option value="sequences">Sequence</option>
+                    <option value="features">Feature</option>
+                    <option value="primers">Primer</option>
+                    <option value="file_path">Filename</option>
+                </select>
+
+                <span>→</span>
+
+                <select id="to-field">
+                    <option value="any">Any Field</option>
+                    <option value="file_path">Filename</option>
+                    <option value="sequences">Sequence</option>
+                    <option value="features">Feature</option>
+                </select>
+            </div>
+
+            <div id="results"></div>
+        </div>
+
+        <!-- Scan Tab -->
+        <div id="scan-tab" class="tab-content">
+            <div class="controls">
+                <input type="text" id="path-input" placeholder="/path/to/directory" value="/app/data">
+                <label>
+                    <input type="checkbox" id="recursive" checked> Recursive
+                </label>
+                <button onclick="scan()" class="btn-primary">Scan Directory</button>
+            </div>
+
+            <div class="quick-buttons">
+                <button onclick="importSample()" class="btn-secondary">Import Sample Data</button>
+                <button onclick="clearDB()" class="btn-danger">Clear Database</button>
+                <button onclick="getStats()" class="btn-secondary">Refresh Stats</button>
+            </div>
+
+            <div id="stats" class="stats-grid"></div>
+            <div id="scan-status"></div>
+        </div>
+    </div>
+
+    <script src="/assets/app.js"></script>
+</body>
+
+</html>

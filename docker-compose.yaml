@@ -1,0 +1,29 @@
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: zerg-browser-db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+      MONGO_INITDB_DATABASE: zergdb
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "27017:27017"
+
+  app:
+    build: .
+    container_name: zerg-browser-app
+    ports:
+      - "8000:8000"
+    environment:
+      MONGODB_URL: mongodb://admin:password@mongodb:27017/zergdb?authSource=admin
+    depends_on:
+      - mongodb
+    volumes:
+      - ./src:/app/src
+      - ./assets:/app/assets
+      - ./data:/app/data
+
+volumes:
+  mongo_data:
