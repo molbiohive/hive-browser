@@ -4,78 +4,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bio Browser</title>
+    <title>Zerg Browser</title>
     <link rel="stylesheet" href="/assets/app.css">
 </head>
 
 <body>
-    <div class="container">
-        <header>
-            <h1>🧬 Bio Browser</h1>
-            <nav class="tabs">
-                <button class="tab active" onclick="switchTab('search')">Search</button>
-                <button class="tab" onclick="switchTab('scan')">Scan</button>
-            </nav>
-        </header>
+    <!-- Fixed Header -->
+    <header class="header">
+        <div class="pill-switcher">
+            <button class="pill-btn active" onclick="switchTab('search')">Search</button>
+            <button class="pill-btn" onclick="switchTab('scan')">Scan</button>
+        </div>
+    </header>
 
-        <!-- Search Tab -->
-        <div id="search-tab" class="tab-content active">
-            <div class="controls">
-                <input type="text" id="search-input" placeholder="Enter sequence, feature, or filename...">
-                <button onclick="search()" class="btn-primary">Search</button>
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Search Page -->
+        <div id="search-page" class="page active">
+            <!-- Row 1: Type and Show Results -->
+            <div class="search-settings">
+                <div class="type-select">
+                    <span>Sequence type:</span>
+                    <select id="sequence-type-select">
+                        <option value="all">All</option>
+                        <option value="dna">DNA</option>
+                        <option value="rna">RNA</option>
+                        <option value="protein">Protein</option>
+                    </select>
+                </div>
+
+                <div class="show-results">
+                    <span>Show rows:</span>
+                    <select id="results-limit">
+                        <option value="10">10</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                        <option value="all">All</option>
+                    </select>
+                </div>
             </div>
 
-            <div class="filters">
-                <select id="data-type">
-                    <option value="all">All Types</option>
-                    <option value="dna">DNA</option>
-                    <option value="rna">RNA</option>
-                    <option value="protein">Protein</option>
-                </select>
-
-                <select id="from-field">
-                    <option value="any">Any Field</option>
+            <!-- Row 2: From -> To (Centered) -->
+            <div class="search-filters">
+                <select id="from-select">
+                    <option value="any">Anything</option>
                     <option value="sequences">Sequence</option>
                     <option value="features">Feature</option>
                     <option value="primers">Primer</option>
-                    <option value="file_path">Filename</option>
+                    <option value="file_path">File</option>
                 </select>
 
-                <span>→</span>
+                <span class="arrow">to</span>
 
-                <select id="to-field">
-                    <option value="any">Any Field</option>
-                    <option value="file_path">Filename</option>
+                <select id="to-select">
+                    <option value="any">Anything</option>
                     <option value="sequences">Sequence</option>
                     <option value="features">Feature</option>
+                    <option value="primers">Primer</option>
                 </select>
             </div>
 
+            <!-- Row 3: Search Input -->
+            <input type="text" id="search-input" placeholder="Enter search term...">
+
+            <!-- Row 4-n: Results -->
             <div id="results"></div>
         </div>
 
-        <!-- Scan Tab -->
-        <div id="scan-tab" class="tab-content">
-            <div class="controls">
+        <!-- Scan Page -->
+        <div id="scan-page" class="page">
+
+            <div class="scan-settings">
                 <input type="text" id="path-input" placeholder="/path/to/directory" value="/app/data">
-                <label>
-                    <input type="checkbox" id="recursive" checked> Recursive
-                </label>
-                <button onclick="scan()" class="btn-primary">Scan Directory</button>
+                <button class="scan-btn" onclick="scan()">Scan</button>
+                <div class="import-box">
+                    Total: <span id="import-count">0</span>
+                </div>
             </div>
 
-            <div class="quick-buttons">
-                <button onclick="importSample()" class="btn-secondary">Import Sample Data</button>
-                <button onclick="clearDB()" class="btn-danger">Clear Database</button>
-                <button onclick="getStats()" class="btn-secondary">Refresh Stats</button>
-            </div>
-
-            <div id="stats" class="stats-grid"></div>
-            <div id="scan-status"></div>
+            <div class="feed" id="feed"></div>
         </div>
-    </div>
 
-    <script src="/assets/app.js"></script>
+        <script src="/assets/app.js"></script>
 </body>
 
 </html>
