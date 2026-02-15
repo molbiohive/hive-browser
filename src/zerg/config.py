@@ -65,11 +65,17 @@ class Settings(BaseSettings):
 
 
 def load_config(config_path: str | None = None) -> Settings:
-    """Load settings from YAML config file, with env var overrides."""
-    if config_path is None:
-        import os
+    """Load settings from YAML config file, with env var overrides.
 
-        config_path = os.environ.get("ZERG_CONFIG", "zerg_config.yaml")
+    Resolution order:
+      1. Explicit ``config_path`` argument
+      2. ``ZERG_CONFIG`` environment variable
+      3. ``config/config.local.yaml`` (dev default)
+    """
+    import os
+
+    if config_path is None:
+        config_path = os.environ.get("ZERG_CONFIG", "config/config.local.yaml")
 
     path = Path(config_path)
     if path.exists():

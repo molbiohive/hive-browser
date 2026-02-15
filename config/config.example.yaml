@@ -1,25 +1,27 @@
 # Zerg Browser Configuration
+# Copy this file to config.local.yaml or config.prod.yaml and adjust values.
+# Select config via: ZERG_CONFIG=config/config.local.yaml
 
 server:
   host: "0.0.0.0"
   port: 8080
 
 database:
-  url: "postgresql+asyncpg://zerg:zerg@postgres:5432/zerg"
+  url: "postgresql+asyncpg://zerg:zerg@localhost:5432/zerg"
 
 llm:
-  base_url: "http://vllm:8000/v1"
+  base_url: "http://localhost:8000/v1"
   model: "Qwen/Qwen2.5-14B-Instruct"
 
 blast:
-  db_path: "/tmp/zerg_blast"
+  db_path: "~/.zerg/blast"
   binary: "blastn"
 
 chat:
-  storage_dir: "/var/zerg/chats"
+  storage_dir: "~/.zerg/chats"
 
 watcher:
-  root: /data/sequences
+  root: ~/sequences          # directory to watch for sequence files
   recursive: true
   poll_interval: 5
 
