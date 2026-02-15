@@ -1,6 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
-	import { chatStore, chatList, connect, sendMessage, loadChat, newChat, fetchChatList, deleteChat } from '$lib/stores/chat.ts';
+	import { chatStore, chatList, appConfig, connect, sendMessage, loadChat, newChat, fetchChatList, deleteChat } from '$lib/stores/chat.ts';
 	import MessageBubble from '$lib/MessageBubble.svelte';
 	import CommandPalette from '$lib/CommandPalette.svelte';
 
@@ -121,8 +121,9 @@
 					</div>
 				</div>
 			{:else}
-				{#each $chatStore.messages as message}
-					<MessageBubble {message} />
+				{#each $chatStore.messages as message, i}
+					{@const contextStart = Math.max(0, $chatStore.messages.length - $appConfig.max_history_pairs * 2)}
+					<MessageBubble {message} faded={i < contextStart} />
 				{/each}
 			{/if}
 		</div>

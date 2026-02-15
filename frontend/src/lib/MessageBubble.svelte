@@ -2,7 +2,7 @@
 	import { marked } from 'marked';
 	import Widget from '$lib/Widget.svelte';
 
-	let { message } = $props();
+	let { message, faded = false } = $props();
 
 	// Configure marked for inline rendering (no wrapping <p> for short responses)
 	marked.setOptions({ breaks: true, gfm: true });
@@ -12,7 +12,7 @@
 	);
 </script>
 
-<div class="row {message.role}">
+<div class="row {message.role}" class:faded>
 	<div class="bubble {message.role}">
 		{#if message.role === 'assistant'}
 			<div class="content markdown">{@html rendered}</div>
@@ -30,6 +30,10 @@
 	.row {
 		margin-bottom: 1rem;
 		display: flex;
+	}
+
+	.row.faded {
+		opacity: 0.35;
 	}
 
 	.row.user {
