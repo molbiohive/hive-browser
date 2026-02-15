@@ -58,7 +58,9 @@ class BlastTool(Tool):
         if not params.get("sequence"):
             return {"error": "Missing required parameter: sequence (nucleotide sequence or name)", "hits": []}
 
-        inp = BlastInput(**params)
+        # Strip None values so Pydantic defaults apply
+        cleaned = {k: v for k, v in params.items() if v is not None}
+        inp = BlastInput(**cleaned)
         query_seq = inp.sequence.strip()
 
         # If it looks like a name (no ATGC-only), resolve from DB
