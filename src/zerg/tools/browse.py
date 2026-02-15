@@ -20,7 +20,7 @@ class BrowseTool(Tool):
     description = "Navigate the indexed project directory tree. Shows files with basic metadata."
 
     def __init__(self, watch_root: str):
-        self._root = Path(watch_root).expanduser()
+        self._root = Path(watch_root).expanduser().resolve()
 
     def input_schema(self) -> type[ToolInput]:
         return BrowseInput
