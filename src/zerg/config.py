@@ -29,6 +29,7 @@ class BlastConfig(BaseSettings):
 
 class ChatConfig(BaseSettings):
     storage_dir: str = "~/.zerg/chats"
+    max_history_pairs: int = 20
 
     model_config = {"env_prefix": "CHAT_"}
 
