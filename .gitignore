@@ -41,6 +41,7 @@ htmlcov/
 frontend/node_modules/
 frontend/.svelte-kit/
 frontend/build/
+static/
 
 # BLAST temp
 /tmp/zerg_blast/
