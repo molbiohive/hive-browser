@@ -27,6 +27,12 @@ class BlastConfig(BaseSettings):
     model_config = {"env_prefix": "BLAST_"}
 
 
+class SearchConfig(BaseSettings):
+    columns: list[str] = ["name", "size_bp", "topology", "features"]
+
+    model_config = {"env_prefix": "SEARCH_"}
+
+
 class ChatConfig(BaseSettings):
     storage_dir: str = "~/.zerg/chats"
     max_history_pairs: int = 20
@@ -61,6 +67,7 @@ class Settings(BaseSettings):
     llm: LLMConfig = Field(default_factory=LLMConfig)
     blast: BlastConfig = Field(default_factory=BlastConfig)
     chat: ChatConfig = Field(default_factory=ChatConfig)
+    search: SearchConfig = Field(default_factory=SearchConfig)
     watcher: WatcherConfig = Field(default_factory=WatcherConfig)
 
     model_config = {"env_prefix": "ZERG_"}

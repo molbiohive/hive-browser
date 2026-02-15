@@ -22,6 +22,9 @@ chat:
   max_history_pairs: 20        # LLM conversation memory depth
   auto_save_after: 2           # save chat after N user messages
 
+search:
+  columns: [name, size_bp, topology, features]  # fields shown in search results
+
 watcher:
   root: ~/sequences          # directory to watch for sequence files
   recursive: true
