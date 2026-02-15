@@ -33,6 +33,10 @@ async def route_input(
       free text      → LLM picks a tool, executes, summarizes
     """
 
+    # ── /help or //help — list available commands ──
+    if user_input.strip().lstrip("/") == "help":
+        return _help_response(registry)
+
     # ── Mode 1: Direct — //command ──
     if match := DIRECT_PATTERN.match(user_input):
         tool_name = match.group(1)
@@ -241,6 +245,15 @@ def _format_result(tool_name: str, result: dict) -> str:
         return "\n".join(lines)
 
     return json.dumps(result, indent=2)
+
+
+def _help_response(registry: ToolRegistry) -> dict:
+    """Build a help message listing all available commands."""
+    lines = ["**Available commands:**\n"]
+    for tool in registry.all():
+        lines.append(f"- **/{tool.name}** — {tool.description}")
+    lines.append(f"\nPrefix with `//` for direct execution (no LLM), e.g. `//search ampicillin`.")
+    return {"type": "message", "content": "\n".join(lines)}
 
 
 def _error(msg: str) -> dict:
