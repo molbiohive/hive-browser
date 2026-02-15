@@ -13,21 +13,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api")
 
 
-# ── Frontend config ────────────────────────────────────────
-
-
-@router.get("/config")
-async def frontend_config(request: Request):
-    """Expose relevant config to frontend."""
-    config = getattr(request.app.state, "config", None)
-    if not config:
-        return {}
-    return {
-        "search_columns": config.search.columns,
-        "max_history_pairs": config.chat.max_history_pairs,
-    }
-
-
 # ── Chat endpoints ────────────────────────────────────────
 
 

@@ -69,6 +69,15 @@ async def websocket_endpoint(websocket: WebSocket):
     max_pairs = config.chat.max_history_pairs if config else 20
     save_threshold = config.chat.auto_save_after if config else 2
 
+    # Send config to frontend on connect
+    await manager.send_json(conn_id, {
+        "type": "init",
+        "config": {
+            "search_columns": config.search.columns if config else ["name", "size_bp", "topology", "features"],
+            "max_history_pairs": max_pairs,
+        },
+    })
+
     # Per-connection chat tracking
     chat_id = None
     chat_messages: list[dict] = []

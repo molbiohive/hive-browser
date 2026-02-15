@@ -24,6 +24,11 @@ interface ChatMeta {
 	message_count: number;
 }
 
+interface AppConfig {
+	search_columns: string[];
+	max_history_pairs: number;
+}
+
 interface ChatState {
 	messages: Message[];
 	connected: boolean;
@@ -38,8 +43,14 @@ const initialState: ChatState = {
 	chatTitle: null,
 };
 
+const defaultConfig: AppConfig = {
+	search_columns: ['name', 'size_bp', 'topology', 'features'],
+	max_history_pairs: 20,
+};
+
 export const chatStore = writable<ChatState>(initialState);
 export const chatList = writable<ChatMeta[]>([]);
+export const appConfig = writable<AppConfig>(defaultConfig);
 
 let ws: WebSocket | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -72,7 +83,9 @@ export function connect() {
 		const data = JSON.parse(event.data);
 		console.log('[ws] received:', data);
 
-		if (data.type === 'message') {
+		if (data.type === 'init') {
+			appConfig.set(data.config);
+		} else if (data.type === 'message') {
 			const msg: Message = {
 				role: 'assistant',
 				content: data.content,
