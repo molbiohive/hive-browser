@@ -1,0 +1,74 @@
+# Zerg Browser Configuration
+
+server:
+  host: "0.0.0.0"
+  port: 8080
+
+database:
+  url: "postgresql+asyncpg://zerg:zerg@postgres:5432/zerg"
+
+llm:
+  base_url: "http://vllm:8000/v1"
+  model: "Qwen/Qwen2.5-14B-Instruct"
+
+blast:
+  db_path: "/tmp/zerg_blast"
+  binary: "blastn"
+
+chat:
+  storage_dir: "/var/zerg/chats"
+
+watcher:
+  root: /data/sequences
+  recursive: true
+  poll_interval: 5
+
+  rules:
+    - match: "*.dna"
+      action: parse
+      parser: sgffp
+      extract: [sequence, features, primers, notes]
+
+    - match: "*.gb"
+      action: parse
+      parser: biopython
+      extract: [sequence, features, description]
+
+    - match: "*.gbk"
+      action: parse
+      parser: biopython
+      extract: [sequence, features, description]
+
+    - match: "*.fasta"
+      action: parse
+      parser: biopython
+      extract: [sequence]
+
+    - match: "*.fa"
+      action: parse
+      parser: biopython
+      extract: [sequence]
+
+    - match: "*.zrt"
+      action: parse
+      parser: sgffp
+      extract: [alignment]
+
+    - match: "*.pdf"
+      action: ignore
+
+    - match: "*.docx"
+      action: ignore
+
+    - match: "*.png"
+      action: ignore
+
+    - match: "*.jpg"
+      action: ignore
+
+    - match: ".*"
+      action: ignore
+
+    - match: "*"
+      action: log
+      message: "Unknown file type, skipping"

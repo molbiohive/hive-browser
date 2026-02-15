@@ -1,18 +1,32 @@
-FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+FROM python:3.11-slim AS builder
 
 WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    ncbi-blast+ \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies first (for better caching)
-COPY pyproject.toml .
-RUN uv venv && uv pip install -r pyproject.toml
+COPY pyproject.toml ./
+RUN pip install --no-cache-dir .
 
-# Copy application code
-COPY . .
+FROM python:3.11-slim
 
-# Activate virtual environment
-ENV PATH="/app/.venv/bin:$PATH"
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ncbi-blast+ \
+    && rm -rf /var/lib/apt/lists/*
 
-EXPOSE 8000
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Run the application directly
-CMD ["uvicorn", "src.app:app", "--host", "0.0.0.0", "--port", "8000"]
+COPY src/ ./src/
+COPY zerg_config.yaml ./
+COPY frontend/build/ ./static/
+COPY alembic/ ./alembic/
+COPY alembic.ini ./
+
+RUN mkdir -p /var/zerg/chats
+
+EXPOSE 8080
+
+CMD ["uvicorn", "zerg.main:app", "--host", "0.0.0.0", "--port", "8080"]

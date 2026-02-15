@@ -1,0 +1,23 @@
+LOCUS       pTest                   120 bp    DNA     circular SYN 15-FEB-2026
+DEFINITION  Test plasmid for unit testing.
+ACCESSION   pTest
+VERSION     pTest
+KEYWORDS    .
+SOURCE      synthetic construct
+  ORGANISM  synthetic construct
+            other sequences; artificial sequences.
+FEATURES             Location/Qualifiers
+     promoter        1..35
+                     /label="T7_promoter"
+                     /note="T7 promoter for in vitro transcription"
+     CDS             40..108
+                     /label="GFP_mini"
+                     /gene="GFP"
+                     /note="minimal GFP fragment"
+                     /codon_start=1
+     terminator      109..120
+                     /label="T7_term"
+ORIGIN
+        1 taatacgact cactataggg agaccacaac ggtttccctc atggtgagca agggcgagga
+       61 gctgttcacc ggggtggtgc ccatcctggt cgagctggac ggcgacggat ccaaataata
+//
