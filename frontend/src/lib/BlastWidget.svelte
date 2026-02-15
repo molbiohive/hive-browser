@@ -8,19 +8,19 @@
 		<tr>
 			<th>Hit</th>
 			<th>Identity</th>
-			<th>Coverage</th>
+			<th>Length</th>
 			<th>E-value</th>
-			<th></th>
+			<th>Bitscore</th>
 		</tr>
 	</thead>
 	<tbody>
 		{#each data.hits as hit}
 		<tr>
-			<td class="name">{hit.name}</td>
+			<td class="name">{hit.subject}</td>
 			<td>{hit.identity}%</td>
-			<td>{hit.coverage}%</td>
+			<td>{hit.alignment_length}</td>
 			<td>{hit.evalue}</td>
-			<td><button>View</button></td>
+			<td>{hit.bitscore}</td>
 		</tr>
 		{/each}
 	</tbody>
@@ -34,6 +34,5 @@
 	th, td { padding: 0.4rem 0.6rem; text-align: left; border-bottom: 1px solid #f0f0f0; }
 	th { font-weight: 600; color: #888; font-size: 0.75rem; text-transform: uppercase; }
 	.name { font-weight: 500; }
-	button { font-size: 0.75rem; padding: 0.2rem 0.6rem; cursor: pointer; border: 1px solid #ddd; background: white; border-radius: 4px; }
 	.empty { color: #aaa; font-size: 0.85rem; }
 </style>

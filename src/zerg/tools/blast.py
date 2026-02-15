@@ -55,6 +55,9 @@ class BlastTool(Tool):
 
     async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         """Run BLAST+ against the local index."""
+        if not params.get("sequence"):
+            return {"error": "Missing required parameter: sequence (nucleotide sequence or name)", "hits": []}
+
         inp = BlastInput(**params)
         query_seq = inp.sequence.strip()
 
