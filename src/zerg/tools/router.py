@@ -45,6 +45,18 @@ async def route_input(
         if not tool:
             return _error(f"Unknown tool: {tool_name}")
 
+        # If no args and tool has required params, return a form
+        if not args_text:
+            schema = tool.input_schema().model_json_schema()
+            required = schema.get("required", [])
+            if required:
+                return {
+                    "type": "form",
+                    "tool": tool_name,
+                    "data": {"schema": schema, "tool_name": tool_name, "description": tool.description},
+                    "content": f"Fill in the required parameters for **{tool_name}**:",
+                }
+
         # Parse args as JSON if provided, otherwise empty
         params = _parse_args(args_text)
         try:

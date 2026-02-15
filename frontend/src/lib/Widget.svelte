@@ -3,6 +3,7 @@
 	import BlastWidget from '$lib/BlastWidget.svelte';
 	import ProfileWidget from '$lib/ProfileWidget.svelte';
 	import StatusWidget from '$lib/StatusWidget.svelte';
+	import FormWidget from '$lib/FormWidget.svelte';
 
 	let { widget } = $props();
 	let expanded = $state(true);
@@ -12,6 +13,7 @@
 		blast: BlastWidget,
 		profile: ProfileWidget,
 		status: StatusWidget,
+		form: FormWidget,
 	};
 
 	function toggle() {
