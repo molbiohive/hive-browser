@@ -156,6 +156,7 @@ async def _llm_tool_flow(
 
     try:
         params = json.loads(fn["arguments"]) if isinstance(fn["arguments"], str) else fn["arguments"]
+        params = {k: v for k, v in params.items() if v is not None}
         result = await tool.execute(params)
     except Exception as e:
         logger.error("Tool %s failed: %s", tool_name, e)
@@ -195,68 +196,34 @@ def _parse_args(text: str) -> dict:
 
 
 def _format_result(tool_name: str, result: dict) -> str:
-    """Simple text formatting when LLM is not available."""
+    """Short summary for direct invocation (widget shows the full data)."""
     if error := result.get("error"):
         return f"Error: {error}"
 
     if tool_name == "search":
-        items = result.get("results", [])
-        if not items:
-            return f"No results for '{result.get('query', '')}'."
-        lines = [f"Found {result.get('total', len(items))} result(s):"]
-        for r in items:
-            feats = ", ".join(r.get("features", [])[:5])
-            lines.append(f"  - {r['name']} ({r['size_bp']} bp, {r['topology']}) [{feats}]")
-        return "\n".join(lines)
+        total = result.get("total", 0)
+        query = result.get("query", "")
+        return f"Found {total} result(s) for '{query}'." if total else f"No results for '{query}'."
 
     if tool_name == "blast":
-        hits = result.get("hits", [])
-        if not hits:
-            return "No BLAST hits found."
-        lines = [f"Found {len(hits)} hit(s):"]
-        for h in hits:
-            lines.append(f"  - {h['subject']}: {h['identity']}% identity, e={h['evalue']}")
-        return "\n".join(lines)
+        total = len(result.get("hits", []))
+        return f"Found {total} BLAST hit(s)." if total else "No BLAST hits found."
 
     if tool_name == "profile":
         seq = result.get("sequence")
         if not seq:
             return "Sequence not found."
-        feats = result.get("features", [])
-        lines = [
-            f"{seq['name']} — {seq['size_bp']} bp, {seq['topology']}",
-            f"Description: {seq.get('description') or 'N/A'}",
-            f"Features ({len(feats)}):",
-        ]
-        for f in feats:
-            lines.append(f"  - {f['name']} ({f['type']}) {f['start']}..{f['end']}")
-        return "\n".join(lines)
+        return f"{seq['name']} — {seq['size_bp']} bp, {seq['topology']}"
 
     if tool_name == "status":
-        lines = [
-            f"Indexed files: {result.get('indexed_files', 0)}",
-            f"Sequences: {result.get('sequences', 0)}",
-            f"Features: {result.get('features', 0)}",
-            f"Primers: {result.get('primers', 0)}",
-            f"Database: {'connected' if result.get('database_connected') else 'disconnected'}",
-            f"LLM: {'available' if result.get('llm_available') else 'unavailable'}",
-        ]
-        return "\n".join(lines)
+        return f"{result.get('sequences', 0)} sequences indexed"
 
     if tool_name == "browse":
-        entries = result.get("entries", [])
-        if not entries:
-            return f"Empty directory: {result.get('path', '/')}"
-        lines = [f"Directory: {result.get('path', '/')}"]
-        for e in entries:
-            if e.get("is_dir"):
-                lines.append(f"  [dir] {e['name']}/")
-            else:
-                status = " [indexed]" if e.get("indexed") else ""
-                lines.append(f"  {e['name']} ({e.get('size', 0)} bytes){status}")
-        return "\n".join(lines)
+        total = result.get("total", 0)
+        path = result.get("path", "/")
+        return f"{total} entries in {path}"
 
-    return json.dumps(result, indent=2)
+    return ""
 
 
 def _help_response(registry: ToolRegistry) -> dict:
