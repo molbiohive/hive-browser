@@ -1,6 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
-	import { chatStore, chatList, connect, sendMessage, loadChat, newChat, fetchChatList } from '$lib/stores/chat.ts';
+	import { chatStore, chatList, connect, sendMessage, loadChat, newChat, fetchChatList, deleteChat } from '$lib/stores/chat.ts';
 	import MessageBubble from '$lib/MessageBubble.svelte';
 	import CommandPalette from '$lib/CommandPalette.svelte';
 
@@ -52,6 +52,11 @@
 		newChat();
 	}
 
+	function handleDeleteChat(e, chatId) {
+		e.stopPropagation();
+		deleteChat(chatId);
+	}
+
 	$effect(() => {
 		const msgs = $chatStore.messages;
 		if (messagesDiv) {
@@ -76,14 +81,20 @@
 			{:else}
 				<div class="chat-list">
 					{#each $chatList as chat}
-						<button
+						<div
 							class="chat-item"
 							class:active={$chatStore.chatId === chat.id}
 							onclick={() => handleLoadChat(chat.id)}
+							role="button"
+							tabindex="0"
 						>
 							<span class="chat-title">{chat.title || 'Untitled'}</span>
-							<span class="chat-meta">{chat.message_count} msgs</span>
-						</button>
+							<button
+								class="delete-btn"
+								onclick={(e) => handleDeleteChat(e, chat.id)}
+								aria-label="Delete chat"
+							>&times;</button>
+						</div>
 					{/each}
 				</div>
 			{/if}
@@ -256,10 +267,26 @@
 		flex: 1;
 	}
 
-	.chat-meta {
-		font-size: 0.7rem;
+	.delete-btn {
+		display: none;
+		border: none;
+		background: transparent;
 		color: #aaa;
+		cursor: pointer;
+		font-size: 1rem;
+		line-height: 1;
+		padding: 0 0.2rem;
+		border-radius: 3px;
 		flex-shrink: 0;
+	}
+
+	.chat-item:hover .delete-btn {
+		display: block;
+	}
+
+	.delete-btn:hover {
+		color: #dc2626;
+		background: rgba(220, 38, 38, 0.1);
 	}
 
 	.chat-main {

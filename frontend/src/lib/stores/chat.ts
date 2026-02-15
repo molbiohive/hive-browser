@@ -141,3 +141,18 @@ export async function fetchChatList() {
 		console.warn('[chat] failed to fetch chat list:', e);
 	}
 }
+
+export async function deleteChat(chatId: string) {
+	try {
+		await fetch(`/api/chats/${chatId}`, { method: 'DELETE' });
+		chatStore.update(s => {
+			if (s.chatId === chatId) {
+				return { ...initialState, connected: s.connected };
+			}
+			return s;
+		});
+		await fetchChatList();
+	} catch (e) {
+		console.warn('[chat] failed to delete chat:', e);
+	}
+}
