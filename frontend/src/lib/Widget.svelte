@@ -2,6 +2,7 @@
 	import TableWidget from '$lib/TableWidget.svelte';
 	import BlastWidget from '$lib/BlastWidget.svelte';
 	import ProfileWidget from '$lib/ProfileWidget.svelte';
+	import StatusWidget from '$lib/StatusWidget.svelte';
 
 	let { widget } = $props();
 	let expanded = $state(true);
@@ -10,6 +11,7 @@
 		table: TableWidget,
 		blast: BlastWidget,
 		profile: ProfileWidget,
+		status: StatusWidget,
 	};
 
 	function toggle() {
