@@ -1,14 +1,15 @@
 # Zerg Browser — Development & Deployment
 
-.PHONY: check setup setup-deps setup-db setup-blast setup-dirs \
+.PHONY: check setup setup-deps setup-db setup-blast setup-dirs setup-llm \
         migrate dev dev-frontend build-frontend prod \
         test lint clean mklocal mkprod
 
 SHELL := /bin/bash
 
-DB_USER ?= zerg
-DB_NAME ?= zerg
-DB_PASS ?= zerg
+DB_USER      ?= zerg
+DB_NAME      ?= zerg
+DB_PASS      ?= zerg
+LLM_MODEL    ?= qwen2.5:3b
 
 OS       := $(shell uname -s)
 IS_UBUNTU := $(shell grep -qi ubuntu /etc/os-release 2>/dev/null && echo 1 || echo 0)
@@ -27,10 +28,11 @@ check:
 	$(call check_bin,bun,--version)
 	$(call check_bin,psql,--version)
 	$(call check_bin,blastn,-version)
+	$(call check_bin,ollama,--version)
 
 # ── Setup ──────────────────────────────────────────────────
 
-setup: setup-deps setup-db setup-blast setup-dirs migrate
+setup: setup-deps setup-db setup-blast setup-dirs setup-llm migrate
 	@echo "Setup complete. Run 'make dev' to start."
 
 setup-deps:
@@ -63,6 +65,14 @@ else
 	@command -v blastn >/dev/null 2>&1 || { echo "Install BLAST+: https://blast.ncbi.nlm.nih.gov/doc/blast-help/downloadblastdata.html"; exit 1; }
 endif
 	@echo "BLAST+ ready: $$(blastn -version 2>/dev/null | head -1)"
+
+setup-llm:
+ifeq ($(OS),Darwin)
+	@brew list ollama >/dev/null 2>&1 || brew install ollama
+else
+	@command -v ollama >/dev/null 2>&1 || { echo "Install Ollama: https://ollama.com/download"; exit 1; }
+endif
+	@ollama pull $(LLM_MODEL)
 
 setup-dirs:
 	@mkdir -p ~/.zerg/blast ~/.zerg/chats

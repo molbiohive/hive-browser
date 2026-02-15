@@ -11,7 +11,7 @@ class LLMClient:
     def __init__(self, config: LLMConfig):
         self.base_url = config.base_url
         self.model = config.model
-        self._client = httpx.AsyncClient(base_url=self.base_url, timeout=60.0)
+        self._client = httpx.AsyncClient(base_url=self.base_url, timeout=120.0)
 
     async def chat(self, messages: list[dict], tools: list[dict] | None = None) -> dict:
         """Send a chat completion request, optionally with tool schemas."""
@@ -20,9 +20,7 @@ class LLMClient:
             "messages": messages,
         }
         if tools:
-            payload["tools"] = [
-                {"type": "function", "function": t} for t in tools
-            ]
+            payload["tools"] = tools
 
         response = await self._client.post("/chat/completions", json=payload)
         response.raise_for_status()
