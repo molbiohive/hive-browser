@@ -20,6 +20,7 @@ blast:
 chat:
   storage_dir: "~/.zerg/chats"
   max_history_pairs: 20        # LLM conversation memory depth
+  auto_save_after: 2           # save chat after N user messages
 
 watcher:
   root: ~/sequences          # directory to watch for sequence files

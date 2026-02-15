@@ -2,7 +2,7 @@
 
 import logging
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from sqlalchemy import func, select
 
 from zerg.db import session as db
@@ -11,6 +11,37 @@ from zerg.db.models import Feature, IndexedFile, Primer, Sequence
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api")
+
+
+# ── Chat endpoints ────────────────────────────────────────
+
+
+@router.get("/chats")
+async def list_chats(request: Request):
+    storage = getattr(request.app.state, "chat_storage", None)
+    if not storage:
+        return []
+    return storage.list_chats()
+
+
+@router.get("/chats/{chat_id}")
+async def get_chat(chat_id: str, request: Request):
+    storage = getattr(request.app.state, "chat_storage", None)
+    if not storage:
+        return {"error": "Chat storage not available"}
+    data = storage.load(chat_id)
+    if not data:
+        return {"error": "Chat not found"}
+    return data
+
+
+@router.delete("/chats/{chat_id}")
+async def delete_chat(chat_id: str, request: Request):
+    storage = getattr(request.app.state, "chat_storage", None)
+    if not storage:
+        return {"error": "Chat storage not available"}
+    deleted = storage.delete(chat_id)
+    return {"deleted": deleted}
 
 
 @router.get("/health")

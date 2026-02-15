@@ -17,19 +17,29 @@ interface Message {
 	ts: string;
 }
 
+interface ChatMeta {
+	id: string;
+	title: string | null;
+	created: string;
+	message_count: number;
+}
+
 interface ChatState {
 	messages: Message[];
 	connected: boolean;
 	chatId: string | null;
+	chatTitle: string | null;
 }
 
 const initialState: ChatState = {
 	messages: [],
 	connected: false,
 	chatId: null,
+	chatTitle: null,
 };
 
 export const chatStore = writable<ChatState>(initialState);
+export const chatList = writable<ChatMeta[]>([]);
 
 let ws: WebSocket | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -73,6 +83,20 @@ export function connect() {
 				...s,
 				messages: [...s.messages, msg],
 			}));
+		} else if (data.type === 'chat_saved') {
+			chatStore.update(s => ({
+				...s,
+				chatId: data.chatId,
+				chatTitle: data.title,
+			}));
+			fetchChatList();
+		} else if (data.type === 'chat_loaded') {
+			chatStore.update(s => ({
+				...s,
+				chatId: data.chatId,
+				chatTitle: data.title,
+				messages: data.messages || [],
+			}));
 		}
 	};
 }
@@ -95,4 +119,25 @@ export function sendMessage(content: string) {
 	}
 
 	ws.send(JSON.stringify({ type: 'message', content }));
+}
+
+export function loadChat(chatId: string) {
+	if (!ws || ws.readyState !== WebSocket.OPEN) return;
+	ws.send(JSON.stringify({ type: 'load_chat', chatId }));
+}
+
+export function newChat() {
+	chatStore.set({ ...initialState, connected: true });
+}
+
+export async function fetchChatList() {
+	try {
+		const res = await fetch('/api/chats');
+		if (res.ok) {
+			const chats = await res.json();
+			chatList.set(chats);
+		}
+	} catch (e) {
+		console.warn('[chat] failed to fetch chat list:', e);
+	}
 }

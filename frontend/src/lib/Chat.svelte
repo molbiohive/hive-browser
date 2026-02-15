@@ -1,6 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
-	import { chatStore, connect, sendMessage } from '$lib/stores/chat.ts';
+	import { chatStore, chatList, connect, sendMessage, loadChat, newChat, fetchChatList } from '$lib/stores/chat.ts';
 	import MessageBubble from '$lib/MessageBubble.svelte';
 	import CommandPalette from '$lib/CommandPalette.svelte';
 
@@ -10,6 +10,7 @@
 
 	onMount(() => {
 		connect();
+		fetchChatList();
 	});
 
 	function handleSubmit() {
@@ -43,6 +44,14 @@
 		showPalette = false;
 	}
 
+	function handleLoadChat(chatId) {
+		loadChat(chatId);
+	}
+
+	function handleNewChat() {
+		newChat();
+	}
+
 	$effect(() => {
 		const msgs = $chatStore.messages;
 		if (messagesDiv) {
@@ -57,9 +66,27 @@
 			<img src="/logo.svg" alt="Zerg Browser" class="logo" />
 			<h2>Zerg Browser</h2>
 		</div>
+		<div class="sidebar-actions">
+			<button class="new-chat-btn" onclick={handleNewChat}>+ New Chat</button>
+		</div>
 		<div class="sidebar-section">
 			<h3>Chat History</h3>
-			<div class="placeholder">No previous chats</div>
+			{#if $chatList.length === 0}
+				<div class="placeholder">No previous chats</div>
+			{:else}
+				<div class="chat-list">
+					{#each $chatList as chat}
+						<button
+							class="chat-item"
+							class:active={$chatStore.chatId === chat.id}
+							onclick={() => handleLoadChat(chat.id)}
+						>
+							<span class="chat-title">{chat.title || 'Untitled'}</span>
+							<span class="chat-meta">{chat.message_count} msgs</span>
+						</button>
+					{/each}
+				</div>
+			{/if}
 		</div>
 	</aside>
 
@@ -152,8 +179,30 @@
 		height: 28px;
 	}
 
+	.sidebar-actions {
+		padding: 0.5rem 0.75rem;
+	}
+
+	.new-chat-btn {
+		width: 100%;
+		padding: 0.45rem;
+		border: 1px solid #ccc;
+		background: white;
+		border-radius: 6px;
+		cursor: pointer;
+		font-size: 0.82rem;
+		color: #555;
+		transition: background 0.15s;
+	}
+
+	.new-chat-btn:hover {
+		background: #e8e8e8;
+	}
+
 	.sidebar-section {
-		padding: 0.75rem 1rem;
+		padding: 0.5rem 0.75rem;
+		flex: 1;
+		overflow-y: auto;
 	}
 
 	.sidebar-section h3 {
@@ -167,6 +216,50 @@
 	.placeholder {
 		font-size: 0.85rem;
 		color: #aaa;
+	}
+
+	.chat-list {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+
+	.chat-item {
+		width: 100%;
+		text-align: left;
+		padding: 0.45rem 0.5rem;
+		border: none;
+		background: transparent;
+		border-radius: 4px;
+		cursor: pointer;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: 0.5rem;
+		transition: background 0.15s;
+	}
+
+	.chat-item:hover {
+		background: #e4e4e4;
+	}
+
+	.chat-item.active {
+		background: #ddd;
+	}
+
+	.chat-title {
+		font-size: 0.82rem;
+		color: #333;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		flex: 1;
+	}
+
+	.chat-meta {
+		font-size: 0.7rem;
+		color: #aaa;
+		flex-shrink: 0;
 	}
 
 	.chat-main {

@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 
 from zerg.admin.routes import admin_router
 from zerg.admin.token import generate_token, save_token
+from zerg.chat.storage import ChatStorage
 from zerg.config import Settings
 from zerg.llm.client import LLMClient
 from zerg.server.routes import router
@@ -48,6 +49,9 @@ async def lifespan(app: FastAPI):
     app.state.admin_token = token
     save_token(token)
     logger.info("Admin token: %s", token)
+
+    # --- Chat storage ---
+    app.state.chat_storage = ChatStorage(config.chat.storage_dir)
 
     # --- Database ---
     try:
