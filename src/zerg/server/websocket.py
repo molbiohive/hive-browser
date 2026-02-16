@@ -121,17 +121,18 @@ async def websocket_endpoint(websocket: WebSocket):
                 })
                 continue
 
-            # Track user message
-            manager.append_history(conn_id, "user", content, max_pairs)
-            chat_messages.append({"role": "user", "content": content, "ts": _now_iso()})
-
             # Route through the orchestrator
             result = await route_input(
                 user_input=content,
                 registry=registry,
                 llm_client=llm_client,
-                history=manager.get_history(conn_id)[:-1],
+                history=manager.get_history(conn_id),
             )
+
+            # Track user message (skip bare commands that just show a form)
+            manager.append_history(conn_id, "user", content, max_pairs)
+            if result.get("type") != "form":
+                chat_messages.append({"role": "user", "content": content, "ts": _now_iso()})
 
             # Track assistant response
             assistant_content = result.get("content", "")
@@ -157,11 +158,12 @@ async def websocket_endpoint(websocket: WebSocket):
                     "data": result["data"],
                 }
 
-            # Save assistant message
-            assistant_msg: dict = {"role": "assistant", "content": assistant_content, "ts": _now_iso()}
-            if response.get("widget"):
-                assistant_msg["widget"] = response["widget"]
-            chat_messages.append(assistant_msg)
+            # Save assistant message (skip forms — they're ephemeral UI)
+            if result.get("type") != "form":
+                assistant_msg: dict = {"role": "assistant", "content": assistant_content, "ts": _now_iso()}
+                if response.get("widget"):
+                    assistant_msg["widget"] = response["widget"]
+                chat_messages.append(assistant_msg)
 
             await manager.send_json(conn_id, response)
 

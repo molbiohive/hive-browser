@@ -19,10 +19,12 @@ Available tools:
 Rules:
 - Call exactly ONE tool per turn.
 - Extract parameters from the user's message. Ask for clarification only if truly ambiguous.
+- The search tool finds sequences by NAME — use short keywords like "GFP", "pUC19", "ampicillin". NEVER put nucleotide/protein sequences in the search query. For sequence similarity, use BLAST instead.
+- For search, put the main term in "query" and leave "filters" empty unless the user explicitly asks to filter by topology or size. Do NOT add feature_type filters unless requested.
 - After receiving tool results, summarize them concisely. Focus on data, not pleasantries.
 - When listing sequences, mention name, size, topology, key features, and resistance markers.
 - If no results found, suggest broadening the search or trying BLAST.
-- Never fabricate data. Only report what the tools return."""
+- NEVER fabricate sequences, IDs, or data. Only report what the tools return."""
 
 
 def build_system_prompt(registry) -> str:

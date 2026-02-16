@@ -12,10 +12,10 @@ from zerg.tools.base import Tool, ToolInput
 
 
 class SearchInput(ToolInput):
-    query: str = Field(..., description="Search text (name, feature, description)")
+    query: str = Field(..., description="Search text — matches against sequence names, feature names, and descriptions. Use the main search term here, e.g. 'GFP' or 'ampicillin'.")
     filters: dict[str, Any] = Field(
         default_factory=dict,
-        description="Optional filters: topology, size_min, size_max, feature_type",
+        description="Optional filters to narrow results. Keys: topology ('circular'|'linear'), size_min (int), size_max (int), feature_type (GenBank type like 'CDS', 'promoter', 'rep_origin' — NOT biological concepts like 'plasmid'). Only use filters when the user explicitly requests them.",
     )
     limit: int = Field(default=20, ge=1, le=100)
 
@@ -104,12 +104,15 @@ class SearchTool(Tool):
             if size_max := inp.filters.get("size_max"):
                 stmt = stmt.where(Sequence.size_bp <= int(size_max))
             if feat_type := inp.filters.get("feature_type"):
-                # Filter: sequence must have at least one feature of this type
-                stmt = stmt.where(
-                    Sequence.id.in_(
-                        select(Feature.seq_id).where(Feature.type == feat_type)
+                # Unwrap list if LLM sends ["plasmid"] instead of "plasmid"
+                if isinstance(feat_type, list):
+                    feat_type = feat_type[0] if feat_type else None
+                if feat_type:
+                    stmt = stmt.where(
+                        Sequence.id.in_(
+                            select(Feature.seq_id).where(Feature.type == feat_type)
+                        )
                     )
-                )
 
             rows = (await session.execute(stmt)).all()
 

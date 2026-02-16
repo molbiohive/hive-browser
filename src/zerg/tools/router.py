@@ -157,6 +157,7 @@ async def _llm_tool_flow(
     try:
         params = json.loads(fn["arguments"]) if isinstance(fn["arguments"], str) else fn["arguments"]
         params = {k: v for k, v in params.items() if v is not None}
+        logger.info("LLM tool call: %s(%s)", tool_name, json.dumps(params))
         result = await tool.execute(params)
     except Exception as e:
         logger.error("Tool %s failed: %s", tool_name, e)
