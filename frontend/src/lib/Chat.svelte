@@ -123,7 +123,7 @@
 			{:else}
 				{#each $chatStore.messages as message, i}
 					{@const contextStart = Math.max(0, $chatStore.messages.length - $appConfig.max_history_pairs * 2)}
-					<MessageBubble {message} faded={i < contextStart} />
+					<MessageBubble {message} faded={i < contextStart} messageIndex={i} />
 				{/each}
 			{/if}
 		</div>

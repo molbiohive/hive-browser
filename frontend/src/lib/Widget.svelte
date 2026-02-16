@@ -6,7 +6,7 @@
 	import ModelWidget from '$lib/ModelWidget.svelte';
 	import FormWidget from '$lib/FormWidget.svelte';
 
-	let { widget } = $props();
+	let { widget, messageIndex = -1 } = $props();
 	let expanded = $state(true);
 
 	const widgetComponents = {
@@ -31,7 +31,7 @@
 
 	{#if expanded && widgetComponents[widget.type]}
 		<div class="widget-body">
-			<svelte:component this={widgetComponents[widget.type]} data={widget.data} />
+			<svelte:component this={widgetComponents[widget.type]} data={widget.data} {messageIndex} />
 		</div>
 	{/if}
 </div>

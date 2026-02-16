@@ -1,7 +1,7 @@
 <script>
-	import { sendMessage } from '$lib/stores/chat.ts';
+	import { sendRawMessage, replaceFormWithCommand } from '$lib/stores/chat.ts';
 
-	let { data } = $props();
+	let { data, messageIndex = -1 } = $props();
 
 	const schema = data?.schema || {};
 	const toolName = data?.tool_name || '';
@@ -23,7 +23,15 @@
 				}
 			}
 		}
-		sendMessage(`//${toolName} ${JSON.stringify(params)}`);
+		const commandText = `//${toolName} ${JSON.stringify(params)}`;
+
+		// Replace the form message with the command text
+		if (messageIndex >= 0) {
+			replaceFormWithCommand(messageIndex, commandText);
+		}
+
+		// Send via WebSocket (without adding another user message to store)
+		sendRawMessage(commandText);
 	}
 </script>
 

@@ -144,6 +144,28 @@ export function sendMessage(content: string) {
 	ws.send(JSON.stringify({ type: 'message', content }));
 }
 
+export function sendRawMessage(content: string) {
+	if (!ws || ws.readyState !== WebSocket.OPEN) {
+		console.warn('[ws] not connected');
+		return;
+	}
+	ws.send(JSON.stringify({ type: 'message', content }));
+}
+
+export function replaceFormWithCommand(messageIndex: number, commandText: string) {
+	chatStore.update(s => {
+		const messages = [...s.messages];
+		if (messages[messageIndex]) {
+			messages[messageIndex] = {
+				role: 'user',
+				content: commandText,
+				ts: new Date().toISOString(),
+			};
+		}
+		return { ...s, messages };
+	});
+}
+
 export function loadChat(chatId: string) {
 	if (!ws || ws.readyState !== WebSocket.OPEN) return;
 	ws.send(JSON.stringify({ type: 'load_chat', chatId }));

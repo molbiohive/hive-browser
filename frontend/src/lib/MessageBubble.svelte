@@ -2,7 +2,7 @@
 	import { marked } from 'marked';
 	import Widget from '$lib/Widget.svelte';
 
-	let { message, faded = false } = $props();
+	let { message, faded = false, messageIndex = -1 } = $props();
 
 	// Configure marked for inline rendering (no wrapping <p> for short responses)
 	marked.setOptions({ breaks: true, gfm: true });
@@ -21,7 +21,7 @@
 		{/if}
 
 		{#if message.widget}
-			<Widget widget={message.widget} />
+			<Widget widget={message.widget} {messageIndex} />
 		{/if}
 	</div>
 </div>
