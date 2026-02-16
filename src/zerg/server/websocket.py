@@ -1,5 +1,6 @@
 """WebSocket handler for concurrent chat sessions."""
 
+import asyncio
 import json
 import logging
 from datetime import datetime, timezone
@@ -24,6 +25,7 @@ class ConnectionManager:
     def __init__(self):
         self.active: dict[str, WebSocket] = {}
         self.histories: dict[str, list[dict]] = {}
+        self.tasks: dict[str, asyncio.Task] = {}
 
     async def connect(self, websocket: WebSocket) -> str:
         await websocket.accept()
@@ -36,6 +38,9 @@ class ConnectionManager:
     def disconnect(self, conn_id: str):
         self.active.pop(conn_id, None)
         self.histories.pop(conn_id, None)
+        task = self.tasks.pop(conn_id, None)
+        if task and not task.done():
+            task.cancel()
         logger.info("Client disconnected: %s (total: %d)", conn_id, len(self.active))
 
     async def send_json(self, conn_id: str, data: dict):
@@ -86,14 +91,19 @@ async def websocket_endpoint(websocket: WebSocket):
         "status": init_status,
     })
 
-    # Per-connection chat tracking
-    chat_id = None
-    chat_messages: list[dict] = []
-    title_generated = False
+    # Per-connection chat tracking (mutable dict so background tasks can update it)
+    chat = {"id": None, "messages": [], "title_generated": False}
 
     try:
         while True:
             data = await websocket.receive_json()
+
+            # Handle cancel — abort any running processing task
+            if data.get("type") == "cancel":
+                task = manager.tasks.get(conn_id)
+                if task and not task.done():
+                    task.cancel()
+                continue
 
             # Handle chat resume
             if data.get("type") == "load_chat" and chat_storage:
@@ -101,18 +111,17 @@ async def websocket_endpoint(websocket: WebSocket):
                 if requested_id:
                     saved = chat_storage.load(requested_id)
                     if saved:
-                        chat_id = requested_id
-                        chat_messages = saved.get("messages", [])
-                        title_generated = bool(saved.get("title"))
-                        # Rebuild LLM history from saved messages
+                        chat["id"] = requested_id
+                        chat["messages"] = saved.get("messages", [])
+                        chat["title_generated"] = bool(saved.get("title"))
                         manager.histories[conn_id] = [
                             {"role": m["role"], "content": m["content"]}
-                            for m in chat_messages
+                            for m in chat["messages"]
                         ]
                         await manager.send_json(conn_id, {
                             "type": "chat_loaded",
-                            "chatId": chat_id,
-                            "messages": chat_messages,
+                            "chatId": chat["id"],
+                            "messages": chat["messages"],
                             "title": saved.get("title"),
                         })
                 continue
@@ -131,9 +140,8 @@ async def websocket_endpoint(websocket: WebSocket):
                             "messageIndex": message_index,
                             "data": result,
                         })
-                        # Update in-memory so subsequent saves include fresh data
-                        if message_index is not None and 0 <= message_index < len(chat_messages):
-                            w = chat_messages[message_index].get("widget")
+                        if message_index is not None and 0 <= message_index < len(chat["messages"]):
+                            w = chat["messages"][message_index].get("widget")
                             if w:
                                 w["data"] = result
                                 w.pop("stale", None)
@@ -157,79 +165,115 @@ async def websocket_endpoint(websocket: WebSocket):
                 })
                 continue
 
-            # Route through the orchestrator
-            result = await route_input(
-                user_input=content,
-                registry=registry,
-                llm_client=llm_client,
-                history=manager.get_history(conn_id),
+            # Process message as a cancellable background task
+            manager.tasks[conn_id] = asyncio.create_task(
+                _handle_message(
+                    conn_id=conn_id,
+                    content=content,
+                    registry=registry,
+                    llm_client=llm_client,
+                    chat=chat,
+                    chat_storage=chat_storage,
+                    max_pairs=max_pairs,
+                    save_threshold=save_threshold,
+                    config=config,
+                )
             )
-
-            # Track user message (skip bare commands that just show a form)
-            manager.append_history(conn_id, "user", content, max_pairs)
-            if result.get("type") != "form":
-                chat_messages.append({"role": "user", "content": content, "ts": _now_iso()})
-
-            # Track assistant response
-            assistant_content = result.get("content", "")
-            if assistant_content:
-                manager.append_history(conn_id, "assistant", assistant_content, max_pairs)
-
-            # Build response
-            response = {"type": "message", "content": assistant_content}
-
-            if result.get("type") == "tool_result" and result.get("data"):
-                tool_name = result["tool"]
-                response["widget"] = {
-                    "type": _widget_type(tool_name, registry),
-                    "tool": tool_name,
-                    "params": result.get("params", {}),
-                    "data": result["data"],
-                }
-            elif result.get("type") == "form":
-                response["widget"] = {
-                    "type": "form",
-                    "tool": result["tool"],
-                    "params": {},
-                    "data": result["data"],
-                }
-
-            # Save assistant message (skip forms — they're ephemeral UI)
-            if result.get("type") != "form":
-                assistant_msg: dict = {"role": "assistant", "content": assistant_content, "ts": _now_iso()}
-                if response.get("widget"):
-                    assistant_msg["widget"] = response["widget"]
-                chat_messages.append(assistant_msg)
-
-            await manager.send_json(conn_id, response)
-
-            # Send status update after tool results (counts may have changed)
-            if result.get("type") == "tool_result":
-                updated_status = await _quick_status(llm_client)
-                await manager.send_json(conn_id, {"type": "status_update", "status": updated_status})
-
-            # Auto-save chat after threshold
-            if chat_storage and manager.count_user_messages(conn_id) >= save_threshold:
-                if chat_id is None:
-                    chat_id = chat_storage.new_chat_id()
-                threshold = config.chat.widget_data_threshold if config else 2048
-                messages_to_save = [_strip_large_widget_data(m, threshold) for m in chat_messages]
-                chat_storage.save(chat_id, messages_to_save)
-
-                # Generate title once via LLM
-                if not title_generated and llm_client:
-                    title_generated = True
-                    title = await _generate_chat_title(llm_client, chat_messages[:4])
-                    if title:
-                        chat_storage.update_title(chat_id, title)
-                        await manager.send_json(conn_id, {
-                            "type": "chat_saved",
-                            "chatId": chat_id,
-                            "title": title,
-                        })
 
     except WebSocketDisconnect:
         manager.disconnect(conn_id)
+
+
+async def _handle_message(
+    conn_id: str,
+    content: str,
+    registry,
+    llm_client,
+    chat: dict,
+    chat_storage,
+    max_pairs: int,
+    save_threshold: int,
+    config,
+):
+    """Process a user message — runs as a cancellable background task."""
+    try:
+        result = await route_input(
+            user_input=content,
+            registry=registry,
+            llm_client=llm_client,
+            history=manager.get_history(conn_id),
+        )
+
+        # Track user message (skip bare commands that just show a form)
+        manager.append_history(conn_id, "user", content, max_pairs)
+        if result.get("type") != "form":
+            chat["messages"].append({"role": "user", "content": content, "ts": _now_iso()})
+
+        # Track assistant response
+        assistant_content = result.get("content", "")
+        if assistant_content:
+            manager.append_history(conn_id, "assistant", assistant_content, max_pairs)
+
+        # Build response
+        response = {"type": "message", "content": assistant_content}
+
+        if result.get("type") == "tool_result" and result.get("data"):
+            tool_name = result["tool"]
+            response["widget"] = {
+                "type": _widget_type(tool_name, registry),
+                "tool": tool_name,
+                "params": result.get("params", {}),
+                "data": result["data"],
+            }
+        elif result.get("type") == "form":
+            response["widget"] = {
+                "type": "form",
+                "tool": result["tool"],
+                "params": {},
+                "data": result["data"],
+            }
+
+        # Save assistant message (skip forms — they're ephemeral UI)
+        if result.get("type") != "form":
+            assistant_msg: dict = {"role": "assistant", "content": assistant_content, "ts": _now_iso()}
+            if response.get("widget"):
+                assistant_msg["widget"] = response["widget"]
+            chat["messages"].append(assistant_msg)
+
+        await manager.send_json(conn_id, response)
+
+        # Send status update after tool results (counts may have changed)
+        if result.get("type") == "tool_result":
+            updated_status = await _quick_status(llm_client)
+            await manager.send_json(conn_id, {"type": "status_update", "status": updated_status})
+
+        # Auto-save chat after threshold
+        if chat_storage and manager.count_user_messages(conn_id) >= save_threshold:
+            if chat["id"] is None:
+                chat["id"] = chat_storage.new_chat_id()
+            threshold = config.chat.widget_data_threshold if config else 2048
+            messages_to_save = [_strip_large_widget_data(m, threshold) for m in chat["messages"]]
+            chat_storage.save(chat["id"], messages_to_save)
+
+            # Generate title once via LLM
+            if not chat["title_generated"] and llm_client:
+                chat["title_generated"] = True
+                title = await _generate_chat_title(llm_client, chat["messages"][:4])
+                if title:
+                    chat_storage.update_title(chat["id"], title)
+                    await manager.send_json(conn_id, {
+                        "type": "chat_saved",
+                        "chatId": chat["id"],
+                        "title": title,
+                    })
+
+    except asyncio.CancelledError:
+        await manager.send_json(conn_id, {"type": "message", "content": "Cancelled."})
+    except Exception as e:
+        logger.error("Message processing failed: %s", e)
+        await manager.send_json(conn_id, {"type": "message", "content": f"Error: {e}"})
+    finally:
+        manager.tasks.pop(conn_id, None)
 
 
 async def _generate_chat_title(llm_client, messages: list[dict]) -> str | None:

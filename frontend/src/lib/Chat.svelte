@@ -1,12 +1,13 @@
 <script>
 	import { onMount } from 'svelte';
-	import { chatStore, chatList, appConfig, statusBar, connect, sendMessage, toggleStatusBar, loadChat, newChat, fetchChatList, deleteChat } from '$lib/stores/chat.ts';
+	import { chatStore, chatList, appConfig, statusBar, connect, sendMessage, cancelRequest, toggleStatusBar, loadChat, newChat, fetchChatList, deleteChat } from '$lib/stores/chat.ts';
 	import MessageBubble from '$lib/MessageBubble.svelte';
 	import CommandPalette from '$lib/CommandPalette.svelte';
 
 	let inputText = $state('');
 	let messagesDiv;
 	let showPalette = $state(false);
+	let prevMsgCount = $state(0);
 
 	onMount(() => {
 		connect();
@@ -65,10 +66,11 @@
 	}
 
 	$effect(() => {
-		const _ = [$chatStore.messages, $chatStore.isWaiting];
-		if (messagesDiv) {
+		const count = $chatStore.messages.length;
+		if (count > prevMsgCount && messagesDiv) {
 			messagesDiv.scrollTop = messagesDiv.scrollHeight;
 		}
+		prevMsgCount = count;
 	});
 </script>
 
@@ -151,11 +153,19 @@
 						placeholder="Type message or /command..."
 						rows="2"
 					></textarea>
-					<button type="submit" class="send-btn" disabled={!inputText.trim() || $chatStore.isWaiting} aria-label="Send message">
+					{#if $chatStore.isWaiting}
+					<button type="button" class="send-btn cancel" onclick={cancelRequest} aria-label="Cancel request">
+						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+							<path d="M18 6L6 18M6 6l12 12"/>
+						</svg>
+					</button>
+					{:else}
+					<button type="submit" class="send-btn" disabled={!inputText.trim()} aria-label="Send message">
 						<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
 							<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
 						</svg>
 					</button>
+					{/if}
 				</div>
 				<div class="input-hint">
 					{#if $statusBar.visible}
@@ -424,6 +434,10 @@
 	.send-btn:disabled {
 		opacity: 0.3;
 		cursor: default;
+	}
+
+	.send-btn.cancel {
+		background: #dc2626;
 	}
 
 	.input-hint {

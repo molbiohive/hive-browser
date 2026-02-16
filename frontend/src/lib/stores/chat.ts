@@ -199,6 +199,11 @@ export function sendRawMessage(content: string) {
 	ws.send(JSON.stringify({ type: 'message', content }));
 }
 
+export function cancelRequest() {
+	if (!ws || ws.readyState !== WebSocket.OPEN) return;
+	ws.send(JSON.stringify({ type: 'cancel' }));
+}
+
 export function rerunTool(tool: string, params: Record<string, unknown>, messageIndex: number) {
 	if (!ws || ws.readyState !== WebSocket.OPEN) return;
 	ws.send(JSON.stringify({ type: 'rerun_tool', tool, params, messageIndex }));
