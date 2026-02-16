@@ -18,6 +18,7 @@ from zerg.server.routes import router
 from zerg.server.websocket import ws_router
 from zerg.tools.base import ToolRegistry
 from zerg.tools.blast import BlastTool, build_blast_index
+from zerg.tools.model import ModelTool
 from zerg.tools.profile import ProfileTool
 from zerg.tools.search import SearchTool
 from zerg.tools.status import StatusTool
@@ -32,6 +33,7 @@ def _build_registry(config: Settings, llm_client: LLMClient | None) -> ToolRegis
     registry.register(BlastTool(db_path=config.blast.db_path, binary=config.blast.binary))
     registry.register(ProfileTool())
     registry.register(StatusTool(llm_client=llm_client))
+    registry.register(ModelTool(config=config.llm, llm_client=llm_client))
     return registry
 
 

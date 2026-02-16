@@ -3,6 +3,7 @@
 	import BlastWidget from '$lib/BlastWidget.svelte';
 	import ProfileWidget from '$lib/ProfileWidget.svelte';
 	import StatusWidget from '$lib/StatusWidget.svelte';
+	import ModelWidget from '$lib/ModelWidget.svelte';
 	import FormWidget from '$lib/FormWidget.svelte';
 
 	let { widget } = $props();
@@ -13,6 +14,7 @@
 		blast: BlastWidget,
 		profile: ProfileWidget,
 		status: StatusWidget,
+		model: ModelWidget,
 		form: FormWidget,
 	};
 
