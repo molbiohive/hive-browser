@@ -291,8 +291,8 @@ async def _quick_status(llm_client=None) -> dict:
                     select(func.count()).select_from(Sequence)
                 )).scalar()
             status["db_connected"] = True
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Quick status DB query failed: %s", e)
     if llm_client:
         try:
             status["llm_available"] = await llm_client.health()
