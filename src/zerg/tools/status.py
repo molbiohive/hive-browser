@@ -16,6 +16,12 @@ class StatusInput(ToolInput):
 class StatusTool(Tool):
     name = "status"
     description = "Show system status: indexed files count, database health, LLM availability."
+    widget_type = "status"
+
+    def format_result(self, result: dict) -> str:
+        if error := result.get("error"):
+            return f"Error: {error}"
+        return f"{result.get('sequences', 0)} sequences indexed"
 
     def __init__(self, llm_client=None):
         self._llm = llm_client

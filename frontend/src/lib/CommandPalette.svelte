@@ -1,13 +1,13 @@
 <script>
+	import { toolList } from '$lib/stores/chat.ts';
+
 	let { visible, onSelect } = $props();
 
-	const commands = [
-		{ name: 'search', description: 'Search by name, features, resistance, metadata' },
-		{ name: 'blast', description: 'Sequence similarity search (BLAST+)' },
-		{ name: 'profile', description: 'Full details of a sequence' },
-		{ name: 'status', description: 'System health and index stats' },
+	const builtins = [
 		{ name: 'help', description: 'Show available commands' },
 	];
+
+	const commands = $derived([...$toolList, ...builtins]);
 
 	function select(cmd) {
 		onSelect?.(cmd.name);

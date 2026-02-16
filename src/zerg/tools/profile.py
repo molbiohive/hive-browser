@@ -19,6 +19,15 @@ class ProfileInput(ToolInput):
 class ProfileTool(Tool):
     name = "profile"
     description = "Show full details of a specific sequence: metadata, features, primers, file info."
+    widget_type = "profile"
+
+    def format_result(self, result: dict) -> str:
+        if error := result.get("error"):
+            return f"Error: {error}"
+        seq = result.get("sequence")
+        if not seq:
+            return "Sequence not found."
+        return f"{seq['name']} — {seq['size_bp']} bp, {seq['topology']}"
 
     def input_schema(self) -> type[ToolInput]:
         return ProfileInput

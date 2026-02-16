@@ -6,7 +6,7 @@ import re
 from typing import Any
 
 from zerg.llm.client import LLMClient
-from zerg.llm.prompts import SYSTEM_PROMPT, build_tool_schemas
+from zerg.llm.prompts import build_system_prompt, build_tool_schemas
 from zerg.tools.base import ToolRegistry
 
 logger = logging.getLogger(__name__)
@@ -69,7 +69,7 @@ async def route_input(
             "type": "tool_result",
             "tool": tool_name,
             "data": result,
-            "content": _format_result(tool_name, result),
+            "content": _format_result(tool_name, result, registry),
         }
 
     # ── Mode 2: Guided — /command ──
@@ -91,7 +91,7 @@ async def route_input(
                 "type": "tool_result",
                 "tool": tool_name,
                 "data": result,
-                "content": _format_result(tool_name, result),
+                "content": _format_result(tool_name, result, registry),
             }
 
         # LLM-assisted: hint it to use this specific tool
@@ -124,7 +124,7 @@ async def _llm_tool_flow(
     tools = build_tool_schemas(registry)
 
     # Turn 1: user message → LLM picks a tool
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    messages = [{"role": "system", "content": build_system_prompt(registry)}]
     if history:
         messages.extend(history)
     messages.append({"role": "user", "content": user_input})
@@ -175,7 +175,7 @@ async def _llm_tool_flow(
         summary = summary_response["choices"][0]["message"].get("content", "")
     except Exception as e:
         logger.warning("LLM summary failed: %s", e)
-        summary = _format_result(tool_name, result)
+        summary = _format_result(tool_name, result, registry)
 
     return {
         "type": "tool_result",
@@ -195,29 +195,14 @@ def _parse_args(text: str) -> dict:
         return {"query": text}
 
 
-def _format_result(tool_name: str, result: dict) -> str:
-    """Short summary for direct invocation (widget shows the full data)."""
+def _format_result(tool_name: str, result: dict, registry: ToolRegistry | None = None) -> str:
+    """Short summary using the tool's own format_result method."""
+    if registry:
+        tool = registry.get(tool_name)
+        if tool:
+            return tool.format_result(result)
     if error := result.get("error"):
         return f"Error: {error}"
-
-    if tool_name == "search":
-        total = result.get("total", 0)
-        query = result.get("query", "")
-        return f"Found {total} result(s) for '{query}'." if total else f"No results for '{query}'."
-
-    if tool_name == "blast":
-        total = len(result.get("hits", []))
-        return f"Found {total} BLAST hit(s)." if total else "No BLAST hits found."
-
-    if tool_name == "profile":
-        seq = result.get("sequence")
-        if not seq:
-            return "Sequence not found."
-        return f"{seq['name']} — {seq['size_bp']} bp, {seq['topology']}"
-
-    if tool_name == "status":
-        return f"{result.get('sequences', 0)} sequences indexed"
-
     return ""
 
 

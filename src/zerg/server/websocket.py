@@ -69,13 +69,14 @@ async def websocket_endpoint(websocket: WebSocket):
     max_pairs = config.chat.max_history_pairs if config else 20
     save_threshold = config.chat.auto_save_after if config else 2
 
-    # Send config to frontend on connect
+    # Send config and tool metadata to frontend on connect
     await manager.send_json(conn_id, {
         "type": "init",
         "config": {
             "search_columns": config.search.columns if config else ["name", "size_bp", "topology", "features"],
             "max_history_pairs": max_pairs,
         },
+        "tools": registry.metadata() if registry else [],
     })
 
     # Per-connection chat tracking
@@ -143,7 +144,7 @@ async def websocket_endpoint(websocket: WebSocket):
             if result.get("type") == "tool_result" and result.get("data"):
                 tool_name = result["tool"]
                 response["widget"] = {
-                    "type": _widget_type(tool_name),
+                    "type": _widget_type(tool_name, registry),
                     "tool": tool_name,
                     "params": {},
                     "data": result["data"],
@@ -205,11 +206,10 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _widget_type(tool_name: str) -> str:
-    """Map tool name to frontend widget type."""
-    return {
-        "search": "table",
-        "blast": "blast",
-        "profile": "profile",
-        "status": "status",
-    }.get(tool_name, "text")
+def _widget_type(tool_name: str, registry=None) -> str:
+    """Get widget type from the tool's own declaration."""
+    if registry:
+        tool = registry.get(tool_name)
+        if tool:
+            return tool.widget_type
+    return "text"

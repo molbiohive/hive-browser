@@ -8,16 +8,13 @@ Tool calling flow (one tool per turn):
   5. LLM returns natural language summary
 """
 
-SYSTEM_PROMPT = """\
+_SYSTEM_PROMPT_TEMPLATE = """\
 You are Zerg Browser, a lab sequence search assistant running on a local server. \
 You help scientists find and explore DNA sequences, plasmids, and constructs \
 stored in their local file system.
 
 Available tools:
-- search: Find sequences by name, features, resistance markers, metadata. Supports fuzzy matching.
-- blast: Find similar sequences by nucleotide alignment (BLAST+).
-- profile: Show full details of a specific sequence (features, primers, metadata).
-- status: Show system health, indexed file count, LLM status.
+{tool_list}
 
 Rules:
 - Call exactly ONE tool per turn.
@@ -26,6 +23,16 @@ Rules:
 - When listing sequences, mention name, size, topology, key features, and resistance markers.
 - If no results found, suggest broadening the search or trying BLAST.
 - Never fabricate data. Only report what the tools return."""
+
+
+def build_system_prompt(registry) -> str:
+    """Generate the system prompt dynamically from the tool registry."""
+    lines = [f"- {t.name}: {t.description}" for t in registry.all()]
+    return _SYSTEM_PROMPT_TEMPLATE.format(tool_list="\n".join(lines))
+
+
+# Fallback for cases where registry isn't available
+SYSTEM_PROMPT = _SYSTEM_PROMPT_TEMPLATE.format(tool_list="(tools loading...)")
 
 
 def build_tool_schemas(registry) -> list[dict]:

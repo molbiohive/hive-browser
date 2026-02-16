@@ -45,6 +45,13 @@ class BlastTool(Tool):
         "Find similar sequences using BLAST+ alignment. "
         "Accepts raw nucleotide sequence or a sequence name from the database."
     )
+    widget_type = "blast"
+
+    def format_result(self, result: dict) -> str:
+        if error := result.get("error"):
+            return f"Error: {error}"
+        total = len(result.get("hits", []))
+        return f"Found {total} BLAST hit(s)." if total else "No BLAST hits found."
 
     def __init__(self, db_path: str, binary: str = "blastn"):
         self._db_path = Path(db_path).expanduser()

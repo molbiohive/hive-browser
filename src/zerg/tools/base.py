@@ -21,6 +21,7 @@ class Tool(ABC):
 
     name: str
     description: str
+    widget_type: str = "text"
 
     @abstractmethod
     async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
@@ -39,6 +40,20 @@ class Tool(ABC):
     def input_schema(self) -> type[ToolInput]:
         """Return the Pydantic model class for this tool's input."""
         ...
+
+    def format_result(self, result: dict) -> str:
+        """Format tool result as a short summary. Override in subclasses."""
+        if error := result.get("error"):
+            return f"Error: {error}"
+        return ""
+
+    def metadata(self) -> dict:
+        """Metadata sent to the frontend on connect."""
+        return {
+            "name": self.name,
+            "description": self.description,
+            "widget_type": self.widget_type,
+        }
 
 
 class ToolRegistry:
@@ -59,3 +74,7 @@ class ToolRegistry:
     def schemas(self) -> list[dict]:
         """All tool schemas for LLM function calling."""
         return [t.schema() for t in self._tools.values()]
+
+    def metadata(self) -> list[dict]:
+        """All tool metadata for frontend init."""
+        return [t.metadata() for t in self._tools.values()]

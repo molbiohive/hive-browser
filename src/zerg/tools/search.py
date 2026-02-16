@@ -36,6 +36,14 @@ class SearchTool(Tool):
         "Search sequences by name, features, resistance markers, and metadata. "
         "Supports fuzzy matching."
     )
+    widget_type = "table"
+
+    def format_result(self, result: dict) -> str:
+        if error := result.get("error"):
+            return f"Error: {error}"
+        total = result.get("total", 0)
+        query = result.get("query", "")
+        return f"Found {total} result(s) for '{query}'." if total else f"No results for '{query}'."
 
     def input_schema(self) -> type[ToolInput]:
         return SearchInput

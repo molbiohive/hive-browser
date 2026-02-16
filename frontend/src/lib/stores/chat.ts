@@ -29,6 +29,12 @@ interface AppConfig {
 	max_history_pairs: number;
 }
 
+interface ToolMeta {
+	name: string;
+	description: string;
+	widget_type: string;
+}
+
 interface ChatState {
 	messages: Message[];
 	connected: boolean;
@@ -51,6 +57,7 @@ const defaultConfig: AppConfig = {
 export const chatStore = writable<ChatState>(initialState);
 export const chatList = writable<ChatMeta[]>([]);
 export const appConfig = writable<AppConfig>(defaultConfig);
+export const toolList = writable<ToolMeta[]>([]);
 
 let ws: WebSocket | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -85,6 +92,9 @@ export function connect() {
 
 		if (data.type === 'init') {
 			appConfig.set(data.config);
+			if (data.tools) {
+				toolList.set(data.tools);
+			}
 		} else if (data.type === 'message') {
 			const msg: Message = {
 				role: 'assistant',
