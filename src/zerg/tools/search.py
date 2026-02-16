@@ -1,6 +1,8 @@
 """Search tool — fuzzy metadata + feature search using pg_trgm."""
 
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 from sqlalchemy import func, or_, select, text
@@ -9,6 +11,14 @@ from sqlalchemy.orm import selectinload
 from zerg.db import session as db
 from zerg.db.models import Feature, IndexedFile, Sequence
 from zerg.tools.base import Tool, ToolInput
+
+if TYPE_CHECKING:
+    from zerg.config import Settings
+    from zerg.llm.client import LLMClient
+
+
+def create(config: Settings | None = None, llm_client: LLMClient | None = None) -> Tool:
+    return SearchTool()
 
 
 class SearchInput(ToolInput):

@@ -1,9 +1,20 @@
 """Tool interface and registry."""
 
+from __future__ import annotations
+
+import importlib
+import logging
+import pkgutil
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
+
+if TYPE_CHECKING:
+    from zerg.config import Settings
+    from zerg.llm.client import LLMClient
+
+logger = logging.getLogger(__name__)
 
 
 class ToolInput(BaseModel):
@@ -80,3 +91,23 @@ class ToolRegistry:
     def metadata(self) -> list[dict]:
         """All tool metadata for frontend init."""
         return [t.metadata() for t in self._tools.values()]
+
+    @classmethod
+    def auto_discover(cls, config: Settings | None = None, llm_client: LLMClient | None = None) -> ToolRegistry:
+        """Scan zerg.tools.* modules for create() factories and build a registry."""
+        import zerg.tools as tools_pkg
+
+        registry = cls()
+        for info in pkgutil.iter_modules(tools_pkg.__path__):
+            if info.name in ("base", "router"):
+                continue
+            try:
+                mod = importlib.import_module(f"zerg.tools.{info.name}")
+                factory = getattr(mod, "create", None)
+                if factory:
+                    tool = factory(config=config, llm_client=llm_client)
+                    registry.register(tool)
+                    logger.debug("Auto-registered tool: %s", tool.name)
+            except Exception as e:
+                logger.warning("Failed to load tool %s: %s", info.name, e)
+        return registry

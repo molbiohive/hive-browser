@@ -1,10 +1,21 @@
 """Model tool — show LLM configuration and connection status."""
 
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 from zerg.config import LLMConfig
 from zerg.llm.client import LLMClient
 from zerg.tools.base import Tool, ToolInput
+
+if TYPE_CHECKING:
+    from zerg.config import Settings
+
+
+def create(config: Settings | None = None, llm_client: LLMClient | None = None) -> Tool:
+    if not config:
+        raise ValueError("ModelTool requires config")
+    return ModelTool(config=config.llm, llm_client=llm_client)
 
 
 class ModelInput(ToolInput):

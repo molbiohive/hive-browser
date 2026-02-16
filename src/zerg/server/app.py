@@ -17,24 +17,9 @@ from zerg.llm.client import LLMClient
 from zerg.server.routes import router
 from zerg.server.websocket import ws_router
 from zerg.tools.base import ToolRegistry
-from zerg.tools.blast import BlastTool, build_blast_index
-from zerg.tools.model import ModelTool
-from zerg.tools.profile import ProfileTool
-from zerg.tools.search import SearchTool
-from zerg.tools.status import StatusTool
+from zerg.tools.blast import build_blast_index
 
 logger = logging.getLogger(__name__)
-
-
-def _build_registry(config: Settings, llm_client: LLMClient | None) -> ToolRegistry:
-    """Create and populate the tool registry."""
-    registry = ToolRegistry()
-    registry.register(SearchTool())
-    registry.register(BlastTool(db_path=config.blast.db_path, binary=config.blast.binary))
-    registry.register(ProfileTool())
-    registry.register(StatusTool(llm_client=llm_client))
-    registry.register(ModelTool(config=config.llm, llm_client=llm_client))
-    return registry
 
 
 @asynccontextmanager
@@ -74,7 +59,7 @@ async def lifespan(app: FastAPI):
         app.state.llm_client = None
 
     # --- Tool registry ---
-    app.state.tool_registry = _build_registry(config, app.state.llm_client)
+    app.state.tool_registry = ToolRegistry.auto_discover(config, app.state.llm_client)
     logger.info("Tool registry: %d tools", len(app.state.tool_registry.all()))
 
     # --- File watcher (only if DB is available) ---

@@ -1,10 +1,12 @@
 """BLAST tool — sequence similarity search using local BLAST+."""
 
+from __future__ import annotations
+
 import asyncio
 import logging
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -12,6 +14,16 @@ from sqlalchemy import select
 from zerg.db import session as db
 from zerg.db.models import IndexedFile, Sequence
 from zerg.tools.base import Tool, ToolInput
+
+if TYPE_CHECKING:
+    from zerg.config import Settings
+    from zerg.llm.client import LLMClient
+
+
+def create(config: Settings | None = None, llm_client: LLMClient | None = None) -> Tool:
+    if not config:
+        raise ValueError("BlastTool requires config")
+    return BlastTool(db_path=config.blast.db_path, binary=config.blast.binary)
 
 logger = logging.getLogger(__name__)
 

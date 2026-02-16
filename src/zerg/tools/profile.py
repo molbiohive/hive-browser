@@ -1,6 +1,8 @@
 """Profile tool — full details of a single sequence."""
 
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 from pydantic import Field
 from sqlalchemy import select
@@ -9,6 +11,14 @@ from sqlalchemy.orm import selectinload
 from zerg.db import session as db
 from zerg.db.models import IndexedFile, Sequence
 from zerg.tools.base import Tool, ToolInput
+
+if TYPE_CHECKING:
+    from zerg.config import Settings
+    from zerg.llm.client import LLMClient
+
+
+def create(config: Settings | None = None, llm_client: LLMClient | None = None) -> Tool:
+    return ProfileTool()
 
 
 class ProfileInput(ToolInput):

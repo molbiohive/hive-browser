@@ -1,12 +1,22 @@
 """Status tool — system health, indexed file counts, service availability."""
 
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import func, select
 
 from zerg.db import session as db
 from zerg.db.models import Feature, IndexedFile, Primer, Sequence
 from zerg.tools.base import Tool, ToolInput
+
+if TYPE_CHECKING:
+    from zerg.config import Settings
+    from zerg.llm.client import LLMClient
+
+
+def create(config: Settings | None = None, llm_client: LLMClient | None = None) -> Tool:
+    return StatusTool(llm_client=llm_client)
 
 
 class StatusInput(ToolInput):
