@@ -48,3 +48,6 @@ static/
 
 # Chat storage (local dev)
 chats/
+
+# Sample data (large binary SnapGene files)
+tests/fixtures/samples/
