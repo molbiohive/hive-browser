@@ -34,6 +34,9 @@ dependencies = [
 
     # HTTP client (admin CLI)
     "httpx>=0.28",
+
+    # LLM provider abstraction (Ollama, Anthropic, OpenAI, etc.)
+    "litellm>=1.50",
 ]
 
 [project.scripts]

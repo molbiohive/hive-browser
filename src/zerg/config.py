@@ -14,8 +14,10 @@ class DatabaseConfig(BaseSettings):
 
 
 class LLMConfig(BaseSettings):
-    base_url: str = "http://localhost:8000/v1"
-    model: str = "Qwen/Qwen2.5-14B-Instruct"
+    provider: str = "ollama"  # ollama, anthropic, openai
+    base_url: str = "http://localhost:11434/v1"
+    model: str = "qwen2.5:7b"
+    api_key: str | None = None  # required for cloud providers
 
     model_config = {"env_prefix": "LLM_"}
 

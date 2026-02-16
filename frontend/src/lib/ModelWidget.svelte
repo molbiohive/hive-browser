@@ -4,6 +4,10 @@
 
 <div class="model-info">
 	<div class="field">
+		<span class="label">Provider</span>
+		<span class="value mono">{data?.provider ?? 'unknown'}</span>
+	</div>
+	<div class="field">
 		<span class="label">Model</span>
 		<span class="value mono">{data?.model ?? 'unknown'}</span>
 	</div>

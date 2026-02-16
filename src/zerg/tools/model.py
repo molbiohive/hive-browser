@@ -32,6 +32,7 @@ class ModelTool(Tool):
                 pass
 
         return {
+            "provider": self._config.provider,
             "model": self._config.model,
             "base_url": self._config.base_url,
             "connected": connected,
@@ -41,4 +42,5 @@ class ModelTool(Tool):
         if error := result.get("error"):
             return f"Error: {error}"
         status = "connected" if result.get("connected") else "disconnected"
-        return f"Model: {result.get('model', 'unknown')} ({status})"
+        provider = result.get("provider", "unknown")
+        return f"Model: {result.get('model', 'unknown')} via {provider} ({status})"
