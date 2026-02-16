@@ -14,7 +14,7 @@ from zerg.watcher.rules import match_file
 logger = logging.getLogger(__name__)
 
 
-async def scan_and_ingest(config: WatcherConfig) -> int:
+async def scan_and_ingest(config: WatcherConfig, blast_db_path: str | None = None) -> int:
     """Scan directory and ingest all parseable files. Returns count of newly indexed files."""
     root = Path(config.root)
     if not root.exists():
@@ -42,10 +42,18 @@ async def scan_and_ingest(config: WatcherConfig) -> int:
             logger.debug(match.message)
 
     logger.info("Scan complete: %d files indexed in %s", indexed, root)
+
+    if indexed > 0 and blast_db_path:
+        try:
+            from zerg.tools.blast import build_blast_index
+            await build_blast_index(blast_db_path)
+        except Exception as e:
+            logger.warning("BLAST index rebuild failed after scan: %s", e)
+
     return indexed
 
 
-async def watch_directory(config: WatcherConfig, stop_event: asyncio.Event | None = None):
+async def watch_directory(config: WatcherConfig, stop_event: asyncio.Event | None = None, blast_db_path: str | None = None):
     """Watch directory for changes using watchfiles (inotify/fswatch).
 
     Runs forever until stop_event is set or task is cancelled.
@@ -75,6 +83,9 @@ async def watch_directory(config: WatcherConfig, stop_event: asyncio.Event | Non
                 try:
                     async with async_session_factory() as session:
                         await ingest_file(session, path, match)
+                    if blast_db_path:
+                        from zerg.tools.blast import build_blast_index
+                        await build_blast_index(blast_db_path)
                 except Exception as e:
                     logger.error("Failed to ingest %s: %s", path.name, e)
             elif match.action == "log" and match.message:

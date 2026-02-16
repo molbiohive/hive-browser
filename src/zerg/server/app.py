@@ -83,7 +83,7 @@ async def lifespan(app: FastAPI):
         from zerg.watcher.watcher import scan_and_ingest, watch_directory
 
         try:
-            count = await scan_and_ingest(config.watcher)
+            count = await scan_and_ingest(config.watcher, blast_db_path=config.blast.db_path)
             logger.info("Initial scan indexed %d files", count)
         except Exception as e:
             logger.warning("Initial scan failed: %s", e)
@@ -91,7 +91,7 @@ async def lifespan(app: FastAPI):
         stop_event = asyncio.Event()
         app.state.watcher_stop = stop_event
         app.state.watcher_task = asyncio.create_task(
-            watch_directory(config.watcher, stop_event=stop_event)
+            watch_directory(config.watcher, stop_event=stop_event, blast_db_path=config.blast.db_path)
         )
 
     # --- BLAST index ---

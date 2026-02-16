@@ -2,7 +2,9 @@
 	let { data } = $props();
 </script>
 
-{#if data?.hits?.length}
+{#if data?.error}
+<p class="error">{data.error}</p>
+{:else if data?.hits?.length}
 <table>
 	<thead>
 		<tr>
@@ -35,4 +37,5 @@
 	th { font-weight: 600; color: #888; font-size: 0.75rem; text-transform: uppercase; }
 	.name { font-weight: 500; }
 	.empty { color: #aaa; font-size: 0.85rem; }
+	.error { color: #dc2626; font-size: 0.85rem; }
 </style>

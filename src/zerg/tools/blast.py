@@ -185,10 +185,11 @@ async def build_blast_index(db_path: str) -> bool:
         logger.info("No sequences to index for BLAST")
         return False
 
-    # Write combined FASTA
+    # Write combined FASTA (replace spaces — makeblastdb truncates at first space)
     with open(fasta_file, "w") as f:
         for name, seq in rows:
-            f.write(f">{name}\n{seq}\n")
+            safe_name = name.replace(" ", "_")
+            f.write(f">{safe_name}\n{seq}\n")
 
     # Run makeblastdb
     proc = await asyncio.create_subprocess_exec(
