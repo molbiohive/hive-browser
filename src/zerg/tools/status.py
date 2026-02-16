@@ -17,6 +17,7 @@ class StatusTool(Tool):
     name = "status"
     description = "Show system status: indexed files count, database health, LLM availability."
     widget_type = "status"
+    use_llm = False
 
     def format_result(self, result: dict) -> str:
         if error := result.get("error"):

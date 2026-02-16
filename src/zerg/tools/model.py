@@ -15,6 +15,7 @@ class ModelTool(Tool):
     name = "model"
     description = "Show LLM model name, endpoint URL, and connection status."
     widget_type = "model"
+    use_llm = False
 
     def __init__(self, config: LLMConfig, llm_client: LLMClient | None = None):
         self._config = config

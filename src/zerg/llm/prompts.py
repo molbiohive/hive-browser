@@ -27,7 +27,7 @@ Rules:
 
 def build_system_prompt(registry) -> str:
     """Generate the system prompt dynamically from the tool registry."""
-    lines = [f"- {t.name}: {t.description}" for t in registry.all()]
+    lines = [f"- {t.name}: {t.description}" for t in registry.all() if t.use_llm]
     return _SYSTEM_PROMPT_TEMPLATE.format(tool_list="\n".join(lines))
 
 
@@ -36,9 +36,11 @@ SYSTEM_PROMPT = _SYSTEM_PROMPT_TEMPLATE.format(tool_list="(tools loading...)")
 
 
 def build_tool_schemas(registry) -> list[dict]:
-    """Convert ToolRegistry into OpenAI function calling format."""
+    """Convert ToolRegistry into OpenAI function calling format (only LLM-visible tools)."""
     tools = []
     for tool in registry.all():
+        if not tool.use_llm:
+            continue
         schema = tool.input_schema().model_json_schema()
         # Remove pydantic metadata keys that LLMs don't need
         schema.pop("title", None)

@@ -81,9 +81,22 @@ async def route_input(
         if not tool:
             return _error(f"Unknown tool: {tool_name}")
 
-        if not llm_client:
-            # No LLM — try to execute directly with parsed args
+        if not llm_client or not tool.use_llm:
+            # No LLM or tool opts out — execute directly with parsed args
             params = _parse_args(text)
+
+            # If no args and tool has required params, return a form
+            if not text:
+                schema = tool.input_schema().model_json_schema()
+                required = schema.get("required", [])
+                if required:
+                    return {
+                        "type": "form",
+                        "tool": tool_name,
+                        "data": {"schema": schema, "tool_name": tool_name, "description": tool.description},
+                        "content": f"Fill in the required parameters for **{tool_name}**:",
+                    }
+
             try:
                 result = await tool.execute(params)
             except Exception as e:
@@ -222,7 +235,8 @@ def _help_response(registry: ToolRegistry) -> dict:
     """Build a help message listing all available commands."""
     lines = ["**Available commands:**\n"]
     for tool in registry.all():
-        lines.append(f"- **/{tool.name}** — {tool.description}")
+        tag = " *(direct)*" if not tool.use_llm else ""
+        lines.append(f"- **/{tool.name}**{tag} — {tool.description}")
     lines.append(f"\nPrefix with `//` for direct execution (no LLM), e.g. `//search ampicillin`.")
     return {"type": "message", "content": "\n".join(lines)}
 

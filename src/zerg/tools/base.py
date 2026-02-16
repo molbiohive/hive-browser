@@ -22,6 +22,7 @@ class Tool(ABC):
     name: str
     description: str
     widget_type: str = "text"
+    use_llm: bool = True
 
     @abstractmethod
     async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
@@ -53,6 +54,7 @@ class Tool(ABC):
             "name": self.name,
             "description": self.description,
             "widget_type": self.widget_type,
+            "use_llm": self.use_llm,
         }
 
 

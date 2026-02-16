@@ -19,6 +19,7 @@
 	{#each commands as cmd}
 		<button class="cmd" onclick={() => select(cmd)}>
 			<span class="name">/{cmd.name}</span>
+			{#if cmd.use_llm === false}<span class="tag">direct</span>{/if}
 			<span class="desc">{cmd.description}</span>
 		</button>
 	{/each}
@@ -51,5 +52,14 @@
 	}
 	.cmd:hover { background: #f5f5f5; }
 	.name { font-weight: 600; min-width: 80px; color: #333; }
+	.tag {
+		font-size: 0.65rem;
+		padding: 0.1rem 0.35rem;
+		background: #eee;
+		color: #666;
+		border-radius: 3px;
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
+	}
 	.desc { color: #888; }
 </style>
