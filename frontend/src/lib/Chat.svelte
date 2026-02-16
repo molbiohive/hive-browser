@@ -14,7 +14,7 @@
 	});
 
 	function handleSubmit() {
-		if (!inputText.trim()) return;
+		if (!inputText.trim() || $chatStore.isWaiting) return;
 		sendMessage(inputText.trim());
 		inputText = '';
 		showPalette = false;
@@ -58,7 +58,7 @@
 	}
 
 	$effect(() => {
-		const msgs = $chatStore.messages;
+		const _ = [$chatStore.messages, $chatStore.isWaiting];
 		if (messagesDiv) {
 			messagesDiv.scrollTop = messagesDiv.scrollHeight;
 		}
@@ -125,6 +125,11 @@
 					{@const contextStart = Math.max(0, $chatStore.messages.length - $appConfig.max_history_pairs * 2)}
 					<MessageBubble {message} faded={i < contextStart} messageIndex={i} />
 				{/each}
+				{#if $chatStore.isWaiting}
+					<div class="typing-indicator">
+						<span class="dot"></span><span class="dot"></span><span class="dot"></span>
+					</div>
+				{/if}
 			{/if}
 		</div>
 
@@ -139,7 +144,7 @@
 						placeholder="Type message or /command..."
 						rows="2"
 					></textarea>
-					<button type="submit" class="send-btn" disabled={!inputText.trim()} aria-label="Send message">
+					<button type="submit" class="send-btn" disabled={!inputText.trim() || $chatStore.isWaiting} aria-label="Send message">
 						<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
 							<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
 						</svg>
@@ -423,5 +428,39 @@
 
 	.disconnected {
 		color: #c66;
+	}
+
+	.typing-indicator {
+		display: flex;
+		gap: 4px;
+		padding: 0.75rem 1rem;
+		background: white;
+		border-radius: 16px 16px 16px 4px;
+		width: fit-content;
+		margin: 0.5rem 0;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+	}
+
+	.dot {
+		width: 8px;
+		height: 8px;
+		background: #999;
+		border-radius: 50%;
+		animation: bounce 1.4s infinite ease-in-out both;
+	}
+
+	.dot:nth-child(1) { animation-delay: 0s; }
+	.dot:nth-child(2) { animation-delay: 0.16s; }
+	.dot:nth-child(3) { animation-delay: 0.32s; }
+
+	@keyframes bounce {
+		0%, 80%, 100% {
+			transform: scale(0.6);
+			opacity: 0.4;
+		}
+		40% {
+			transform: scale(1);
+			opacity: 1;
+		}
 	}
 </style>

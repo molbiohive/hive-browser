@@ -38,6 +38,7 @@ interface ToolMeta {
 interface ChatState {
 	messages: Message[];
 	connected: boolean;
+	isWaiting: boolean;
 	chatId: string | null;
 	chatTitle: string | null;
 }
@@ -45,6 +46,7 @@ interface ChatState {
 const initialState: ChatState = {
 	messages: [],
 	connected: false,
+	isWaiting: false,
 	chatId: null,
 	chatTitle: null,
 };
@@ -78,7 +80,7 @@ export function connect() {
 
 	ws.onclose = () => {
 		console.log('[ws] disconnected, reconnecting in 3s...');
-		chatStore.update(s => ({ ...s, connected: false }));
+		chatStore.update(s => ({ ...s, connected: false, isWaiting: false }));
 		reconnectTimer = setTimeout(connect, 3000);
 	};
 
@@ -105,6 +107,7 @@ export function connect() {
 			chatStore.update(s => ({
 				...s,
 				messages: [...s.messages, msg],
+				isWaiting: false,
 			}));
 		} else if (data.type === 'chat_saved') {
 			chatStore.update(s => ({
@@ -141,6 +144,7 @@ export function sendMessage(content: string) {
 		return;
 	}
 
+	chatStore.update(s => ({ ...s, isWaiting: true }));
 	ws.send(JSON.stringify({ type: 'message', content }));
 }
 
@@ -172,7 +176,7 @@ export function loadChat(chatId: string) {
 }
 
 export function newChat() {
-	chatStore.set({ ...initialState, connected: true });
+	chatStore.set({ ...initialState, connected: true, isWaiting: false });
 }
 
 export async function fetchChatList() {
