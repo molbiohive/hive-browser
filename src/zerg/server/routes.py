@@ -1,6 +1,9 @@
 """REST API endpoints."""
 
 import logging
+import platform
+import subprocess
+from pathlib import Path
 
 from fastapi import APIRouter, Request
 from sqlalchemy import func, select
@@ -42,6 +45,33 @@ async def delete_chat(chat_id: str, request: Request):
         return {"error": "Chat storage not available"}
     deleted = storage.delete(chat_id)
     return {"deleted": deleted}
+
+
+@router.post("/open-file")
+async def open_file(request: Request):
+    """Open a file's parent directory in the OS file manager."""
+    body = await request.json()
+    file_path = body.get("path", "")
+
+    if not file_path:
+        return {"error": "No file path provided"}
+
+    path = Path(file_path)
+    if not path.exists():
+        return {"error": f"File not found: {file_path}"}
+
+    system = platform.system()
+    try:
+        if system == "Darwin":
+            subprocess.Popen(["open", "-R", str(path)])
+        elif system == "Linux":
+            subprocess.Popen(["xdg-open", str(path.parent)])
+        else:
+            return {"error": f"Unsupported platform: {system}"}
+    except Exception as e:
+        return {"error": str(e)}
+
+    return {"status": "ok", "path": str(path)}
 
 
 @router.get("/health")
