@@ -36,6 +36,16 @@ watcher:
       parser: sgffp
       extract: [sequence, features, primers, notes]
 
+    - match: "*.rna"
+      action: parse
+      parser: sgffp
+      extract: [sequence, features, primers, notes]
+
+    - match: "*.prot"
+      action: parse
+      parser: sgffp
+      extract: [sequence, features, primers, notes]
+
     - match: "*.gb"
       action: parse
       parser: biopython
