@@ -184,7 +184,6 @@ async def websocket_endpoint(websocket: WebSocket):
                     "type": _widget_type(tool_name, registry),
                     "tool": tool_name,
                     "params": result.get("params", {}),
-                    "summary": assistant_content,
                     "data": result["data"],
                 }
             elif result.get("type") == "form":
@@ -260,7 +259,6 @@ def _strip_large_widget_data(msg: dict, threshold: int) -> dict:
             "type": widget["type"],
             "tool": widget["tool"],
             "params": widget.get("params", {}),
-            "summary": widget.get("summary", ""),
             "stale": True,
         }
         return stripped

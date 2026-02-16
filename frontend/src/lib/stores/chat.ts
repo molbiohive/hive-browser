@@ -11,7 +11,6 @@ interface Message {
 		type: string;
 		tool: string;
 		params: Record<string, unknown>;
-		summary?: string;
 		data?: unknown;
 		stale?: boolean;
 	};
