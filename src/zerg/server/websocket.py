@@ -1,5 +1,6 @@
 """WebSocket handler for concurrent chat sessions."""
 
+import json
 import logging
 from datetime import datetime, timezone
 from uuid import uuid4
@@ -110,6 +111,35 @@ async def websocket_endpoint(websocket: WebSocket):
                         })
                 continue
 
+            # Handle tool re-run (for stale widgets in loaded chats)
+            if data.get("type") == "rerun_tool" and registry:
+                tool_name = data.get("tool")
+                params = data.get("params", {})
+                message_index = data.get("messageIndex")
+                tool = registry.get(tool_name) if tool_name else None
+                if tool:
+                    try:
+                        result = await tool.execute(params)
+                        await manager.send_json(conn_id, {
+                            "type": "widget_data",
+                            "messageIndex": message_index,
+                            "data": result,
+                        })
+                        # Update in-memory so subsequent saves include fresh data
+                        if message_index is not None and 0 <= message_index < len(chat_messages):
+                            w = chat_messages[message_index].get("widget")
+                            if w:
+                                w["data"] = result
+                                w.pop("stale", None)
+                    except Exception as e:
+                        logger.error("Re-run %s failed: %s", tool_name, e)
+                        await manager.send_json(conn_id, {
+                            "type": "widget_data",
+                            "messageIndex": message_index,
+                            "data": {"error": str(e)},
+                        })
+                continue
+
             content = data.get("content", "").strip()
             if not content:
                 continue
@@ -147,7 +177,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 response["widget"] = {
                     "type": _widget_type(tool_name, registry),
                     "tool": tool_name,
-                    "params": {},
+                    "params": result.get("params", {}),
+                    "summary": assistant_content,
                     "data": result["data"],
                 }
             elif result.get("type") == "form":
@@ -171,7 +202,9 @@ async def websocket_endpoint(websocket: WebSocket):
             if chat_storage and manager.count_user_messages(conn_id) >= save_threshold:
                 if chat_id is None:
                     chat_id = chat_storage.new_chat_id()
-                chat_storage.save(chat_id, chat_messages)
+                threshold = config.chat.widget_data_threshold if config else 2048
+                messages_to_save = [_strip_large_widget_data(m, threshold) for m in chat_messages]
+                chat_storage.save(chat_id, messages_to_save)
 
                 # Generate title once via LLM
                 if not title_generated and llm_client:
@@ -202,6 +235,25 @@ async def _generate_chat_title(llm_client, messages: list[dict]) -> str | None:
     except Exception as e:
         logger.warning("Failed to generate chat title: %s", e)
         return None
+
+
+def _strip_large_widget_data(msg: dict, threshold: int) -> dict:
+    """Return a copy with large widget data replaced by a stale marker."""
+    widget = msg.get("widget")
+    if not widget or not widget.get("data") or widget.get("type") == "form":
+        return msg
+    data_size = len(json.dumps(widget["data"], default=str))
+    if data_size > threshold:
+        stripped = {**msg}
+        stripped["widget"] = {
+            "type": widget["type"],
+            "tool": widget["tool"],
+            "params": widget.get("params", {}),
+            "summary": widget.get("summary", ""),
+            "stale": True,
+        }
+        return stripped
+    return msg
 
 
 def _now_iso() -> str:

@@ -13,6 +13,7 @@ interface Message {
 		params: Record<string, unknown>;
 		summary?: string;
 		data?: unknown;
+		stale?: boolean;
 	};
 	ts: string;
 }
@@ -123,6 +124,22 @@ export function connect() {
 				chatTitle: data.title,
 				messages: data.messages || [],
 			}));
+		} else if (data.type === 'widget_data') {
+			chatStore.update(s => {
+				const messages = [...s.messages];
+				const idx = data.messageIndex;
+				if (idx != null && messages[idx]?.widget) {
+					messages[idx] = {
+						...messages[idx],
+						widget: {
+							...messages[idx].widget!,
+							data: data.data,
+							stale: undefined,
+						},
+					};
+				}
+				return { ...s, messages };
+			});
 		}
 	};
 }
@@ -154,6 +171,11 @@ export function sendRawMessage(content: string) {
 		return;
 	}
 	ws.send(JSON.stringify({ type: 'message', content }));
+}
+
+export function rerunTool(tool: string, params: Record<string, unknown>, messageIndex: number) {
+	if (!ws || ws.readyState !== WebSocket.OPEN) return;
+	ws.send(JSON.stringify({ type: 'rerun_tool', tool, params, messageIndex }));
 }
 
 export function replaceFormWithCommand(messageIndex: number, commandText: string) {
