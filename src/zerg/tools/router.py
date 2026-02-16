@@ -69,6 +69,7 @@ async def route_input(
             "type": "tool_result",
             "tool": tool_name,
             "data": result,
+            "params": params,
             "content": _format_result(tool_name, result, registry),
         }
 
@@ -91,6 +92,7 @@ async def route_input(
                 "type": "tool_result",
                 "tool": tool_name,
                 "data": result,
+                "params": params,
                 "content": _format_result(tool_name, result, registry),
             }
 
@@ -120,7 +122,7 @@ async def _llm_tool_flow(
     llm_client: LLMClient,
     history: list[dict] | None = None,
 ) -> dict[str, Any]:
-    """Two-turn LLM flow: pick tool → execute → summarize."""
+    """LLM picks a tool, we execute it, return format_result() + data."""
     tools = build_tool_schemas(registry)
 
     # Turn 1: user message → LLM picks a tool
@@ -163,12 +165,20 @@ async def _llm_tool_flow(
         logger.error("Tool %s failed: %s", tool_name, e)
         return _error(f"Tool error: {e}")
 
-    # Turn 2: tool result → LLM summarizes
+    # Turn 2: tool result → LLM summarizes (briefly — widget shows the details)
     messages.append({"role": "assistant", "tool_calls": [tool_call]})
     messages.append({
         "role": "tool",
         "tool_call_id": tool_call["id"],
         "content": json.dumps(result),
+    })
+    messages.append({
+        "role": "system",
+        "content": (
+            "Summarize the tool result in 1-2 short sentences. "
+            "The user sees a visual widget with the full data, so do NOT repeat details. "
+            "Never output raw JSON or tool call objects."
+        ),
     })
 
     try:
@@ -182,6 +192,7 @@ async def _llm_tool_flow(
         "type": "tool_result",
         "tool": tool_name,
         "data": result,
+        "params": params,
         "content": summary,
     }
 
