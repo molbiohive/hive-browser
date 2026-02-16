@@ -5,7 +5,6 @@
 		{ name: 'search', description: 'Search by name, features, resistance, metadata' },
 		{ name: 'blast', description: 'Sequence similarity search (BLAST+)' },
 		{ name: 'profile', description: 'Full details of a sequence' },
-		{ name: 'browse', description: 'Navigate project directory tree' },
 		{ name: 'status', description: 'System health and index stats' },
 		{ name: 'help', description: 'Show available commands' },
 	];

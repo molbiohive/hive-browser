@@ -17,7 +17,6 @@ Available tools:
 - search: Find sequences by name, features, resistance markers, metadata. Supports fuzzy matching.
 - blast: Find similar sequences by nucleotide alignment (BLAST+).
 - profile: Show full details of a specific sequence (features, primers, metadata).
-- browse: Navigate the indexed project directory tree.
 - status: Show system health, indexed file count, LLM status.
 
 Rules:

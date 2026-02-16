@@ -218,11 +218,6 @@ def _format_result(tool_name: str, result: dict) -> str:
     if tool_name == "status":
         return f"{result.get('sequences', 0)} sequences indexed"
 
-    if tool_name == "browse":
-        total = result.get("total", 0)
-        path = result.get("path", "/")
-        return f"{total} entries in {path}"
-
     return ""
 
 

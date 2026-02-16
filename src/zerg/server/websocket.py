@@ -211,6 +211,5 @@ def _widget_type(tool_name: str) -> str:
         "search": "table",
         "blast": "blast",
         "profile": "profile",
-        "browse": "table",
         "status": "status",
     }.get(tool_name, "text")

@@ -1,0 +1,3 @@
+Sample RNA with UTR regions
+AUGCUAGCUAGCUAGCUAGCUAGCUA
+Features: promoter, UTR, exon
