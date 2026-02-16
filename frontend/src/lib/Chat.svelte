@@ -94,6 +94,7 @@
 							class="chat-item"
 							class:active={$chatStore.chatId === chat.id}
 							onclick={() => handleLoadChat(chat.id)}
+							onkeydown={(e) => { if (e.key === "Enter") handleLoadChat(chat.id); }}
 							role="button"
 							tabindex="0"
 						>
