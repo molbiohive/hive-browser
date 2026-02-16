@@ -25,7 +25,8 @@
 	const commandText = $derived.by(() => {
 		if (isForm) return `//${widget.tool}`;
 		const params = widget.params || {};
-		return `//${widget.tool} ${JSON.stringify(params)}`;
+		const hasParams = Object.keys(params).length > 0;
+		return hasParams ? `//${widget.tool} ${JSON.stringify(params)}` : `//${widget.tool}`;
 	});
 
 	const headerText = $derived.by(() => {
