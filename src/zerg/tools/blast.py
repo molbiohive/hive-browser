@@ -86,14 +86,29 @@ class BlastTool(Tool):
             f.write(f">query\n{query_seq}\n")
             query_file = f.name
 
+        # Dynamic sensitivity for short queries
+        qlen = len(query_seq)
+        evalue = inp.evalue
+        if evalue == 1e-5:  # user didn't override default
+            if qlen < 20:
+                evalue = 1000
+            elif qlen < 50:
+                evalue = 10
+
+        cmd = [
+            self._binary,
+            "-query", query_file,
+            "-db", str(db_file),
+            "-outfmt", "6 sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore",
+            "-evalue", str(evalue),
+            "-max_target_seqs", str(inp.max_hits),
+        ]
+        if qlen < 30:
+            cmd.extend(["-task", "blastn-short", "-word_size", "7", "-dust", "no"])
+
         try:
             proc = await asyncio.create_subprocess_exec(
-                self._binary,
-                "-query", query_file,
-                "-db", str(db_file),
-                "-outfmt", "6 sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore",
-                "-evalue", str(inp.evalue),
-                "-max_target_seqs", str(inp.max_hits),
+                *cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
@@ -107,15 +122,18 @@ class BlastTool(Tool):
             return {"error": f"BLAST error: {err}", "hits": []}
 
         hits = []
+        subject_names = set()
         for line in stdout.decode().strip().split("\n"):
             if not line:
                 continue
             parts = line.split("\t")
             if len(parts) < 11:
                 continue
+            subject_name = parts[0]
+            subject_names.add(subject_name)
             hits.append(
                 BlastHit(
-                    subject=parts[0],
+                    subject=subject_name,
                     identity=float(parts[1]),
                     alignment_length=int(parts[2]),
                     mismatches=int(parts[3]),
@@ -129,6 +147,12 @@ class BlastTool(Tool):
                 ).model_dump()
             )
 
+        # Resolve file paths for hit subjects
+        if hits:
+            path_map = await _resolve_file_paths(subject_names)
+            for hit in hits:
+                hit["file_path"] = path_map.get(hit["subject"])
+
         return {
             "hits": hits,
             "total": len(hits),
@@ -137,12 +161,31 @@ class BlastTool(Tool):
 
 
 def _is_sequence(s: str) -> bool:
-    """Check if string looks like a nucleotide sequence."""
+    """Check if string looks like a nucleotide sequence (min 4 chars)."""
     clean = s.upper().replace(" ", "").replace("\n", "")
-    if len(clean) < 10:
+    if len(clean) < 4:
         return False
     valid = set("ATGCNRYSWKMBDHV")
     return all(c in valid for c in clean)
+
+
+async def _resolve_file_paths(names: set[str]) -> dict[str, str]:
+    """Look up file paths for sequence names (used to enable Open button on BLAST hits)."""
+    if not db.async_session_factory or not names:
+        return {}
+    # BLAST index replaces spaces with underscores, so match both forms
+    async with db.async_session_factory() as session:
+        rows = (await session.execute(
+            select(Sequence.name, IndexedFile.file_path)
+            .join(IndexedFile, Sequence.file_id == IndexedFile.id)
+            .where(IndexedFile.status == "active")
+        )).all()
+    result = {}
+    for seq_name, file_path in rows:
+        safe_name = seq_name.replace(" ", "_")
+        if safe_name in names:
+            result[safe_name] = file_path
+    return result
 
 
 async def _resolve_sequence(name: str) -> str | None:
