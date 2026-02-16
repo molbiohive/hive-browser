@@ -1,7 +1,7 @@
 <script>
 	import { rerunTool } from '$lib/stores/chat.ts';
 
-	// Auto-discover widget components: FooWidget.svelte → type "foo"
+	// Auto-discover widget components: FooWidget.svelte -> type "foo"
 	const modules = import.meta.glob('./*Widget.svelte', { eager: true });
 	const widgetComponents = {};
 	for (const [path, mod] of Object.entries(modules)) {
@@ -18,11 +18,14 @@
 	let copied = $state(false);
 
 	const isStale = $derived(widget.stale || (!widget.data && widget.type !== 'form'));
+	const WidgetComponent = $derived(widgetComponents[widget.type]);
+
+	const isForm = $derived(widget.type === 'form');
 
 	const commandText = $derived.by(() => {
+		if (isForm) return `//${widget.tool}`;
 		const params = widget.params || {};
-		const hasParams = Object.keys(params).length > 0;
-		return hasParams ? `//${widget.tool} ${JSON.stringify(params)}` : `//${widget.tool}`;
+		return `//${widget.tool} ${JSON.stringify(params)}`;
 	});
 
 	const headerText = $derived.by(() => {
@@ -79,10 +82,9 @@
 					{loading ? 'Loading...' : 'Load results'}
 				</button>
 			</div>
-		{:else if widgetComponents[widget.type]}
+		{:else if WidgetComponent}
 			<div class="widget-body">
-				{@const Component = widgetComponents[widget.type]}
-				<Component data={widget.data} {messageIndex} />
+				<WidgetComponent data={widget.data} {messageIndex} />
 			</div>
 		{/if}
 	{/if}
@@ -111,11 +113,15 @@
 		font-family: 'SF Mono', Monaco, Menlo, monospace;
 		font-size: 0.75rem;
 		color: #888;
+		background: none;
+		border: none;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 		cursor: pointer;
 		flex: 1;
+		text-align: left;
+		padding: 0;
 	}
 
 	.toggle-btn {

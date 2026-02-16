@@ -1,7 +1,11 @@
 <script>
 	let { rows = [], columns = [], actions = [], defaultPageSize = 10 } = $props();
 
-	let pageSize = $state(defaultPageSize);
+	let pageSize = $state(10);
+
+	$effect(() => {
+		pageSize = defaultPageSize;
+	});
 	let currentPage = $state(0);
 	let sortCol = $state(null);
 	let sortDir = $state('asc');
