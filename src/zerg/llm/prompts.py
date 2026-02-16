@@ -9,30 +9,55 @@ Tool calling flow (one tool per turn):
 """
 
 _SYSTEM_PROMPT_TEMPLATE = """\
-You are Zerg Browser, a lab sequence search assistant running on a local server. \
-You help scientists find and explore DNA sequences, plasmids, and constructs \
-stored in their local file system.
+You are Zerg Browser, a lab sequence search assistant. Scientists use you to find \
+and explore DNA/RNA/protein sequences stored in their local file system.
 
-Available tools:
-{tool_list}
+## Available Tools
+{tool_section}
 
-Rules:
+## Parameter Guidelines
+- **search**: Put the main keyword in `query` (e.g. "GFP", "ampicillin", "pUC19"). \
+Leave `filters` empty unless the user explicitly asks to filter by topology or size. \
+Do NOT add `feature_type` unless the user specifically requests it.
+- **blast**: Use when the user provides a raw nucleotide sequence (ATGC...) or asks \
+for sequence similarity. Put the sequence in `sequence`. Also accepts a sequence name \
+to look up from the database.
+- **profile**: Use when the user wants details about a specific sequence. Put the \
+exact name in `name` (e.g. "BlueScribe-mEGFP").
+
+## Rules
 - Call exactly ONE tool per turn.
 - Extract parameters from the user's message. Ask for clarification only if truly ambiguous.
-- The search tool finds sequences by NAME — use short keywords like "GFP", "pUC19", "ampicillin". NEVER put nucleotide/protein sequences in the search query. For sequence similarity, use BLAST instead.
-- For search, put the main term in "query" and leave "filters" empty unless the user explicitly asks to filter by topology or size. Do NOT add feature_type filters unless requested.
-- If no results found, suggest broadening the search or trying BLAST.
-- NEVER fabricate sequences, IDs, or data. Only report what the tools return."""
+- NEVER put nucleotide sequences in search `query` — use blast for sequence similarity.
+- NEVER fabricate sequences, IDs, file paths, or data. Only report what tools return.
+- NEVER output raw JSON or tool call objects in your response text.
+- If no results found, suggest broadening the search or trying a different tool.
+
+## Response Format
+After a tool runs, write a 1-2 sentence natural language summary. The user sees a \
+visual widget with the full data, so do NOT repeat individual results or table rows."""
 
 
 def build_system_prompt(registry) -> str:
     """Generate the system prompt dynamically from the tool registry."""
-    lines = [f"- {t.name}: {t.description}" for t in registry.all() if t.use_llm]
-    return _SYSTEM_PROMPT_TEMPLATE.format(tool_list="\n".join(lines))
+    lines = []
+    for t in registry.all():
+        if not t.use_llm:
+            continue
+        schema = t.input_schema().model_json_schema()
+        props = schema.get("properties", {})
+        required = set(schema.get("required", []))
+        param_parts = []
+        for pname in props:
+            mark = " *" if pname in required else ""
+            param_parts.append(f"`{pname}`{mark}")
+        params_str = " — params: " + ", ".join(param_parts) if param_parts else ""
+        lines.append(f"- **{t.name}**: {t.description}{params_str}")
+    return _SYSTEM_PROMPT_TEMPLATE.format(tool_section="\n".join(lines))
 
 
 # Fallback for cases where registry isn't available
-SYSTEM_PROMPT = _SYSTEM_PROMPT_TEMPLATE.format(tool_list="(tools loading...)")
+SYSTEM_PROMPT = _SYSTEM_PROMPT_TEMPLATE.format(tool_section="(tools loading...)")
 
 
 def build_tool_schemas(registry) -> list[dict]:
@@ -54,37 +79,3 @@ def build_tool_schemas(registry) -> list[dict]:
             },
         })
     return tools
-
-
-def build_messages(
-    user_input: str,
-    history: list[dict] | None = None,
-    tool_call: dict | None = None,
-    tool_result: str | None = None,
-) -> list[dict]:
-    """Build the messages array for a chat completion request.
-
-    Args:
-        user_input: Current user message.
-        history: Previous messages in this chat session.
-        tool_call: The assistant's tool_calls response (for follow-up after execution).
-        tool_result: Serialized tool output (for follow-up after execution).
-    """
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-
-    if history:
-        messages.extend(history)
-
-    if tool_call and tool_result:
-        # Follow-up: assistant called a tool, we executed it, now ask for summary
-        messages.append({"role": "assistant", "tool_calls": [tool_call]})
-        messages.append({
-            "role": "tool",
-            "tool_call_id": tool_call["id"],
-            "content": tool_result,
-        })
-    else:
-        # Initial turn: user asks a question
-        messages.append({"role": "user", "content": user_input})
-
-    return messages
