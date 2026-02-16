@@ -7,6 +7,10 @@ from uuid import uuid4
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from sqlalchemy import func, select
+
+from zerg.db import session as db
+from zerg.db.models import IndexedFile, Sequence
 from zerg.tools.router import route_input
 
 logger = logging.getLogger(__name__)
@@ -70,7 +74,8 @@ async def websocket_endpoint(websocket: WebSocket):
     max_pairs = config.chat.max_history_pairs if config else 20
     save_threshold = config.chat.auto_save_after if config else 2
 
-    # Send config and tool metadata to frontend on connect
+    # Send config, tool metadata, and initial status to frontend on connect
+    init_status = await _quick_status(llm_client)
     await manager.send_json(conn_id, {
         "type": "init",
         "config": {
@@ -78,6 +83,7 @@ async def websocket_endpoint(websocket: WebSocket):
             "max_history_pairs": max_pairs,
         },
         "tools": registry.metadata() if registry else [],
+        "status": init_status,
     })
 
     # Per-connection chat tracking
@@ -198,6 +204,11 @@ async def websocket_endpoint(websocket: WebSocket):
 
             await manager.send_json(conn_id, response)
 
+            # Send status update after tool results (counts may have changed)
+            if result.get("type") == "tool_result":
+                updated_status = await _quick_status(llm_client)
+                await manager.send_json(conn_id, {"type": "status_update", "status": updated_status})
+
             # Auto-save chat after threshold
             if chat_storage and manager.count_user_messages(conn_id) >= save_threshold:
                 if chat_id is None:
@@ -267,3 +278,26 @@ def _widget_type(tool_name: str, registry=None) -> str:
         if tool:
             return tool.widget_type
     return "text"
+
+
+async def _quick_status(llm_client=None) -> dict:
+    """Lightweight status for the status bar (no full tool execution)."""
+    status = {"indexed_files": 0, "sequences": 0, "db_connected": False, "llm_available": False}
+    if db.async_session_factory:
+        try:
+            async with db.async_session_factory() as s:
+                status["indexed_files"] = (await s.execute(
+                    select(func.count()).select_from(IndexedFile).where(IndexedFile.status == "active")
+                )).scalar()
+                status["sequences"] = (await s.execute(
+                    select(func.count()).select_from(Sequence)
+                )).scalar()
+            status["db_connected"] = True
+        except Exception:
+            pass
+    if llm_client:
+        try:
+            status["llm_available"] = await llm_client.health()
+        except Exception:
+            pass
+    return status

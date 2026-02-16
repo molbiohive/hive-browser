@@ -1,6 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
-	import { chatStore, chatList, appConfig, connect, sendMessage, loadChat, newChat, fetchChatList, deleteChat } from '$lib/stores/chat.ts';
+	import { chatStore, chatList, appConfig, statusBar, connect, sendMessage, toggleStatusBar, loadChat, newChat, fetchChatList, deleteChat } from '$lib/stores/chat.ts';
 	import MessageBubble from '$lib/MessageBubble.svelte';
 	import CommandPalette from '$lib/CommandPalette.svelte';
 
@@ -15,7 +15,14 @@
 
 	function handleSubmit() {
 		if (!inputText.trim() || $chatStore.isWaiting) return;
-		sendMessage(inputText.trim());
+		const text = inputText.trim();
+		if (text === '/status') {
+			toggleStatusBar();
+			inputText = '';
+			showPalette = false;
+			return;
+		}
+		sendMessage(text);
 		inputText = '';
 		showPalette = false;
 	}
@@ -112,7 +119,7 @@
 						<button onclick={() => { inputText = 'find all GFP plasmids'; handleSubmit(); }}>
 							Find all GFP plasmids
 						</button>
-						<button onclick={() => { inputText = '/status'; handleSubmit(); }}>
+						<button onclick={() => { inputText = '//status'; handleSubmit(); }}>
 							Show system status
 						</button>
 						<button onclick={() => { inputText = '/help'; handleSubmit(); }}>
@@ -151,9 +158,14 @@
 					</button>
 				</div>
 				<div class="input-hint">
-					<span class="status" class:disconnected={!$chatStore.connected}>
-						{$chatStore.connected ? 'Connected' : 'Disconnected'}
-					</span>
+					{#if $statusBar.visible}
+						<span class="status-items">
+							<span class="indicator" class:ok={$statusBar.db_connected} class:err={!$statusBar.db_connected}>DB</span>
+							<span>{$statusBar.indexed_files} files</span>
+							<span>{$statusBar.sequences} seq</span>
+							<span class="indicator" class:ok={$statusBar.llm_available} class:err={!$statusBar.llm_available}>LLM</span>
+						</span>
+					{/if}
 					<span>/ opens command palette</span>
 				</div>
 			</form>
@@ -194,6 +206,7 @@
 	.logo {
 		width: 28px;
 		height: 28px;
+		display: block;
 	}
 
 	.sidebar-actions {
@@ -422,11 +435,21 @@
 		padding: 0 0.25rem;
 	}
 
-	.status {
+	.status-items {
+		display: flex;
+		gap: 0.6rem;
+		align-items: center;
+	}
+
+	.indicator {
+		font-weight: 600;
+	}
+
+	.indicator.ok {
 		color: #6b6;
 	}
 
-	.disconnected {
+	.indicator.err {
 		color: #c66;
 	}
 

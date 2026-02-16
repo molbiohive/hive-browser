@@ -58,10 +58,25 @@ const defaultConfig: AppConfig = {
 	max_history_pairs: 20,
 };
 
+interface StatusBar {
+	indexed_files: number;
+	sequences: number;
+	db_connected: boolean;
+	llm_available: boolean;
+	visible: boolean;
+}
+
 export const chatStore = writable<ChatState>(initialState);
 export const chatList = writable<ChatMeta[]>([]);
 export const appConfig = writable<AppConfig>(defaultConfig);
 export const toolList = writable<ToolMeta[]>([]);
+export const statusBar = writable<StatusBar>({
+	indexed_files: 0,
+	sequences: 0,
+	db_connected: false,
+	llm_available: false,
+	visible: true,
+});
 
 let ws: WebSocket | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -98,6 +113,13 @@ export function connect() {
 			appConfig.set(data.config);
 			if (data.tools) {
 				toolList.set(data.tools);
+			}
+			if (data.status) {
+				statusBar.update(s => ({ ...s, ...data.status }));
+			}
+		} else if (data.type === 'status_update') {
+			if (data.status) {
+				statusBar.update(s => ({ ...s, ...data.status }));
 			}
 		} else if (data.type === 'message') {
 			const msg: Message = {
@@ -164,6 +186,10 @@ export function sendMessage(content: string) {
 
 	chatStore.update(s => ({ ...s, isWaiting: true }));
 	ws.send(JSON.stringify({ type: 'message', content }));
+}
+
+export function toggleStatusBar() {
+	statusBar.update(s => ({ ...s, visible: !s.visible }));
 }
 
 export function sendRawMessage(content: string) {
