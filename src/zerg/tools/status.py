@@ -2,43 +2,31 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from sqlalchemy import func, select
 
 from zerg.db import session as db
 from zerg.db.models import Feature, IndexedFile, Primer, Sequence
-from zerg.tools.base import Tool, ToolInput
-
-if TYPE_CHECKING:
-    from zerg.config import Settings
-    from zerg.llm.client import LLMClient
-
-
-def create(config: Settings | None = None, llm_client: LLMClient | None = None) -> Tool:
-    return StatusTool(llm_client=llm_client)
-
-
-class StatusInput(ToolInput):
-    pass
+from zerg.tools.base import Tool
 
 
 class StatusTool(Tool):
     name = "status"
     description = "Show system status: indexed files count, database health, LLM availability."
-    widget_type = "status"
-    use_llm = False
+    widget = "status"
+    tags = {"info"}
+
+    def __init__(self, llm_client=None, **_):
+        self._llm = llm_client
+
+    def input_schema(self) -> dict:
+        return {"type": "object", "properties": {}}
 
     def format_result(self, result: dict) -> str:
         if error := result.get("error"):
             return f"Error: {error}"
         return f"{result.get('sequences', 0)} sequences indexed"
-
-    def __init__(self, llm_client=None):
-        self._llm = llm_client
-
-    def input_schema(self) -> type[ToolInput]:
-        return StatusInput
 
     async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         """Gather system status information."""

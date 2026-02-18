@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from pydantic import BaseModel, Field
 from sqlalchemy import func, or_, select, text
@@ -10,18 +10,10 @@ from sqlalchemy.orm import selectinload
 
 from zerg.db import session as db
 from zerg.db.models import Feature, IndexedFile, Sequence
-from zerg.tools.base import Tool, ToolInput
-
-if TYPE_CHECKING:
-    from zerg.config import Settings
-    from zerg.llm.client import LLMClient
+from zerg.tools.base import Tool
 
 
-def create(config: Settings | None = None, llm_client: LLMClient | None = None) -> Tool:
-    return SearchTool()
-
-
-class SearchInput(ToolInput):
+class SearchInput(BaseModel):
     query: str = Field(..., description="Search text — matches against sequence names, feature names, and descriptions. Use the main search term here, e.g. 'GFP' or 'ampicillin'.")
     filters: dict[str, Any] = Field(
         default_factory=dict,
@@ -46,7 +38,19 @@ class SearchTool(Tool):
         "Search sequences by name, features, resistance markers, and metadata. "
         "Supports fuzzy matching."
     )
-    widget_type = "table"
+    widget = "table"
+    tags = {"llm", "search"}
+    guidelines = (
+        "Put the main keyword in `query` (e.g. 'GFP', 'ampicillin', 'pUC19'). "
+        "Leave `filters` empty unless the user explicitly asks to filter by topology or size. "
+        "Do NOT add `feature_type` unless the user specifically requests it. "
+        "NEVER put nucleotide sequences in `query` — use blast for sequence similarity."
+    )
+
+    def input_schema(self) -> dict:
+        schema = SearchInput.model_json_schema()
+        schema.pop("title", None)
+        return schema
 
     def format_result(self, result: dict) -> str:
         if error := result.get("error"):
@@ -55,8 +59,13 @@ class SearchTool(Tool):
         query = result.get("query", "")
         return f"Found {total} result(s) for '{query}'." if total else f"No results for '{query}'."
 
-    def input_schema(self) -> type[ToolInput]:
-        return SearchInput
+    def summary_for_llm(self, result: dict) -> str:
+        total = result.get("total", 0)
+        query = result.get("query", "")
+        if not total:
+            return f"No results for '{query}'."
+        names = [r["name"] for r in result.get("results", [])[:5]]
+        return f"Found {total} result(s) for '{query}'. Top matches: {', '.join(names)}."
 
     async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         """Execute search with pg_trgm similarity + filters."""

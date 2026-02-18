@@ -6,29 +6,19 @@ import asyncio
 import logging
 import tempfile
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from zerg.db import session as db
 from zerg.db.models import IndexedFile, Sequence
-from zerg.tools.base import Tool, ToolInput
-
-if TYPE_CHECKING:
-    from zerg.config import Settings
-    from zerg.llm.client import LLMClient
-
-
-def create(config: Settings | None = None, llm_client: LLMClient | None = None) -> Tool:
-    if not config:
-        raise ValueError("BlastTool requires config")
-    return BlastTool(db_path=config.blast.db_path, binary=config.blast.binary)
+from zerg.tools.base import Tool
 
 logger = logging.getLogger(__name__)
 
 
-class BlastInput(ToolInput):
+class BlastInput(BaseModel):
     sequence: str = Field(
         ...,
         description="Query nucleotide sequence or sequence name to look up from DB",
@@ -57,7 +47,24 @@ class BlastTool(Tool):
         "Find similar sequences using BLAST+ alignment. "
         "Accepts raw nucleotide sequence or a sequence name from the database."
     )
-    widget_type = "blast"
+    widget = "blast"
+    tags = {"llm", "search"}
+    guidelines = (
+        "Use when the user provides a raw nucleotide sequence (ATGC...) or asks for "
+        "sequence similarity. Put the sequence in `sequence`. Also accepts a sequence "
+        "name to look up from the database."
+    )
+
+    def __init__(self, config=None, **_):
+        if not config:
+            raise ValueError("BlastTool requires config")
+        self._db_path = Path(config.blast.db_path).expanduser()
+        self._binary = config.blast.binary
+
+    def input_schema(self) -> dict:
+        schema = BlastInput.model_json_schema()
+        schema.pop("title", None)
+        return schema
 
     def format_result(self, result: dict) -> str:
         if error := result.get("error"):
@@ -65,12 +72,15 @@ class BlastTool(Tool):
         total = len(result.get("hits", []))
         return f"Found {total} BLAST hit(s)." if total else "No BLAST hits found."
 
-    def __init__(self, db_path: str, binary: str = "blastn"):
-        self._db_path = Path(db_path).expanduser()
-        self._binary = binary
-
-    def input_schema(self) -> type[ToolInput]:
-        return BlastInput
+    def summary_for_llm(self, result: dict) -> str:
+        if error := result.get("error"):
+            return f"Error: {error}"
+        hits = result.get("hits", [])
+        if not hits:
+            return "No BLAST hits found."
+        top = hits[:3]
+        parts = [f"{h['subject']} ({h['identity']:.1f}% identity)" for h in top]
+        return f"Found {len(hits)} BLAST hit(s). Top: {', '.join(parts)}."
 
     async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         """Run BLAST+ against the local index."""

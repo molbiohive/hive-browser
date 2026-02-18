@@ -2,26 +2,18 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from zerg.db import session as db
 from zerg.db.models import IndexedFile, Sequence
-from zerg.tools.base import Tool, ToolInput
-
-if TYPE_CHECKING:
-    from zerg.config import Settings
-    from zerg.llm.client import LLMClient
+from zerg.tools.base import Tool
 
 
-def create(config: Settings | None = None, llm_client: LLMClient | None = None) -> Tool:
-    return ProfileTool()
-
-
-class ProfileInput(ToolInput):
+class ProfileInput(BaseModel):
     sequence_id: int | None = Field(default=None, description="Sequence ID from database")
     name: str | None = Field(default=None, description="Sequence name to look up")
 
@@ -29,7 +21,18 @@ class ProfileInput(ToolInput):
 class ProfileTool(Tool):
     name = "profile"
     description = "Show full details of a specific sequence: metadata, features, primers, file info."
-    widget_type = "profile"
+    widget = "profile"
+    tags = {"llm", "info"}
+    guidelines = (
+        "Use when the user wants details about a specific sequence. "
+        "Put the exact name in `name` (e.g. 'BlueScribe-mEGFP'). "
+        "Use `sequence_id` if the user provides an ID number."
+    )
+
+    def input_schema(self) -> dict:
+        schema = ProfileInput.model_json_schema()
+        schema.pop("title", None)
+        return schema
 
     def format_result(self, result: dict) -> str:
         if error := result.get("error"):
@@ -39,8 +42,18 @@ class ProfileTool(Tool):
             return "Sequence not found."
         return f"{seq['name']} — {seq['size_bp']} bp, {seq['topology']}"
 
-    def input_schema(self) -> type[ToolInput]:
-        return ProfileInput
+    def summary_for_llm(self, result: dict) -> str:
+        if error := result.get("error"):
+            return f"Error: {error}"
+        seq = result.get("sequence")
+        if not seq:
+            return "Sequence not found."
+        n_feat = len(result.get("features", []))
+        n_prim = len(result.get("primers", []))
+        return (
+            f"{seq['name']} — {seq['size_bp']} bp, {seq['topology']}. "
+            f"{n_feat} features, {n_prim} primers."
+        )
 
     async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         """Fetch complete sequence profile from the database."""
