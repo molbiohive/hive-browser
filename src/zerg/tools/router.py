@@ -195,7 +195,7 @@ async def _llm_tool_flow(
     })
 
     try:
-        summary_response = await llm_client.chat(messages)
+        summary_response = await llm_client.chat(messages, tools=tools)
         summary = summary_response["choices"][0]["message"].get("content", "")
     except Exception as e:
         logger.warning("LLM summary failed: %s", e)
