@@ -18,6 +18,7 @@ class LLMConfig(BaseSettings):
     base_url: str = "http://localhost:11434/v1"
     model: str = "qwen2.5:7b"
     api_key: str | None = None  # required for cloud providers
+    summary_token_limit: int = 1000  # max tokens for auto-summarize sent to LLM
 
     model_config = {"env_prefix": "LLM_"}
 
@@ -64,6 +65,12 @@ class ServerConfig(BaseSettings):
     port: int = 8080
 
 
+class ToolsConfig(BaseSettings):
+    directory: str = "~/.zerg/tools"
+
+    model_config = {"env_prefix": "TOOLS_"}
+
+
 class Settings(BaseSettings):
     server: ServerConfig = Field(default_factory=ServerConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
@@ -72,6 +79,7 @@ class Settings(BaseSettings):
     chat: ChatConfig = Field(default_factory=ChatConfig)
     search: SearchConfig = Field(default_factory=SearchConfig)
     watcher: WatcherConfig = Field(default_factory=WatcherConfig)
+    tools: ToolsConfig = Field(default_factory=ToolsConfig)
 
     model_config = {"env_prefix": "ZERG_"}
 

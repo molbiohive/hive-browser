@@ -47,6 +47,9 @@ class SearchTool(Tool):
         "NEVER put nucleotide sequences in `query` — use blast for sequence similarity."
     )
 
+    def __init__(self, **_):
+        pass
+
     def input_schema(self) -> dict:
         schema = SearchInput.model_json_schema()
         schema.pop("title", None)

@@ -29,6 +29,9 @@ class ProfileTool(Tool):
         "Use `sequence_id` if the user provides an ID number."
     )
 
+    def __init__(self, **_):
+        pass
+
     def input_schema(self) -> dict:
         schema = ProfileInput.model_json_schema()
         schema.pop("title", None)

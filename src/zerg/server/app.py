@@ -16,8 +16,8 @@ from zerg.config import Settings
 from zerg.llm.client import LLMClient
 from zerg.server.routes import router
 from zerg.server.websocket import ws_router
-from zerg.tools.base import ToolRegistry
 from zerg.tools.blast import build_blast_index
+from zerg.tools.factory import ToolFactory
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +59,7 @@ async def lifespan(app: FastAPI):
         app.state.llm_client = None
 
     # --- Tool registry ---
-    app.state.tool_registry = ToolRegistry.auto_discover(config, app.state.llm_client)
+    app.state.tool_registry = ToolFactory.discover(config, app.state.llm_client)
     logger.info("Tool registry: %d tools", len(app.state.tool_registry.all()))
 
     # --- File watcher (only if DB is available) ---
