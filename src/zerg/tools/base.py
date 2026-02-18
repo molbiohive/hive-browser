@@ -2,71 +2,90 @@
 
 from __future__ import annotations
 
-import importlib
+import json
 import logging
-import pkgutil
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any
-
-from pydantic import BaseModel
-
-if TYPE_CHECKING:
-    from zerg.config import Settings
-    from zerg.llm.client import LLMClient
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
-
-class ToolInput(BaseModel):
-    """Base input schema — tools extend this."""
-    pass
-
-
-class ToolOutput(BaseModel):
-    """Base output schema — tools extend this."""
-    pass
+# Known system tags — everything else is a group identifier
+SYSTEM_TAGS = {"llm", "hidden"}
 
 
 class Tool(ABC):
-    """Base class for all tools. Each tool has a name, description, and execute method."""
+    """Base class for all tools (internal and external).
+
+    Subclass attributes:
+        name:        Tool identifier (used as registry key + LLM function name).
+        description: Shown in help, command palette, and LLM prompts.
+        widget:      Widget type for frontend rendering (maps to FooWidget.svelte).
+        tags:        Behavioral flags + group identifiers. Known: "llm", "hidden".
+        guidelines:  LLM-specific hints, injected only when tool is selected.
+        params:      Declarative param definitions for external tools (dict → JSON Schema).
+    """
 
     name: str
     description: str
-    widget_type: str = "text"
-    use_llm: bool = True
+    widget: str = "text"
+    tags: set[str] = {"llm"}
+    guidelines: str = ""
+    params: dict | None = None
+
+    # Injected by factory for external tools
+    db: Any = None
 
     @abstractmethod
     async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         """Execute the tool with the given parameters and return results."""
         ...
 
-    def schema(self) -> dict:
-        """Return the tool's parameter schema for LLM function calling."""
-        return {
-            "name": self.name,
-            "description": self.description,
-            "parameters": self.input_schema().model_json_schema(),
-        }
+    def input_schema(self) -> dict:
+        """Return JSON Schema dict for this tool's parameters.
 
-    @abstractmethod
-    def input_schema(self) -> type[ToolInput]:
-        """Return the Pydantic model class for this tool's input."""
-        ...
+        Auto-generated from self.params if set.
+        Internal tools override to use Pydantic model_json_schema().
+        """
+        if self.params:
+            return _params_to_schema(self.params)
+        return {"type": "object", "properties": {}}
 
     def format_result(self, result: dict) -> str:
-        """Format tool result as a short summary. Override in subclasses."""
+        """Short summary for direct execution (no LLM). Override in subclasses."""
         if error := result.get("error"):
             return f"Error: {error}"
         return ""
+
+    def summary_for_llm(self, result: dict) -> str:
+        """Compact representation of result for LLM summary generation.
+
+        Override for custom stats. Default: auto-generated descriptive stats.
+        """
+        return _auto_summarize(result)
+
+    def schema(self) -> dict:
+        """Full tool schema for LLM function calling."""
+        return {
+            "name": self.name,
+            "description": self.description,
+            "parameters": self.input_schema(),
+        }
 
     def metadata(self) -> dict:
         """Metadata sent to the frontend on connect."""
         return {
             "name": self.name,
             "description": self.description,
-            "widget_type": self.widget_type,
-            "use_llm": self.use_llm,
+            "widget": self.widget,
+            "tags": sorted(self.tags),
         }
+
+    def group(self) -> str | None:
+        """Primary group tag (first non-system tag), or None."""
+        for tag in self.tags:
+            if tag not in SYSTEM_TAGS:
+                return tag
+        return None
 
 
 class ToolRegistry:
@@ -84,30 +103,98 @@ class ToolRegistry:
     def all(self) -> list[Tool]:
         return list(self._tools.values())
 
-    def schemas(self) -> list[dict]:
-        """All tool schemas for LLM function calling."""
-        return [t.schema() for t in self._tools.values()]
+    def llm_tools(self) -> list[Tool]:
+        """Tools available to the LLM (tagged 'llm')."""
+        return [t for t in self._tools.values() if "llm" in t.tags]
+
+    def visible_tools(self) -> list[Tool]:
+        """Tools visible in command palette (not tagged 'hidden')."""
+        return [t for t in self._tools.values() if "hidden" not in t.tags]
 
     def metadata(self) -> list[dict]:
         """All tool metadata for frontend init."""
         return [t.metadata() for t in self._tools.values()]
 
-    @classmethod
-    def auto_discover(cls, config: Settings | None = None, llm_client: LLMClient | None = None) -> ToolRegistry:
-        """Scan zerg.tools.* modules for create() factories and build a registry."""
-        import zerg.tools as tools_pkg
 
-        registry = cls()
-        for info in pkgutil.iter_modules(tools_pkg.__path__):
-            if info.name in ("base", "router"):
-                continue
-            try:
-                mod = importlib.import_module(f"zerg.tools.{info.name}")
-                factory = getattr(mod, "create", None)
-                if factory:
-                    tool = factory(config=config, llm_client=llm_client)
-                    registry.register(tool)
-                    logger.debug("Auto-registered tool: %s", tool.name)
-            except Exception as e:
-                logger.warning("Failed to load tool %s: %s", info.name, e)
-        return registry
+def _params_to_schema(params: dict) -> dict:
+    """Convert declarative param dict to JSON Schema.
+
+    Input format:
+        {"query": {"type": "string", "description": "Search text", "required": True},
+         "limit": {"type": "integer", "description": "Max results", "default": 10}}
+
+    Supported keys per param: type, description, required, default, enum.
+    """
+    properties = {}
+    required = []
+
+    for name, spec in params.items():
+        prop: dict[str, Any] = {}
+        if "type" in spec:
+            prop["type"] = spec["type"]
+        if "description" in spec:
+            prop["description"] = spec["description"]
+        if "default" in spec:
+            prop["default"] = spec["default"]
+        if "enum" in spec:
+            prop["enum"] = spec["enum"]
+        properties[name] = prop
+
+        if spec.get("required", False):
+            required.append(name)
+
+    schema: dict[str, Any] = {"type": "object", "properties": properties}
+    if required:
+        schema["required"] = required
+    return schema
+
+
+def _auto_summarize(result: dict, max_chars: int = 4000) -> str:
+    """Generate compact descriptive stats from a result dict.
+
+    - Lists → count + first 2 items as sample
+    - Numbers/booleans → include directly
+    - Short strings (< 200 chars) → include
+    - Long strings → truncate to 100 chars
+    - Nested dicts → keep shallow scalar fields
+    """
+    stats: dict[str, Any] = {}
+
+    for key, value in result.items():
+        if isinstance(value, list):
+            stats[f"{key}_count"] = len(value)
+            if value and isinstance(value[0], dict):
+                # Sample first 2 items, keeping only scalar fields
+                sample = []
+                for item in value[:2]:
+                    trimmed = {
+                        k: v for k, v in item.items()
+                        if isinstance(v, (str, int, float, bool, type(None)))
+                        and (not isinstance(v, str) or len(v) < 200)
+                    }
+                    sample.append(trimmed)
+                if sample:
+                    stats[f"{key}_sample"] = sample
+            elif value:
+                stats[f"{key}_sample"] = value[:3]
+        elif isinstance(value, (int, float, bool)):
+            stats[key] = value
+        elif isinstance(value, str):
+            if len(value) < 200:
+                stats[key] = value
+            else:
+                stats[key] = value[:100] + "..."
+        elif isinstance(value, dict):
+            # Keep shallow scalar fields from nested dicts
+            shallow = {
+                k: v for k, v in value.items()
+                if isinstance(v, (str, int, float, bool, type(None)))
+                and (not isinstance(v, str) or len(v) < 200)
+            }
+            if shallow:
+                stats[key] = shallow
+
+    text = json.dumps(stats, default=str)
+    if len(text) > max_chars:
+        text = text[:max_chars] + "..."
+    return text
