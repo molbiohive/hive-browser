@@ -79,22 +79,22 @@ async def websocket_endpoint(websocket: WebSocket):
     max_pairs = config.chat.max_history_pairs if config else 20
     save_threshold = config.chat.auto_save_after if config else 2
 
-    # Send config, tool metadata, and initial status to frontend on connect
-    init_status = await _quick_status(llm_client)
-    await manager.send_json(conn_id, {
-        "type": "init",
-        "config": {
-            "search_columns": config.search.columns if config else ["name", "size_bp", "topology", "features"],
-            "max_history_pairs": max_pairs,
-        },
-        "tools": registry.metadata() if registry else [],
-        "status": init_status,
-    })
-
     # Per-connection chat tracking (mutable dict so background tasks can update it)
     chat = {"id": None, "messages": [], "title_generated": False}
 
     try:
+        # Send config, tool metadata, and initial status to frontend on connect
+        init_status = await _quick_status(llm_client)
+        await manager.send_json(conn_id, {
+            "type": "init",
+            "config": {
+                "search_columns": config.search.columns if config else ["name", "size_bp", "topology", "features"],
+                "max_history_pairs": max_pairs,
+            },
+            "tools": registry.metadata() if registry else [],
+            "status": init_status,
+        })
+
         while True:
             data = await websocket.receive_json()
 
