@@ -33,7 +33,7 @@ Zerg is a reference to the species from the StarCraft universe, known for rapid 
 ### Setup
 
 ```bash
-git clone https://github.com/your-org/zerg-browser.git
+git clone https://github.com/merv1n34k/zerg-browser.git
 cd zerg-browser
 make setup    # installs deps, sets up DB, pulls Ollama model
 ```
