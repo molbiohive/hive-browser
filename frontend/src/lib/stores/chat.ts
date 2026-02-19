@@ -13,6 +13,12 @@ interface Message {
 		params: Record<string, unknown>;
 		data?: unknown;
 		stale?: boolean;
+		chain?: Array<{
+			tool: string;
+			params: Record<string, unknown>;
+			summary: string;
+			widget: string;
+		}>;
 	};
 	ts: string;
 }

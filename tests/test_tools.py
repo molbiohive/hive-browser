@@ -238,7 +238,11 @@ class TestToolFactoryInternal:
         config = Settings()
         registry = ToolFactory.discover(config, llm_client=None)
         names = {t.name for t in registry.all()}
-        assert names == {"search", "blast", "profile", "status", "model"}
+        assert names == {
+            "search", "blast", "profile", "status", "model",
+            "extract", "translate", "transcribe", "digest",
+            "gc", "revcomp", "features", "primers",
+        }
 
     def test_tool_attributes(self):
         config = Settings()
@@ -253,13 +257,17 @@ class TestToolFactoryInternal:
         config = Settings()
         registry = ToolFactory.discover(config, llm_client=None)
         llm_names = {t.name for t in registry.llm_tools()}
-        assert llm_names == {"search", "blast", "profile"}
+        assert llm_names == {
+            "search", "blast", "profile",
+            "extract", "translate", "transcribe", "digest",
+            "gc", "revcomp", "features", "primers",
+        }
 
     def test_visible_tools_all_visible(self):
         """No internal tools are hidden."""
         config = Settings()
         registry = ToolFactory.discover(config, llm_client=None)
-        assert len(registry.visible_tools()) == 5
+        assert len(registry.visible_tools()) == 13
 
 
 # ── ToolFactory — External Discovery ──
@@ -322,7 +330,12 @@ class TestToolFactoryExternal:
         registry = ToolFactory.discover(config, llm_client=None)
 
         # Only internal tools, no external loaded
-        assert all(t.name in {"search", "blast", "profile", "status", "model"} for t in registry.all())
+        internal_names = {
+            "search", "blast", "profile", "status", "model",
+            "extract", "translate", "transcribe", "digest",
+            "gc", "revcomp", "features", "primers",
+        }
+        assert all(t.name in internal_names for t in registry.all())
 
     def test_external_overrides_internal(self, tmp_path):
         override_code = textwrap.dedent("""\
@@ -348,7 +361,7 @@ class TestToolFactoryExternal:
         config = Settings()
         config.tools.directory = "/nonexistent/path"
         registry = ToolFactory.discover(config, llm_client=None)
-        assert len(registry.all()) == 5  # just internal tools
+        assert len(registry.all()) == 13  # just internal tools
 
 
 # ── Prompts ──
@@ -364,9 +377,12 @@ class TestPrompts:
 
         assert "## search" in prompt
         assert "## info" in prompt
+        assert "## analysis" in prompt
         assert "- search:" in prompt
         assert "- blast:" in prompt
         assert "- profile:" in prompt
+        assert "- extract:" in prompt
+        assert "- translate:" in prompt
         # Non-LLM tools should not appear
         assert "- status:" not in prompt
         assert "- model:" not in prompt

@@ -1,6 +1,7 @@
 <script>
 	import { marked } from 'marked';
 	import Widget from '$lib/Widget.svelte';
+	import ChainSteps from '$lib/ChainSteps.svelte';
 
 	let { message, faded = false, messageIndex = -1 } = $props();
 
@@ -22,6 +23,9 @@
 
 		{#if message.widget}
 			<Widget widget={message.widget} {messageIndex} />
+			{#if message.widget.chain}
+				<ChainSteps chain={message.widget.chain} />
+			{/if}
 		{/if}
 	</div>
 </div>

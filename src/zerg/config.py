@@ -19,6 +19,7 @@ class LLMConfig(BaseSettings):
     model: str = "qwen2.5:7b"
     api_key: str | None = None  # required for cloud providers
     summary_token_limit: int = 1000  # max tokens for auto-summarize sent to LLM
+    agent_max_turns: int = 5  # max tool-call turns in agentic loop
 
     model_config = {"env_prefix": "LLM_"}
 

@@ -202,6 +202,7 @@ async def _handle_message(
             registry=registry,
             llm_client=llm_client,
             history=manager.get_history(conn_id),
+            max_turns=config.llm.agent_max_turns if config else 5,
         )
 
         # Track user message (skip bare commands that just show a form)
@@ -225,6 +226,8 @@ async def _handle_message(
                 "params": result.get("params", {}),
                 "data": result["data"],
             }
+            if result.get("chain"):
+                response["widget"]["chain"] = result["chain"]
         elif result.get("type") == "form":
             response["widget"] = {
                 "type": "form",
