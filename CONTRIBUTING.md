@@ -103,7 +103,7 @@ terms.
 1. Fork the repository
 2. Create a feature branch from `main`
 3. Make your changes with clear, small commits
-4. Run the tests: `uv run pytest -v`
+4. Run `make check-all` to verify everything passes
 5. Submit a pull request against `main`
 
 By submitting a pull request, you agree to the Contributor License Agreement
@@ -112,23 +112,25 @@ above.
 ### Development Setup
 
 ```bash
-make setup
-cp config/config.example.yaml config/config.local.yaml
-export ZERG_CONFIG=config/config.local.yaml
-make dev            # backend
-make dev-frontend   # frontend (separate terminal)
+make check-deps     # verify system tools are installed
+make setup          # install deps, create configs, set up DB, run migrations
+make back-dev       # backend (terminal 1)
+make front-dev      # frontend (terminal 2)
 ```
 
 ### Adding a New Tool
 
-The tool system is designed for easy extension:
+**Internal tools** (in `src/zerg/tools/`):
 
-1. Create `src/zerg/tools/mytool.py`:
-   - Subclass `Tool`, set `name`, `description`, `widget_type`
-   - Implement `input_schema()`, `execute()`, `format_result()`
-   - Add a `create(config, llm_client)` factory function
-2. Create `frontend/src/lib/MyToolWidget.svelte`
-3. The tool is auto-discovered on startup — no registration needed
+1. Create `src/zerg/tools/mytool.py` — subclass `Tool`, set `name`, `description`, `widget`, `tags`
+2. Implement `input_schema()`, `execute()`, `format_result()`
+3. If using a custom widget, create `frontend/src/lib/MyToolWidget.svelte`
+4. Auto-discovered on startup — no registration needed
+
+**External tools** (in `~/.zerg/tools/`):
+
+1. Drop a `.py` file — must import from `zerg.sdk` only
+2. Auto-discovered with import validation (internal imports are rejected)
 
 ### Code Style
 
@@ -140,11 +142,13 @@ The tool system is designed for easy extension:
 ### Testing
 
 ```bash
-uv run pytest -v
+make check-all      # full check: deps + lint + test + frontend build
+make check-backend  # lint + test only
+make test           # pytest only
 ```
 
-Tests cover parsers, ingestion, and watcher rules. Add tests for new
-functionality when reasonable.
+Tests cover parsers, ingestion, watcher rules, and the tool system.
+Add tests for new functionality when reasonable.
 
 ## Code of Conduct
 
