@@ -6,7 +6,7 @@ from typing import Any
 
 from Bio.Seq import Seq
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import case, select
 
 from zerg.db import session as db
 from zerg.db.models import Feature, IndexedFile, Primer, Sequence
@@ -50,15 +50,13 @@ class ExtractTool(Tool):
     def summary_for_llm(self, result: dict) -> str:
         if error := result.get("error"):
             return f"Error: {error}"
-        seq = result.get("sequence", "")
         name = result.get("name", "")
-        return f"{name}: {len(seq)} bp. Sequence: {seq}"
+        length = result.get("length", 0)
+        source = result.get("source", "")
+        return f"Extracted {name} from {source}: {length} bp."
 
     async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         inp = ExtractInput(**params)
-
-        if not inp.feature_name and not inp.primer_name and not inp.region:
-            return {"error": "Provide feature_name, primer_name, or region"}
 
         if not db.async_session_factory:
             return {"error": "Database unavailable"}
@@ -85,6 +83,12 @@ class ExtractTool(Tool):
                     select(Primer)
                     .where(Primer.seq_id == seq_row.id)
                     .where(Primer.name.ilike(f"%{inp.primer_name}%"))
+                    .order_by(
+                        case(
+                            (Primer.name.ilike(inp.primer_name), 0),
+                            else_=1,
+                        ),
+                    )
                     .limit(1)
                 )).scalar_one_or_none()
 
@@ -101,12 +105,19 @@ class ExtractTool(Tool):
                     "length": len(primer.sequence),
                 }
 
-            # Extract by feature name
+            # Extract by feature name (prefer exact match, then longest)
             if inp.feature_name:
                 feat = (await session.execute(
                     select(Feature)
                     .where(Feature.seq_id == seq_row.id)
                     .where(Feature.name.ilike(f"%{inp.feature_name}%"))
+                    .order_by(
+                        case(
+                            (Feature.name.ilike(inp.feature_name), 0),
+                            else_=1,
+                        ),
+                        (Feature.end - Feature.start).desc(),
+                    )
                     .limit(1)
                 )).scalar_one_or_none()
 
@@ -139,7 +150,8 @@ class ExtractTool(Tool):
                         f"{inp.region}. Use start:end (1-based)"
                     }
 
-                subseq = _slice_sequence(parent_seq, start, end, topology)
+                # User provides 1-based inclusive → convert to 0-based exclusive
+                subseq = _slice_sequence(parent_seq, start - 1, end, topology)
                 return {
                     "sequence": subseq,
                     "name": f"{start}:{end}",
@@ -150,15 +162,27 @@ class ExtractTool(Tool):
                     "length": len(subseq),
                 }
 
+            # No feature/primer/region — return full sequence
+            if not inp.feature_name and not inp.primer_name and not inp.region:
+                return {
+                    "sequence": parent_seq,
+                    "name": seq_row.name,
+                    "source": seq_row.name,
+                    "start": 1,
+                    "end": len(parent_seq),
+                    "strand": 1,
+                    "length": len(parent_seq),
+                }
+
         return {"error": "No extraction method specified"}
 
 
 def _slice_sequence(seq: str, start: int, end: int, topology: str) -> str:
-    """Slice a sequence using 1-based coordinates. Handles circular wrap-around."""
+    """Slice a sequence using 0-based, end-exclusive coordinates (sgffp convention)."""
     if start <= end:
-        return seq[start - 1:end]
+        return seq[start:end]
     # Circular wrap-around: start > end
     if topology == "circular":
-        return seq[start - 1:] + seq[:end]
+        return seq[start:] + seq[:end]
     # Linear sequence with start > end is an error
-    return seq[start - 1:end]
+    return seq[start:end]
