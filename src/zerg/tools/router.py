@@ -6,15 +6,7 @@ import re
 from typing import Any
 
 from zerg.llm.client import LLMClient
-from zerg.llm.prompts import (
-    build_agentic_prompt,
-    build_chain_summary_prompt,
-    build_execution_prompt,
-    build_multi_tool_schema,
-    build_selection_prompt,
-    build_summary_prompt,
-    build_tool_schema,
-)
+from zerg.llm.prompts import build_multi_tool_schema, build_system_prompt
 from zerg.tools.base import ToolRegistry
 
 logger = logging.getLogger(__name__)
@@ -32,6 +24,7 @@ async def route_input(
     llm_client: LLMClient | None = None,
     history: list[dict] | None = None,
     max_turns: int = 5,
+    pipe_min_length: int = 200,
 ) -> dict[str, Any]:
     """
     Route user input → tool execution → response.
@@ -39,7 +32,7 @@ async def route_input(
     Three modes:
       //command args → direct tool execution, no LLM
       /command args  → LLM extracts params for specified tool, then summarizes
-      free text      → LLM picks mode (SIMPLE/LOOP) and tool(s)
+      free text      → unified agentic loop (LLM picks tools, chains, converses)
     """
 
     # ── /help or //help — list available commands ──
@@ -91,201 +84,89 @@ async def route_input(
                 return _error(f"Tool error: {e}")
             return _tool_response(tool_name, result, params, tool.format_result(result))
 
-        # LLM-assisted: skip selection (tool is known), go to execution + summary
+        # LLM-assisted: run through unified loop with tool hint
         prompt = f"Use the {tool_name} tool: {text}" if text else f"Use the {tool_name} tool"
-        return await _execute_and_summarize(
-            tool=tool,
+        return await _unified_loop(
             user_input=prompt,
+            registry=registry,
             llm_client=llm_client,
             history=history,
+            max_turns=max_turns,
+            pipe_min_length=pipe_min_length,
         )
 
-    # ── Mode 3: Natural language — LLM picks mode + tools ──
+    # ── Mode 3: Natural language — unified agentic loop ──
     if not llm_client:
         return _error("LLM not available. Use /command or //command syntax.")
 
-    return await _llm_tool_flow(
+    return await _unified_loop(
         user_input=user_input,
         registry=registry,
         llm_client=llm_client,
         history=history,
         max_turns=max_turns,
+        pipe_min_length=pipe_min_length,
     )
 
 
-# ── LLM Flow ──
+# ── Unified Loop ──
 
 
-async def _llm_tool_flow(
+async def _unified_loop(
     user_input: str,
     registry: ToolRegistry,
     llm_client: LLMClient,
     history: list[dict] | None = None,
     max_turns: int = 5,
+    pipe_min_length: int = 200,
 ) -> dict[str, Any]:
-    """LLM picks mode (SIMPLE/LOOP) and routes accordingly."""
+    """Unified agentic loop — LLM converses and chains tools as needed.
 
-    tool_names, mode = await _select_tools_and_mode(user_input, registry, llm_client, history)
-    if not tool_names:
-        return _error("I couldn't determine which tool to use. Try /command syntax.")
-
-    if mode == "LOOP":
-        return await _agentic_loop(
-            user_input=user_input,
-            registry=registry,
-            llm_client=llm_client,
-            max_turns=max_turns,
-        )
-
-    # SIMPLE mode — existing 3-step flow
-    for tool_name in tool_names:
-        tool = registry.get(tool_name)
-        if not tool:
-            logger.warning("LLM selected unknown tool: %s", tool_name)
-            continue
-
-        result = await _execute_and_summarize(
-            tool=tool,
-            user_input=user_input,
-            llm_client=llm_client,
-            history=history,
-        )
-        if result.get("type") != "message":
-            return result
-
-    return _error("No tools could process your request. Try rephrasing.")
-
-
-async def _select_tools_and_mode(
-    user_input: str,
-    registry: ToolRegistry,
-    llm_client: LLMClient,
-    history: list[dict] | None = None,
-) -> tuple[list[str], str]:
-    """Step 1: LLM picks mode (SIMPLE/LOOP) and 1-3 tool names (~200 tokens)."""
-    messages = [{"role": "system", "content": build_selection_prompt(registry)}]
-    if history:
-        messages.extend(history)
-    messages.append({"role": "user", "content": user_input})
-
-    try:
-        response = await llm_client.chat(messages)
-        content = response["choices"][0]["message"].get("content", "")
-    except Exception as e:
-        logger.error("Tool selection failed: %s", e)
-        return [], "SIMPLE"
-
-    # Parse mode
-    mode = "SIMPLE"
-    mode_match = re.search(r"MODE:\s*(SIMPLE|LOOP)", content, re.IGNORECASE)
-    if mode_match:
-        mode = mode_match.group(1).upper()
-
-    # Parse tool names from response (one per line, after MODE line)
-    known = {t.name for t in registry.llm_tools()}
-    names = []
-    for line in content.strip().split("\n"):
-        line_clean = line.strip().lower().strip("-* ")
-        # Skip the MODE line
-        if line_clean.startswith("mode:"):
-            continue
-        if line_clean in known:
-            names.append(line_clean)
-
-    logger.info("Tool selection: %s → mode=%s tools=%s", user_input[:80], mode, names)
-    return names, mode
-
-
-async def _execute_and_summarize(
-    tool,
-    user_input: str,
-    llm_client: LLMClient,
-    history: list[dict] | None = None,
-) -> dict[str, Any]:
-    """Steps 2+3: Extract params via LLM, execute tool, then summarize."""
-
-    # Step 2: Param extraction + execution
-    schema = build_tool_schema(tool)
-    messages = [{"role": "system", "content": build_execution_prompt(tool)}]
-    if history:
-        messages.extend(history)
-    messages.append({"role": "user", "content": user_input})
-
-    try:
-        response = await llm_client.chat(messages, tools=schema)
-    except Exception as e:
-        logger.error("LLM execution call failed: %s", e)
-        return _error(f"LLM unavailable: {e}")
-
-    choice = response["choices"][0]
-    msg = choice["message"]
-
-    # If LLM didn't call the tool, return its text
-    if not msg.get("tool_calls"):
-        return {
-            "type": "message",
-            "content": msg.get("content", "I'm not sure how to help with that."),
-        }
-
-    tool_call = msg["tool_calls"][0]
-    fn = tool_call["function"]
-
-    try:
-        params = (
-            json.loads(fn["arguments"])
-            if isinstance(fn["arguments"], str)
-            else fn["arguments"]
-        )
-        params = {k: v for k, v in params.items() if v is not None}
-        logger.info("LLM tool call: %s(%s)", tool.name, json.dumps(params))
-        result = await tool.execute(params)
-    except Exception as e:
-        logger.error("Tool %s failed: %s", tool.name, e)
-        return _error(f"Tool error: {e}")
-
-    # Step 3: Summary from compact stats
-    summary = await _summarize(tool, result, llm_client)
-
-    return _tool_response(tool.name, result, params, summary)
-
-
-async def _agentic_loop(
-    user_input: str,
-    registry: ToolRegistry,
-    llm_client: LLMClient,
-    max_turns: int = 5,
-) -> dict[str, Any]:
-    """Agentic loop — LLM chains tools until it has enough info to answer."""
+    Single loop handles everything: simple queries, multi-step chains,
+    and pure conversation. Large data (sequences, etc.) is cached locally
+    and auto-injected into subsequent tools — never sent through LLM context.
+    """
     tools = registry.llm_tools()
     schemas = build_multi_tool_schema(tools)
     tool_map = {t.name: t for t in tools}
 
-    messages = [
-        {"role": "system", "content": build_agentic_prompt(registry)},
-        {"role": "user", "content": user_input},
-    ]
+    messages = [{"role": "system", "content": build_system_prompt(registry)}]
+    if history:
+        messages.extend(history)
+    messages.append({"role": "user", "content": user_input})
 
     last_result = None
     last_tool = None
     last_params = {}
     chain = []  # [{tool, params, summary, widget}]
+    cache = {}  # hybrid auto-pipe: field_name → large string value
     exceeded = False
 
     for turn in range(max_turns):
         try:
             response = await llm_client.chat(messages, tools=schemas)
         except Exception as e:
-            logger.error("Agentic loop LLM call failed (turn %d): %s", turn, e)
+            logger.error("Unified loop LLM call failed (turn %d): %s", turn, e)
             exceeded = True
             break
 
         msg = response["choices"][0]["message"]
 
-        # LLM done — no more tool calls
+        # LLM responded with text — done
         if not msg.get("tool_calls"):
-            logger.info("Agentic loop done after %d turn(s): %s",
-                        turn + 1, [s["tool"] for s in chain])
-            break
+            content = msg.get("content", "")
+            logger.info(
+                "Unified loop done after %d turn(s): %s",
+                turn + 1, [s["tool"] for s in chain],
+            )
+
+            if last_result and last_tool:
+                resp = _tool_response(last_tool, last_result, last_params, content)
+                if chain:
+                    resp["chain"] = chain
+                return resp
+
+            return {"type": "message", "content": content}
 
         # Append assistant message with tool_calls
         messages.append(msg)
@@ -310,16 +191,35 @@ async def _agentic_loop(
                 })
                 continue
 
+            # Hybrid auto-pipe: inject cached values into matching params
+            # Override if param is missing, empty, or shorter than the cached
+            # value (LLM sometimes puts placeholder text like "injected")
+            schema_props = tool.input_schema().get("properties", {})
+            for key in schema_props:
+                if key not in cache:
+                    continue
+                provided = params.get(key)
+                if not provided or (
+                    isinstance(provided, str) and len(provided) < pipe_min_length
+                ):
+                    params[key] = cache[key]
+                    logger.info("Cache inject: %s (%d chars)", key, len(str(cache[key])))
+
             try:
                 result = await tool.execute(params)
             except Exception as e:
-                logger.error("Agentic tool %s failed: %s", tool_name, e)
+                logger.error("Tool %s failed: %s", tool_name, e)
                 messages.append({
                     "role": "tool",
                     "tool_call_id": tc["id"],
                     "content": f"Error: {e}",
                 })
                 continue
+
+            # Hybrid auto-pipe: stash large string values for subsequent tools
+            for key, val in result.items():
+                if isinstance(val, str) and len(val) >= pipe_min_length:
+                    cache[key] = val
 
             compact = tool.summary_for_llm(result)
             messages.append({
@@ -334,7 +234,7 @@ async def _agentic_loop(
                 "summary": tool.format_result(result),
                 "widget": tool.widget,
             })
-            logger.info("Agentic turn %d: %s(%s)", turn + 1, tool_name, json.dumps(params))
+            logger.info("Unified turn %d: %s(%s)", turn + 1, tool_name, json.dumps(params))
 
             last_result = result
             last_tool = tool_name
@@ -342,61 +242,25 @@ async def _agentic_loop(
     else:
         # for-loop exhausted without break → max turns exceeded
         exceeded = True
-        logger.warning("Agentic loop hit max turns (%d): %s",
-                        max_turns, [s["tool"] for s in chain])
+        logger.warning(
+            "Unified loop hit max turns (%d): %s",
+            max_turns, [s["tool"] for s in chain],
+        )
 
     if not chain:
         return _error("No tools were called during reasoning.")
 
-    # Final summary — LLM summarizes the entire chain
-    summary = await _summarize_chain(chain, llm_client, exceeded)
+    # Max turns exceeded — use last step's summary as fallback
+    fallback = chain[-1]["summary"] if chain else ""
+    if exceeded:
+        fallback += " (reached maximum reasoning steps)"
 
     if last_result and last_tool:
-        resp = _tool_response(last_tool, last_result, last_params, summary)
+        resp = _tool_response(last_tool, last_result, last_params, fallback)
         resp["chain"] = chain
         return resp
 
-    return {"type": "message", "content": summary, "chain": chain}
-
-
-async def _summarize_chain(
-    chain: list[dict], llm_client: LLMClient, exceeded: bool = False,
-) -> str:
-    """Final step: LLM summarizes all chain results into a concise answer."""
-    parts = []
-    for i, step in enumerate(chain, 1):
-        parts.append(f"Step {i} ({step['tool']}): {step['summary']}")
-    chain_text = "\n".join(parts)
-
-    messages = [
-        {"role": "system", "content": build_chain_summary_prompt(chain_text, exceeded)},
-        {"role": "user", "content": "Summarize."},
-    ]
-
-    try:
-        response = await llm_client.chat(messages)
-        return response["choices"][0]["message"].get("content", "")
-    except Exception as e:
-        logger.warning("Chain summary failed: %s", e)
-        # Fallback: last step's summary
-        return chain[-1]["summary"] if chain else ""
-
-
-async def _summarize(tool, result: dict, llm_client: LLMClient) -> str:
-    """Step 3: LLM writes summary from compact tool stats (~200 tokens)."""
-    compact = tool.summary_for_llm(result)
-
-    messages = [
-        {"role": "system", "content": build_summary_prompt(compact)},
-        {"role": "user", "content": "Summarize."},
-    ]
-
-    try:
-        response = await llm_client.chat(messages)
-        return response["choices"][0]["message"].get("content", "")
-    except Exception as e:
-        logger.warning("LLM summary failed: %s", e)
-        return tool.format_result(result)
+    return {"type": "message", "content": fallback, "chain": chain}
 
 
 # ── Helpers ──

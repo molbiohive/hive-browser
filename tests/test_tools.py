@@ -364,12 +364,12 @@ class TestToolFactoryExternal:
 
 
 class TestPrompts:
-    def test_selection_prompt_groups(self):
-        from zerg.llm.prompts import build_selection_prompt
+    def test_system_prompt_groups(self):
+        from zerg.llm.prompts import build_system_prompt
 
         config = Settings()
         registry = ToolFactory.discover(config)
-        prompt = build_selection_prompt(registry)
+        prompt = build_system_prompt(registry)
 
         assert "## search" in prompt
         assert "## info" in prompt
@@ -383,23 +383,16 @@ class TestPrompts:
         assert "- status:" not in prompt
         assert "- model:" not in prompt
 
-    def test_execution_prompt_includes_tool_name(self):
-        from zerg.llm.prompts import build_execution_prompt
+    def test_system_prompt_has_guidelines(self):
+        from zerg.llm.prompts import build_system_prompt
 
         config = Settings()
         registry = ToolFactory.discover(config)
-        tool = registry.get("blast")
-        prompt = build_execution_prompt(tool)
+        prompt = build_system_prompt(registry)
 
-        assert "`blast`" in prompt
-        assert tool.guidelines in prompt
-
-    def test_summary_prompt_includes_data(self):
-        from zerg.llm.prompts import build_summary_prompt
-
-        prompt = build_summary_prompt("Found 50 results for GFP.")
-        assert "Found 50 results for GFP." in prompt
-        assert "Summarize" in prompt
+        assert "Zerg Browser" in prompt
+        assert "extract" in prompt
+        assert "NEVER fabricate" in prompt
 
     def test_tool_schema_format(self):
         from zerg.llm.prompts import build_tool_schema
