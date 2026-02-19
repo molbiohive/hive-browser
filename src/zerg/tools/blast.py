@@ -78,9 +78,8 @@ class BlastTool(Tool):
         hits = result.get("hits", [])
         if not hits:
             return "No BLAST hits found."
-        top = hits[:3]
-        parts = [f"{h['subject']} ({h['identity']:.1f}% identity)" for h in top]
-        return f"Found {len(hits)} BLAST hit(s). Top: {', '.join(parts)}."
+        parts = [f"{h['subject']} ({h['identity']:.1f}%)" for h in hits]
+        return f"Found {len(hits)} BLAST hit(s): {', '.join(parts)}."
 
     async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         """Run BLAST+ against the local index."""
