@@ -1,81 +1,83 @@
-"""System prompts and tool calling schema for the LLM.
+"""LLM prompts for the phased tool-calling flow.
 
-Tool calling flow (one tool per turn):
-  1. User message + system prompt + tool schemas → LLM
-  2. LLM returns tool_calls with name + arguments
-  3. Server executes the tool, gets result
-  4. Tool result appended to messages → LLM
-  5. LLM returns natural language summary
+Three-step flow:
+  1. Selection — LLM picks 1-3 tool names from grouped list (~200 tokens)
+  2. Execution — LLM extracts params using only the selected tool's schema (~300 tokens)
+  3. Summary  — LLM writes 1-2 sentence summary from compact stats (~200 tokens)
 """
 
-_SYSTEM_PROMPT_TEMPLATE = """\
-You are Zerg Browser, a lab sequence search assistant. Scientists use you to find \
-and explore DNA/RNA/protein sequences stored in their local file system.
+from __future__ import annotations
 
-## Available Tools
-{tool_section}
+from typing import TYPE_CHECKING
 
-## Parameter Guidelines
-- **search**: Put the main keyword in `query` (e.g. "GFP", "ampicillin", "pUC19"). \
-Leave `filters` empty unless the user explicitly asks to filter by topology or size. \
-Do NOT add `feature_type` unless the user specifically requests it.
-- **blast**: Use when the user provides a raw nucleotide sequence (ATGC...) or asks \
-for sequence similarity. Put the sequence in `sequence`. Also accepts a sequence name \
-to look up from the database.
-- **profile**: Use when the user wants details about a specific sequence. Put the \
-exact name in `name` (e.g. "BlueScribe-mEGFP").
+if TYPE_CHECKING:
+    from zerg.tools.base import Tool, ToolRegistry
 
-## Rules
-- Call exactly ONE tool per turn.
-- Extract parameters from the user's message. Ask for clarification only if truly ambiguous.
-- NEVER put nucleotide sequences in search `query` — use blast for sequence similarity.
-- NEVER fabricate sequences, IDs, file paths, or data. Only report what tools return.
-- NEVER output raw JSON or tool call objects in your response text.
-- If no results found, suggest broadening the search or trying a different tool.
+_SELECTION_SYSTEM = """\
+You are a tool router for Zerg Browser, a lab sequence search assistant.
+Given the user's message, pick the best tool(s) from the list below.
 
-## Response Format
-After a tool runs, write a 1-2 sentence natural language summary. The user sees a \
-visual widget with the full data, so do NOT repeat individual results or table rows."""
+{tool_list}
+
+Reply with 1-3 tool names, one per line. Nothing else."""
+
+_EXECUTION_SYSTEM = """\
+You are Zerg Browser, a lab sequence search assistant.
+Use the `{tool_name}` tool. Extract parameters from the user's message.
+{guidelines}
+- Call exactly ONE tool.
+- NEVER fabricate sequences, IDs, file paths, or data.
+- NEVER put nucleotide sequences in search `query` — use blast instead."""
+
+_SUMMARY_SYSTEM = """\
+Summarize the tool result in 1-2 short sentences.
+The user sees a visual widget with the full data, so do NOT repeat individual \
+results or table rows. Never output raw JSON or tool call objects."""
 
 
-def build_system_prompt(registry) -> str:
-    """Generate the system prompt dynamically from the tool registry."""
+def build_selection_prompt(registry: ToolRegistry) -> str:
+    """Build the tool selection system prompt with grouped tool list."""
+    tools = registry.llm_tools()
+    groups: dict[str | None, list[Tool]] = {}
+    for t in tools:
+        g = t.group()
+        groups.setdefault(g, []).append(t)
+
     lines = []
-    for t in registry.all():
-        if not t.use_llm:
-            continue
-        schema = t.input_schema().model_json_schema()
-        props = schema.get("properties", {})
-        required = set(schema.get("required", []))
-        param_parts = []
-        for pname in props:
-            mark = " *" if pname in required else ""
-            param_parts.append(f"`{pname}`{mark}")
-        params_str = " — params: " + ", ".join(param_parts) if param_parts else ""
-        lines.append(f"- **{t.name}**: {t.description}{params_str}")
-    return _SYSTEM_PROMPT_TEMPLATE.format(tool_section="\n".join(lines))
+    for group_name, group_tools in groups.items():
+        header = f"## {group_name}" if group_name else "## general"
+        lines.append(header)
+        for t in group_tools:
+            lines.append(f"- {t.name}: {t.description}")
+        lines.append("")
+
+    return _SELECTION_SYSTEM.format(tool_list="\n".join(lines).strip())
 
 
-# Fallback for cases where registry isn't available
-SYSTEM_PROMPT = _SYSTEM_PROMPT_TEMPLATE.format(tool_section="(tools loading...)")
+def build_execution_prompt(tool: Tool) -> str:
+    """Build the execution system prompt with tool name and guidelines."""
+    guidelines = f"\n{tool.guidelines}" if tool.guidelines else ""
+    return _EXECUTION_SYSTEM.format(tool_name=tool.name, guidelines=guidelines)
 
 
-def build_tool_schemas(registry) -> list[dict]:
-    """Convert ToolRegistry into OpenAI function calling format (only LLM-visible tools)."""
-    tools = []
-    for tool in registry.all():
-        if not tool.use_llm:
-            continue
-        schema = tool.input_schema().model_json_schema()
-        # Remove pydantic metadata keys that LLMs don't need
-        schema.pop("title", None)
+def build_summary_prompt(tool_summary: str) -> str:
+    """Build the summary system prompt with compact tool result data.
 
-        tools.append({
-            "type": "function",
-            "function": {
-                "name": tool.name,
-                "description": tool.description,
-                "parameters": schema,
-            },
-        })
-    return tools
+    Args:
+        tool_summary: Output from tool.summary_for_llm(result) — already compact.
+                      Truncation is handled by _auto_summarize in base.py,
+                      not here.
+    """
+    return f"{_SUMMARY_SYSTEM}\n\nTool result data:\n{tool_summary}"
+
+
+def build_tool_schema(tool: Tool) -> list[dict]:
+    """Single tool's function schema in OpenAI format."""
+    return [{
+        "type": "function",
+        "function": {
+            "name": tool.name,
+            "description": tool.description,
+            "parameters": tool.input_schema(),
+        },
+    }]
