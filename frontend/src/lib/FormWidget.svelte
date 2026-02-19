@@ -3,10 +3,10 @@
 
 	let { data, messageIndex = -1 } = $props();
 
-	const schema = data?.schema || {};
-	const toolName = data?.tool_name || '';
-	const properties = schema.properties || {};
-	const required = new Set(schema.required || []);
+	const schema = $derived(data?.schema || {});
+	const toolName = $derived(data?.tool_name || '');
+	const properties = $derived(schema.properties || {});
+	const required = $derived(new Set(schema.required || []));
 
 	let values = $state({});
 
