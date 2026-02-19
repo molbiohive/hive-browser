@@ -1,5 +1,6 @@
 <script>
 	import { rerunTool } from '$lib/stores/chat.ts';
+	import DataTable from '$lib/DataTable.svelte';
 
 	// Auto-discover widget components: FooWidget.svelte -> type "foo"
 	const modules = import.meta.glob('./*Widget.svelte', { eager: true });
@@ -19,6 +20,32 @@
 
 	const isStale = $derived(widget.stale || (!widget.data && widget.type !== 'form'));
 	const WidgetComponent = $derived(widgetComponents[widget.type]);
+
+	// Generic fallback: auto-detect arrays → table rows, scalars → key-value
+	const fallbackRows = $derived.by(() => {
+		if (WidgetComponent || !widget.data || widget.data.error) return null;
+		for (const val of Object.values(widget.data)) {
+			if (Array.isArray(val) && val.length > 0 && typeof val[0] === 'object') {
+				return val;
+			}
+		}
+		return null;
+	});
+
+	const fallbackColumns = $derived.by(() => {
+		if (!fallbackRows?.length) return [];
+		return Object.keys(fallbackRows[0]).map((key) => ({
+			key,
+			label: key.replace(/_/g, ' '),
+		}));
+	});
+
+	const fallbackScalars = $derived.by(() => {
+		if (WidgetComponent || !widget.data) return [];
+		return Object.entries(widget.data).filter(
+			([, v]) => !Array.isArray(v) && typeof v !== 'object'
+		);
+	});
 
 	const isForm = $derived(widget.type === 'form');
 
@@ -86,6 +113,23 @@
 		{:else if WidgetComponent}
 			<div class="widget-body">
 				<WidgetComponent data={widget.data} {messageIndex} />
+			</div>
+		{:else if widget.data}
+			<div class="widget-body">
+				{#if widget.data.error}
+					<p class="generic-error">{widget.data.error}</p>
+				{:else}
+					{#if fallbackScalars.length}
+						<div class="generic-meta">
+							{#each fallbackScalars as [key, val]}
+								<span><strong>{key.replace(/_/g, ' ')}:</strong> {val}</span>
+							{/each}
+						</div>
+					{/if}
+					{#if fallbackRows}
+						<DataTable rows={fallbackRows} columns={fallbackColumns} defaultPageSize={10} />
+					{/if}
+				{/if}
 			</div>
 		{/if}
 	{/if}
@@ -185,5 +229,19 @@
 	.rerun-btn:disabled {
 		opacity: 0.5;
 		cursor: default;
+	}
+
+	.generic-error {
+		color: #dc2626;
+		font-size: 0.85rem;
+		margin: 0;
+	}
+
+	.generic-meta {
+		display: flex;
+		gap: 1rem;
+		margin-bottom: 0.5rem;
+		font-size: 0.78rem;
+		color: #666;
 	}
 </style>
