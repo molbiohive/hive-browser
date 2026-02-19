@@ -242,7 +242,7 @@ async def build_blast_index(db_path: str) -> bool:
 
     async with db.async_session_factory() as session:
         rows = (await session.execute(
-            select(Sequence.name, Sequence.sequence)
+            select(Sequence.name, Sequence.sequence, Sequence.meta)
             .join(IndexedFile, Sequence.file_id == IndexedFile.id)
             .where(IndexedFile.status == "active")
         )).all()
@@ -251,11 +251,21 @@ async def build_blast_index(db_path: str) -> bool:
         logger.info("No sequences to index for BLAST")
         return False
 
-    # Write combined FASTA (replace spaces — makeblastdb truncates at first space)
+    # Write combined FASTA — skip protein, convert RNA (U→T) for nucleotide DB
+    written = 0
     with open(fasta_file, "w") as f:
-        for name, seq in rows:
+        for name, seq, meta in rows:
+            mol = (meta or {}).get("molecule_type", "DNA")
+            if mol == "protein":
+                continue
             safe_name = name.replace(" ", "_")
-            f.write(f">{safe_name}\n{seq}\n")
+            nucl_seq = seq.replace("U", "T").replace("u", "t") if mol == "RNA" else seq
+            f.write(f">{safe_name}\n{nucl_seq}\n")
+            written += 1
+
+    if not written:
+        logger.info("No nucleotide sequences to index for BLAST")
+        return False
 
     # Run makeblastdb
     proc = await asyncio.create_subprocess_exec(
@@ -272,5 +282,5 @@ async def build_blast_index(db_path: str) -> bool:
         logger.error("makeblastdb failed: %s", stderr.decode())
         return False
 
-    logger.info("BLAST index built: %d sequences", len(rows))
+    logger.info("BLAST index built: %d sequences (%d skipped)", written, len(rows) - written)
     return True
