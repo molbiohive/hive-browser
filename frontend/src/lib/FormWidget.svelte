@@ -9,29 +9,88 @@
 	const required = $derived(new Set(schema.required || []));
 
 	let values = $state({});
+	let tags = $state({}); // key → string[] for array, {k:v}[] for object
+
+	function addTag(field, inputEl) {
+		const raw = inputEl.value.trim();
+		if (!raw) return;
+		if (!tags[field]) tags[field] = [];
+
+		const prop = properties[field];
+		if (prop?.type === 'object') {
+			// Parse "key: value" or "key:value"
+			const sep = raw.indexOf(':');
+			if (sep < 1) return;
+			const k = raw.slice(0, sep).trim();
+			const v = raw.slice(sep + 1).trim();
+			if (!k || !v) return;
+			// Remove existing tag with same key
+			tags[field] = tags[field].filter((t) => t.key !== k);
+			tags[field] = [...tags[field], { key: k, value: v }];
+		} else {
+			// array — just add the string
+			if (!tags[field].includes(raw)) {
+				tags[field] = [...tags[field], raw];
+			}
+		}
+		inputEl.value = '';
+	}
+
+	function removeTag(field, index) {
+		tags[field] = tags[field].filter((_, i) => i !== index);
+	}
+
+	function handleTagKeydown(field, e) {
+		if (e.key === 'Enter' || e.key === ',') {
+			e.preventDefault();
+			addTag(field, e.target);
+		}
+		// Backspace on empty input removes last tag
+		if (e.key === 'Backspace' && !e.target.value && tags[field]?.length) {
+			tags[field] = tags[field].slice(0, -1);
+		}
+	}
 
 	function handleSubmit(e) {
 		e.preventDefault();
 		const params = {};
-		for (const [key, val] of Object.entries(values)) {
-			if (val !== '' && val !== undefined) {
-				const prop = properties[key];
-				if (prop?.type === 'number' || prop?.type === 'integer') {
+
+		for (const [key, prop] of Object.entries(properties)) {
+			if (prop.type === 'array' || prop.type === 'object') {
+				const items = tags[key];
+				if (!items?.length) continue;
+				if (prop.type === 'object') {
+					const obj = {};
+					for (const t of items) {
+						// Try to parse numeric values
+						const num = Number(t.value);
+						obj[t.key] = isNaN(num) ? t.value : num;
+					}
+					params[key] = obj;
+				} else {
+					params[key] = items;
+				}
+			} else {
+				const val = values[key];
+				if (val === '' || val === undefined) continue;
+				if (prop.type === 'number' || prop.type === 'integer') {
 					params[key] = Number(val);
 				} else {
 					params[key] = val;
 				}
 			}
 		}
-		const commandText = `//${toolName} ${JSON.stringify(params)}`;
 
-		// Replace the form message with the command text
+		const commandText = `//${toolName} ${JSON.stringify(params)}`;
 		if (messageIndex >= 0) {
 			replaceFormWithCommand(messageIndex, commandText);
 		}
-
-		// Send via WebSocket (without adding another user message to store)
 		sendRawMessage(commandText);
+	}
+
+	function tagPlaceholder(prop) {
+		if (prop.type === 'object') return 'key: value, then Enter';
+		return 'value, then Enter';
 	}
 </script>
 
@@ -45,6 +104,7 @@
 			{#if prop.description}
 				<span class="desc">{prop.description}</span>
 			{/if}
+
 			{#if prop.type === 'boolean'}
 				<input type="checkbox" id={key} bind:checked={values[key]} />
 			{:else if prop.type === 'number' || prop.type === 'integer'}
@@ -55,6 +115,25 @@
 					placeholder={prop.default != null ? String(prop.default) : ''}
 					bind:value={values[key]}
 				/>
+			{:else if prop.type === 'array' || prop.type === 'object'}
+				<div class="tag-input" onclick={(e) => e.currentTarget.querySelector('input')?.focus()}>
+					{#each tags[key] || [] as tag, i}
+						<button type="button" class="tag" onclick={() => removeTag(key, i)}>
+							{#if prop.type === 'object'}
+								<span class="tag-key">{tag.key}:</span> {tag.value}
+							{:else}
+								{tag}
+							{/if}
+							<span class="tag-x">&times;</span>
+						</button>
+					{/each}
+					<input
+						type="text"
+						placeholder={tagPlaceholder(prop)}
+						onkeydown={(e) => handleTagKeydown(key, e)}
+						onblur={(e) => addTag(key, e.target)}
+					/>
+				</div>
 			{:else}
 				<textarea
 					id={key}
@@ -117,7 +196,60 @@
 		align-self: flex-start;
 	}
 
-	button {
+	.tag-input {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.3rem;
+		border: 1px solid #ddd;
+		border-radius: 4px;
+		padding: 0.25rem 0.4rem;
+		cursor: text;
+		min-height: 2rem;
+		align-items: center;
+	}
+
+	.tag-input:focus-within {
+		border-color: #999;
+	}
+
+	.tag-input input {
+		border: none;
+		outline: none;
+		padding: 0.15rem 0;
+		font-size: 0.82rem;
+		flex: 1;
+		min-width: 8rem;
+	}
+
+	.tag {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+		background: #e8e8e8;
+		border: none;
+		border-radius: 3px;
+		padding: 0.15rem 0.4rem;
+		font-size: 0.78rem;
+		font-family: inherit;
+		cursor: pointer;
+		color: #333;
+	}
+
+	.tag:hover {
+		background: #d0d0d0;
+	}
+
+	.tag-key {
+		font-weight: 600;
+	}
+
+	.tag-x {
+		color: #999;
+		font-size: 0.9em;
+		margin-left: 0.1rem;
+	}
+
+	button[type="submit"] {
 		align-self: flex-start;
 		padding: 0.4rem 1rem;
 		background: #333;
@@ -129,7 +261,7 @@
 		margin-top: 0.2rem;
 	}
 
-	button:hover {
+	button[type="submit"]:hover {
 		background: #555;
 	}
 </style>
