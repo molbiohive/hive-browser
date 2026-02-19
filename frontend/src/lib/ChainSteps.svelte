@@ -1,6 +1,11 @@
 <script>
 	let { chain } = $props();
 	let expanded = $state(false);
+
+	function copyCommand(step) {
+		const cmd = `//${step.tool} ${JSON.stringify(step.params)}`;
+		navigator.clipboard.writeText(cmd);
+	}
 </script>
 
 {#if chain?.length > 1}
@@ -15,8 +20,15 @@
 		{#each chain as step, i}
 			<div class="step">
 				<span class="step-num">{i + 1}</span>
-				<span class="step-tool">{step.tool}</span>
-				<span class="step-summary">{step.summary}</span>
+				<div class="step-body">
+					<div class="step-header">
+						<span class="step-tool">{step.tool}</span>
+						<span class="step-summary">{step.summary}</span>
+					</div>
+					<button type="button" class="step-cmd" onclick={() => copyCommand(step)} title="Click to copy">
+						//{step.tool} {JSON.stringify(step.params)}
+					</button>
+				</div>
 			</div>
 		{/each}
 	</div>
@@ -58,11 +70,8 @@
 
 	.step {
 		display: flex;
-		align-items: baseline;
 		gap: 0.4rem;
-		padding: 0.25rem 0;
-		font-size: 0.78rem;
-		line-height: 1.4;
+		padding: 0.3rem 0;
 	}
 
 	.step-num {
@@ -77,6 +86,20 @@
 		font-size: 0.65rem;
 		font-weight: 600;
 		color: #666;
+		margin-top: 0.1rem;
+	}
+
+	.step-body {
+		flex: 1;
+		min-width: 0;
+	}
+
+	.step-header {
+		display: flex;
+		align-items: baseline;
+		gap: 0.4rem;
+		font-size: 0.78rem;
+		line-height: 1.4;
 	}
 
 	.step-tool {
@@ -87,5 +110,26 @@
 
 	.step-summary {
 		color: #888;
+	}
+
+	.step-cmd {
+		display: block;
+		margin-top: 0.2rem;
+		padding: 0.25rem 0.5rem;
+		background: #f5f5f5;
+		border: 1px solid #e8e8e8;
+		border-radius: 4px;
+		font-family: 'SF Mono', Monaco, monospace;
+		font-size: 0.72rem;
+		color: #666;
+		cursor: pointer;
+		overflow-x: auto;
+		white-space: nowrap;
+	}
+
+	.step-cmd:hover {
+		background: #eee;
+		border-color: #ddd;
+		color: #333;
 	}
 </style>

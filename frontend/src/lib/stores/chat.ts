@@ -215,13 +215,30 @@ export function rerunTool(tool: string, params: Record<string, unknown>, message
 	ws.send(JSON.stringify({ type: 'rerun_tool', tool, params, messageIndex }));
 }
 
-export function replaceFormWithCommand(messageIndex: number, commandText: string) {
+export function submitForm(formIndex: number, commandText: string) {
 	chatStore.update(s => {
 		const messages = [...s.messages];
-		if (messages[messageIndex]) {
-			messages[messageIndex] = {
-				role: 'user',
+		// Update the triggering user message with the actual command
+		if (formIndex > 0 && messages[formIndex - 1]?.role === 'user') {
+			messages[formIndex - 1] = {
+				...messages[formIndex - 1],
 				content: commandText,
+			};
+		}
+		// Remove the form message
+		messages.splice(formIndex, 1);
+		return { ...s, messages, isWaiting: true };
+	});
+}
+
+export function cancelForm(formIndex: number) {
+	chatStore.update(s => {
+		const messages = [...s.messages];
+		// Replace form with "Cancelled." assistant message
+		if (messages[formIndex]) {
+			messages[formIndex] = {
+				role: 'assistant',
+				content: 'Cancelled.',
 				ts: new Date().toISOString(),
 			};
 		}

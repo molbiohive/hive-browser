@@ -1,5 +1,5 @@
 <script>
-	import { sendRawMessage, replaceFormWithCommand } from '$lib/stores/chat.ts';
+	import { sendRawMessage, submitForm, cancelForm } from '$lib/stores/chat.ts';
 
 	let { data, messageIndex = -1 } = $props();
 
@@ -83,7 +83,7 @@
 
 		const commandText = `//${toolName} ${JSON.stringify(params)}`;
 		if (messageIndex >= 0) {
-			replaceFormWithCommand(messageIndex, commandText);
+			submitForm(messageIndex, commandText);
 		}
 		sendRawMessage(commandText);
 	}
@@ -116,7 +116,7 @@
 					bind:value={values[key]}
 				/>
 			{:else if prop.type === 'array' || prop.type === 'object'}
-				<div class="tag-input" onclick={(e) => e.currentTarget.querySelector('input')?.focus()}>
+				<label class="tag-input" for="{key}-tag">
 					{#each tags[key] || [] as tag, i}
 						<button type="button" class="tag" onclick={() => removeTag(key, i)}>
 							{#if prop.type === 'object'}
@@ -128,12 +128,13 @@
 						</button>
 					{/each}
 					<input
+						id="{key}-tag"
 						type="text"
 						placeholder={tagPlaceholder(prop)}
 						onkeydown={(e) => handleTagKeydown(key, e)}
 						onblur={(e) => addTag(key, e.target)}
 					/>
-				</div>
+				</label>
 			{:else}
 				<textarea
 					id={key}
@@ -144,7 +145,10 @@
 			{/if}
 		</div>
 	{/each}
-	<button type="submit">Run {toolName}</button>
+	<div class="form-actions">
+		<button type="submit">Run {toolName}</button>
+		<button type="button" class="cancel-btn" onclick={() => cancelForm(messageIndex)}>Cancel</button>
+	</div>
 </form>
 
 <style>
@@ -196,7 +200,7 @@
 		align-self: flex-start;
 	}
 
-	.tag-input {
+	label.tag-input {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.3rem;
@@ -208,11 +212,11 @@
 		align-items: center;
 	}
 
-	.tag-input:focus-within {
+	label.tag-input:focus-within {
 		border-color: #999;
 	}
 
-	.tag-input input {
+	label.tag-input input {
 		border: none;
 		outline: none;
 		padding: 0.15rem 0;
@@ -249,19 +253,35 @@
 		margin-left: 0.1rem;
 	}
 
-	button[type="submit"] {
-		align-self: flex-start;
+	.form-actions {
+		display: flex;
+		gap: 0.5rem;
+		margin-top: 0.2rem;
+	}
+
+	.form-actions button {
 		padding: 0.4rem 1rem;
-		background: #333;
-		color: white;
 		border: none;
 		border-radius: 6px;
 		cursor: pointer;
 		font-size: 0.82rem;
-		margin-top: 0.2rem;
+	}
+
+	button[type="submit"] {
+		background: #333;
+		color: white;
 	}
 
 	button[type="submit"]:hover {
 		background: #555;
+	}
+
+	.cancel-btn {
+		background: #e8e8e8;
+		color: #666;
+	}
+
+	.cancel-btn:hover {
+		background: #ddd;
 	}
 </style>
