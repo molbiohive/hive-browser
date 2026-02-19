@@ -9,7 +9,7 @@
 	let showPalette = $state(false);
 	let prevMsgCount = $state(0);
 	let elapsed = $state(0);
-	let timerRef = $state(null);
+	let _timerRef = null; // plain var — must not be $state to avoid retriggering $effect
 
 	const thinkingWords = ['Spawning', 'Hatching', 'Evolving', 'Multiplying', 'Spreading'];
 	const toolWords = {
@@ -49,11 +49,13 @@
 
 	$effect(() => {
 		if ($chatStore.isWaiting) {
-			elapsed = 0;
-			pickThinkingWord();
-			timerRef = setInterval(() => { elapsed += 0.1; }, 100);
+			if (!_timerRef) {
+				elapsed = 0;
+				pickThinkingWord();
+				_timerRef = setInterval(() => { elapsed += 0.1; }, 100);
+			}
 		} else {
-			if (timerRef) { clearInterval(timerRef); timerRef = null; }
+			if (_timerRef) { clearInterval(_timerRef); _timerRef = null; }
 		}
 	});
 
