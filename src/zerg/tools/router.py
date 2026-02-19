@@ -3,6 +3,7 @@
 import json
 import logging
 import re
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from zerg.llm.client import LLMClient
@@ -25,6 +26,7 @@ async def route_input(
     history: list[dict] | None = None,
     max_turns: int = 5,
     pipe_min_length: int = 200,
+    on_progress: Callable[[dict], Awaitable[None]] | None = None,
 ) -> dict[str, Any]:
     """
     Route user input → tool execution → response.
@@ -93,6 +95,7 @@ async def route_input(
             history=history,
             max_turns=max_turns,
             pipe_min_length=pipe_min_length,
+            on_progress=on_progress,
         )
 
     # ── Mode 3: Natural language — unified agentic loop ──
@@ -106,6 +109,7 @@ async def route_input(
         history=history,
         max_turns=max_turns,
         pipe_min_length=pipe_min_length,
+        on_progress=on_progress,
     )
 
 
@@ -119,6 +123,7 @@ async def _unified_loop(
     history: list[dict] | None = None,
     max_turns: int = 5,
     pipe_min_length: int = 200,
+    on_progress: Callable[[dict], Awaitable[None]] | None = None,
 ) -> dict[str, Any]:
     """Unified agentic loop — LLM converses and chains tools as needed.
 
@@ -140,7 +145,17 @@ async def _unified_loop(
     last_params = {}
     chain = []  # [{tool, params, summary, widget}]
     cache = {}  # hybrid auto-pipe: field_name → large string value
+    tokens = {"in": 0, "out": 0}
     exceeded = False
+
+    async def _emit(phase: str, tool: str | None = None):
+        if on_progress:
+            data: dict[str, Any] = {"phase": phase, "tools_used": len(chain), "tokens": tokens}
+            if tool:
+                data["tool"] = tool
+            await on_progress(data)
+
+    await _emit("thinking")
 
     for turn in range(max_turns):
         try:
@@ -149,6 +164,11 @@ async def _unified_loop(
             logger.error("Unified loop LLM call failed (turn %d): %s", turn, e)
             exceeded = True
             break
+
+        # Accumulate token usage
+        usage = response.get("usage") or {}
+        tokens["in"] += usage.get("prompt_tokens", 0)
+        tokens["out"] += usage.get("completion_tokens", 0)
 
         msg = response["choices"][0]["message"]
 
@@ -205,6 +225,7 @@ async def _unified_loop(
                     params[key] = cache[key]
                     logger.info("Cache inject: %s (%d chars)", key, len(str(cache[key])))
 
+            await _emit("tool", tool_name)
             try:
                 result = await tool.execute(params)
             except Exception as e:
@@ -214,6 +235,7 @@ async def _unified_loop(
                     "tool_call_id": tc["id"],
                     "content": f"Error: {e}",
                 })
+                await _emit("thinking")
                 continue
 
             # Hybrid auto-pipe: stash large string values for subsequent tools
@@ -239,6 +261,7 @@ async def _unified_loop(
             last_result = result
             last_tool = tool_name
             last_params = params
+            await _emit("thinking")
     else:
         # for-loop exhausted without break → max turns exceeded
         exceeded = True

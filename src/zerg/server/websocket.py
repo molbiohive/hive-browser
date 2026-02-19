@@ -201,6 +201,9 @@ async def _handle_message(
 ):
     """Process a user message — runs as a cancellable background task."""
     try:
+        async def _progress(data: dict):
+            await manager.send_json(conn_id, {"type": "progress", **data})
+
         result = await route_input(
             user_input=content,
             registry=registry,
@@ -208,6 +211,7 @@ async def _handle_message(
             history=manager.get_history(conn_id),
             max_turns=config.llm.agent_max_turns if config else 5,
             pipe_min_length=config.llm.pipe_min_length if config else 200,
+            on_progress=_progress,
         )
 
         # Track user message (skip bare commands that just show a form)
