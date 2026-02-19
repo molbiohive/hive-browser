@@ -122,7 +122,14 @@
 					{#if fallbackScalars.length}
 						<div class="generic-meta">
 							{#each fallbackScalars as [key, val]}
-								<span><strong>{key.replace(/_/g, ' ')}:</strong> {val}</span>
+								<span>
+									<strong>{key.replace(/_/g, ' ')}:</strong>
+									{#if typeof val === 'string' && val.length > 80}
+										<span class="truncated" title={val}>{val.slice(0, 80)}...</span>
+									{:else}
+										{val}
+									{/if}
+								</span>
 							{/each}
 						</div>
 					{/if}
@@ -204,6 +211,9 @@
 
 	.widget-body {
 		padding: 0.75rem;
+		overflow-x: auto;
+		overflow-wrap: break-word;
+		word-break: break-word;
 	}
 
 	.stale {
@@ -237,11 +247,20 @@
 		margin: 0;
 	}
 
+	.truncated {
+		font-family: 'SF Mono', Monaco, monospace;
+		font-size: 0.72rem;
+		cursor: help;
+	}
+
 	.generic-meta {
 		display: flex;
-		gap: 1rem;
+		flex-wrap: wrap;
+		gap: 0.5rem 1rem;
 		margin-bottom: 0.5rem;
 		font-size: 0.78rem;
 		color: #666;
+		overflow-wrap: break-word;
+		word-break: break-word;
 	}
 </style>

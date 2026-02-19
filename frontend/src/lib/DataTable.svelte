@@ -124,8 +124,8 @@
 {/if}
 
 <style>
-	table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
-	th, td { padding: 0.4rem 0.6rem; text-align: left; border-bottom: 1px solid #f0f0f0; }
+	table { width: 100%; border-collapse: collapse; font-size: 0.82rem; table-layout: fixed; }
+	th, td { padding: 0.4rem 0.6rem; text-align: left; border-bottom: 1px solid #f0f0f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 	th { font-weight: 600; color: #888; font-size: 0.75rem; text-transform: uppercase; }
 	.actions { white-space: nowrap; }
 	.action-btn {

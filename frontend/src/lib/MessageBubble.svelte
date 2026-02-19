@@ -52,6 +52,9 @@
 		border-radius: 12px;
 		font-size: 0.9rem;
 		line-height: 1.5;
+		overflow-wrap: break-word;
+		word-break: break-word;
+		min-width: 0;
 	}
 
 	.bubble.user {
@@ -71,6 +74,7 @@
 
 	.content {
 		white-space: pre-wrap;
+		overflow-wrap: break-word;
 	}
 
 	/* Markdown styles for assistant messages */
