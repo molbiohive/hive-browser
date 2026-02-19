@@ -336,11 +336,9 @@ async def _agentic_loop(
             })
             logger.info("Agentic turn %d: %s(%s)", turn + 1, tool_name, json.dumps(params))
 
-            # Track last widget-worthy result (prefer non-text widgets)
-            if tool.widget != "text" or last_result is None:
-                last_result = result
-                last_tool = tool_name
-                last_params = params
+            last_result = result
+            last_tool = tool_name
+            last_params = params
     else:
         # for-loop exhausted without break → max turns exceeded
         exceeded = True

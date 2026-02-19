@@ -2,9 +2,17 @@
 	let { chain } = $props();
 	let expanded = $state(false);
 
+	function fullCommand(step) {
+		return `//${step.tool} ${JSON.stringify(step.params)}`;
+	}
+
+	function displayCommand(step) {
+		const cmd = fullCommand(step);
+		return cmd.length > 120 ? cmd.slice(0, 117) + '...' : cmd;
+	}
+
 	function copyCommand(step) {
-		const cmd = `//${step.tool} ${JSON.stringify(step.params)}`;
-		navigator.clipboard.writeText(cmd);
+		navigator.clipboard.writeText(fullCommand(step));
 	}
 </script>
 
@@ -25,8 +33,8 @@
 						<span class="step-tool">{step.tool}</span>
 						<span class="step-summary">{step.summary}</span>
 					</div>
-					<button type="button" class="step-cmd" onclick={() => copyCommand(step)} title="Click to copy">
-						//{step.tool} {JSON.stringify(step.params)}
+					<button type="button" class="step-cmd" onclick={() => copyCommand(step)} title="Click to copy full command">
+						{displayCommand(step)}
 					</button>
 				</div>
 			</div>
@@ -114,6 +122,8 @@
 
 	.step-cmd {
 		display: block;
+		width: 100%;
+		text-align: left;
 		margin-top: 0.2rem;
 		padding: 0.25rem 0.5rem;
 		background: #f5f5f5;
@@ -123,7 +133,8 @@
 		font-size: 0.72rem;
 		color: #666;
 		cursor: pointer;
-		overflow-x: auto;
+		overflow: hidden;
+		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 
