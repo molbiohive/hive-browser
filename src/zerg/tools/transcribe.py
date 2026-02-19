@@ -19,11 +19,7 @@ class TranscribeTool(Tool):
     description = "Transcribe a DNA sequence to mRNA (T→U on coding strand)."
     widget = "text"
     tags = {"llm", "analysis"}
-    guidelines = (
-        "Put raw DNA sequence (ATGC) in `sequence`. "
-        "Input should be the coding (sense) strand. "
-        "Use extract first to get feature sequences from a plasmid."
-    )
+    guidelines = "DNA to mRNA transcription (T to U)."
 
     def __init__(self, **_):
         pass

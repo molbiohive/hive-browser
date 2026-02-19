@@ -24,11 +24,7 @@ class DigestTool(Tool):
     description = "Find restriction enzyme cut sites and calculate fragment sizes."
     widget = "text"
     tags = {"llm", "analysis"}
-    guidelines = (
-        "Put raw nucleotide sequence in `sequence` and enzyme names in `enzymes`. "
-        "Use extract first to get sequences from a plasmid. "
-        "Set circular=true for plasmids (default), circular=false for linear fragments."
-    )
+    guidelines = "Restriction digest. Provide enzymes list and sequence."
 
     def __init__(self, **_):
         pass

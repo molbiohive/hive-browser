@@ -25,11 +25,7 @@ class ExtractTool(Tool):
     description = "Extract a subsequence by feature name, primer name, or region from a sequence."
     widget = "text"
     tags = {"llm", "analysis"}
-    guidelines = (
-        "Use to get a feature or primer subsequence before running blast, translate, "
-        "digest, or gc. Put the plasmid name in `sequence_name` and the feature/primer "
-        "name in `feature_name`/`primer_name`. For numeric regions use `region` as 'start:end'."
-    )
+    guidelines = "Extract subsequence by feature, primer, or region from a sequence."
 
     def __init__(self, **_):
         pass

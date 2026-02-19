@@ -18,10 +18,7 @@ class GCTool(Tool):
     description = "Calculate GC content and nucleotide composition of a DNA sequence."
     widget = "text"
     tags = {"llm", "analysis"}
-    guidelines = (
-        "Put raw nucleotide sequence (ATGC) in `sequence`. "
-        "Use extract first to get feature sequences from a plasmid."
-    )
+    guidelines = "GC content and nucleotide composition."
 
     def __init__(self, **_):
         pass

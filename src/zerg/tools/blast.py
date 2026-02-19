@@ -49,11 +49,7 @@ class BlastTool(Tool):
     )
     widget = "blast"
     tags = {"llm", "search"}
-    guidelines = (
-        "Use when the user provides a raw nucleotide sequence (ATGC...) or asks for "
-        "sequence similarity. Put the sequence in `sequence`. Also accepts a sequence "
-        "name to look up from the database."
-    )
+    guidelines = "BLAST similarity search. Accepts nucleotide sequence or DB name."
 
     def __init__(self, config=None, **_):
         if not config:

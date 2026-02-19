@@ -25,11 +25,7 @@ class FeaturesTool(Tool):
     description = "List features (genes, promoters, etc.) on a sequence."
     widget = "text"
     tags = {"llm", "info"}
-    guidelines = (
-        "Use to list all features on a sequence before extracting one. "
-        "Put the plasmid/sequence name in `sequence_name`. "
-        "Optionally filter by type (CDS, promoter, terminator, etc.)."
-    )
+    guidelines = "List features (genes, promoters, etc.) on a sequence."
 
     def __init__(self, **_):
         pass

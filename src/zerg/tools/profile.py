@@ -26,11 +26,7 @@ class ProfileTool(Tool):
     )
     widget = "profile"
     tags = {"llm", "info"}
-    guidelines = (
-        "Use when the user wants details about a specific sequence. "
-        "Put the exact name in `name` (e.g. 'BlueScribe-mEGFP'). "
-        "Use `sequence_id` if the user provides an ID number."
-    )
+    guidelines = "Full sequence details: metadata, features, primers, file info."
 
     def __init__(self, **_):
         pass

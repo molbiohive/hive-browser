@@ -22,11 +22,7 @@ class PrimersTool(Tool):
     description = "List primers on a sequence."
     widget = "text"
     tags = {"llm", "info"}
-    guidelines = (
-        "Use to list all primers on a sequence before extracting one. "
-        "Put the plasmid/sequence name in `sequence_name`. "
-        "Optionally filter by primer name."
-    )
+    guidelines = "List primers on a sequence."
 
     def __init__(self, **_):
         pass

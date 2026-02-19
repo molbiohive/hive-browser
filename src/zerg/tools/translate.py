@@ -20,11 +20,7 @@ class TranslateTool(Tool):
     description = "Translate a DNA or RNA sequence to protein."
     widget = "text"
     tags = {"llm", "analysis"}
-    guidelines = (
-        "Put raw nucleotide sequence (ATGC) in `sequence`. "
-        "Use extract first to get feature sequences from a plasmid. "
-        "table=1 for standard genetic code (default), table=11 for bacterial."
-    )
+    guidelines = "Translate DNA/RNA to protein. table=1 standard, table=11 bacterial."
 
     def __init__(self, **_):
         pass

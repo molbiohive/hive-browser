@@ -19,10 +19,7 @@ class RevCompTool(Tool):
     description = "Get the reverse complement of a DNA sequence."
     widget = "text"
     tags = {"llm", "analysis"}
-    guidelines = (
-        "Put raw DNA sequence (ATGC) in `sequence`. "
-        "Use extract first to get feature sequences from a plasmid."
-    )
+    guidelines = "Reverse complement of a DNA sequence."
 
     def __init__(self, **_):
         pass

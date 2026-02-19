@@ -14,24 +14,10 @@ from zerg.tools.base import Tool
 
 
 class SearchInput(BaseModel):
-    query: str = Field(
-        ...,
-        description=(
-            "Search text — matches against sequence names, feature names, "
-            "and descriptions. Use the main search term here, "
-            "e.g. 'GFP' or 'ampicillin'."
-        ),
-    )
+    query: str = Field(..., description="Keyword (name, feature, or description)")
     filters: dict[str, Any] = Field(
         default_factory=dict,
-        description=(
-            "Optional filters to narrow results. Keys: "
-            "topology ('circular'|'linear'), size_min (int), "
-            "size_max (int), feature_type (GenBank type like "
-            "'CDS', 'promoter', 'rep_origin' — NOT biological "
-            "concepts like 'plasmid'). Only use filters when "
-            "the user explicitly requests them."
-        ),
+        description="Optional: topology, size_min, size_max, feature_type",
     )
     limit: int = Field(default=20, ge=1, le=100)
 
@@ -48,18 +34,10 @@ class SearchResultItem(BaseModel):
 
 class SearchTool(Tool):
     name = "search"
-    description = (
-        "Search sequences by name, features, resistance markers, and metadata. "
-        "Supports fuzzy matching."
-    )
+    description = "Search sequences by name, features, resistance markers, and metadata."
     widget = "table"
     tags = {"llm", "search"}
-    guidelines = (
-        "Put the main keyword in `query` (e.g. 'GFP', 'ampicillin', 'pUC19'). "
-        "Leave `filters` empty unless the user explicitly asks to filter by topology or size. "
-        "Do NOT add `feature_type` unless the user specifically requests it. "
-        "NEVER put nucleotide sequences in `query` — use blast for sequence similarity."
-    )
+    guidelines = "Fuzzy keyword search. Returns matching sequence names."
 
     def __init__(self, **_):
         pass
