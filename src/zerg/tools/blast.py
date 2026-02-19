@@ -273,6 +273,7 @@ async def build_blast_index(db_path: str) -> bool:
         "-in", str(fasta_file),
         "-dbtype", "nucl",
         "-out", str(db_file),
+        "-blastdb_version", "4",
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
