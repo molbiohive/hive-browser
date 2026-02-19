@@ -229,7 +229,8 @@ async def _resolve_sequence(name: str) -> str | None:
 async def build_blast_index(db_path: str) -> bool:
     """Build BLAST database from all active sequences in the DB.
 
-    Called on startup and after watcher changes.
+    Called on startup and after watcher changes.  Uses a lockfile
+    to prevent races when multiple workers start simultaneously.
     """
     if not db.async_session_factory:
         logger.warning("Cannot build BLAST index: database unavailable")
@@ -239,6 +240,25 @@ async def build_blast_index(db_path: str) -> bool:
     blast_dir.mkdir(parents=True, exist_ok=True)
     fasta_file = blast_dir / "all_sequences.fasta"
     db_file = blast_dir / "zerg_blast"
+    lock_file = blast_dir / ".build.lock"
+
+    # Skip if another worker is already building
+    try:
+        fd = lock_file.open("x")  # atomic create — fails if exists
+    except FileExistsError:
+        logger.info("BLAST index build already in progress, skipping")
+        return True
+    try:
+        return await _do_build_index(blast_dir, fasta_file, db_file)
+    finally:
+        fd.close()
+        lock_file.unlink(missing_ok=True)
+
+
+async def _do_build_index(blast_dir: Path, fasta_file: Path, db_file: Path) -> bool:
+    # Remove stale index files before rebuilding
+    for old in blast_dir.glob("zerg_blast.*"):
+        old.unlink()
 
     async with db.async_session_factory() as session:
         rows = (await session.execute(
