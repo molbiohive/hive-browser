@@ -53,7 +53,11 @@ async def scan_and_ingest(config: WatcherConfig, blast_db_path: str | None = Non
     return indexed
 
 
-async def watch_directory(config: WatcherConfig, stop_event: asyncio.Event | None = None, blast_db_path: str | None = None):
+async def watch_directory(
+    config: WatcherConfig,
+    stop_event: asyncio.Event | None = None,
+    blast_db_path: str | None = None,
+):
     """Watch directory for changes using watchfiles (inotify/fswatch).
 
     Runs forever until stop_event is set or task is cancelled.

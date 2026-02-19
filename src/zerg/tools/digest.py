@@ -13,7 +13,10 @@ from zerg.tools.base import Tool
 class DigestInput(BaseModel):
     sequence: str = Field(..., description="Nucleotide sequence to digest")
     enzymes: list[str] = Field(..., description='Enzyme names, e.g. ["EcoRI", "BamHI"]')
-    circular: bool = Field(default=True, description="True for circular (plasmid), False for linear")
+    circular: bool = Field(
+        default=True,
+        description="True for circular (plasmid), False for linear",
+    )
 
 
 class DigestTool(Tool):

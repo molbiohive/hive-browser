@@ -2,7 +2,7 @@
 
 import hashlib
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from sqlalchemy import delete, select
@@ -80,7 +80,7 @@ async def ingest_file(
                 status="error",
                 error_msg=str(e),
                 file_size=stat.st_size,
-                file_mtime=datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc),
+                file_mtime=datetime.fromtimestamp(stat.st_mtime, tz=UTC),
             )
             session.add(indexed)
         await session.commit()
@@ -97,7 +97,7 @@ async def ingest_file(
         existing_file.status = "active"
         existing_file.error_msg = None
         existing_file.file_size = stat.st_size
-        existing_file.file_mtime = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc)
+        existing_file.file_mtime = datetime.fromtimestamp(stat.st_mtime, tz=UTC)
         indexed = existing_file
     else:
         indexed = IndexedFile(
@@ -106,7 +106,7 @@ async def ingest_file(
             format=file_path.suffix.lstrip("."),
             status="active",
             file_size=stat.st_size,
-            file_mtime=datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc),
+            file_mtime=datetime.fromtimestamp(stat.st_mtime, tz=UTC),
         )
         session.add(indexed)
         await session.flush()  # Get indexed.id

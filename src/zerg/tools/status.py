@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from typing import Any
 
 from sqlalchemy import func, select
@@ -55,10 +56,8 @@ class StatusTool(Tool):
 
         llm_available = False
         if self._llm:
-            try:
+            with contextlib.suppress(Exception):
                 llm_available = await self._llm.health()
-            except Exception:
-                pass
 
         return {
             **counts,

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from typing import Any
 
 from zerg.tools.base import Tool
@@ -32,10 +33,8 @@ class ModelTool(Tool):
     async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         connected = False
         if self._llm:
-            try:
+            with contextlib.suppress(Exception):
                 connected = await self._llm.health()
-            except Exception:
-                pass
 
         return {
             "provider": self._config.provider,

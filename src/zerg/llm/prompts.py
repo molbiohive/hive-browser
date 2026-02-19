@@ -103,7 +103,8 @@ def build_chain_summary_prompt(chain_summaries: str, exceeded: bool = False) -> 
         "Summarize what was completed and what remains."
         if exceeded else ""
     )
-    return f"{_CHAIN_SUMMARY_SYSTEM.format(exceeded_note=note)}\n\nTool chain results:\n{chain_summaries}"
+    system = _CHAIN_SUMMARY_SYSTEM.format(exceeded_note=note)
+    return f"{system}\n\nTool chain results:\n{chain_summaries}"
 
 
 def build_tool_schema(tool: Tool) -> list[dict]:

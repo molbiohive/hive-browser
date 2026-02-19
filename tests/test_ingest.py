@@ -1,11 +1,12 @@
 """Tests for the ingestion pipeline — parse files and store in DB."""
 
-import pytest
 from pathlib import Path
-from sqlalchemy import select, func
+
+import pytest
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from zerg.db.models import Base, Feature, IndexedFile, Primer, Sequence
+from zerg.db.models import Base, Feature, IndexedFile, Sequence
 from zerg.watcher.ingest import ingest_file, remove_file
 from zerg.watcher.rules import MatchResult
 

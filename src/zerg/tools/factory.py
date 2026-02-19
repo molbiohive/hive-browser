@@ -168,9 +168,8 @@ def _validate_imports(source: str) -> list[str]:
             for alias in node.names:
                 if _is_forbidden(alias.name):
                     violations.append(alias.name)
-        elif isinstance(node, ast.ImportFrom):
-            if node.module and _is_forbidden(node.module):
-                violations.append(node.module)
+        elif isinstance(node, ast.ImportFrom) and node.module and _is_forbidden(node.module):
+            violations.append(node.module)
 
     return violations
 
@@ -181,6 +180,7 @@ def _is_forbidden(module: str) -> bool:
     if any(module == p or module.startswith(p + ".") for p in _ALLOWED_PREFIXES):
         return False
     # Forbid other zerg internals
-    if any(module == p or module.startswith(p + ".") for p in _FORBIDDEN_PREFIXES):
-        return True
-    return False
+    return any(
+        module == p or module.startswith(p + ".")
+        for p in _FORBIDDEN_PREFIXES
+    )

@@ -20,7 +20,10 @@ class ProfileInput(BaseModel):
 
 class ProfileTool(Tool):
     name = "profile"
-    description = "Show full details of a specific sequence: metadata, features, primers, file info."
+    description = (
+        "Show full details of a specific sequence: "
+        "metadata, features, primers, file info."
+    )
     widget = "profile"
     tags = {"llm", "info"}
     guidelines = (

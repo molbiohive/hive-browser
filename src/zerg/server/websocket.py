@@ -1,13 +1,13 @@
 """WebSocket handler for concurrent chat sessions."""
 
 import asyncio
+import contextlib
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-
 from sqlalchemy import func, select
 
 from zerg.db import session as db
@@ -88,7 +88,11 @@ async def websocket_endpoint(websocket: WebSocket):
         await manager.send_json(conn_id, {
             "type": "init",
             "config": {
-                "search_columns": config.search.columns if config else ["name", "size_bp", "topology", "features"],
+                "search_columns": (
+                    config.search.columns
+                    if config
+                    else ["name", "size_bp", "topology", "features"]
+                ),
                 "max_history_pairs": max_pairs,
             },
             "tools": registry.metadata() if registry else [],
@@ -238,7 +242,11 @@ async def _handle_message(
 
         # Save assistant message (skip forms — they're ephemeral UI)
         if result.get("type") != "form":
-            assistant_msg: dict = {"role": "assistant", "content": assistant_content, "ts": _now_iso()}
+            assistant_msg: dict = {
+                "role": "assistant",
+                "content": assistant_content,
+                "ts": _now_iso(),
+            }
             if response.get("widget"):
                 assistant_msg["widget"] = response["widget"]
             chat["messages"].append(assistant_msg)
@@ -283,8 +291,12 @@ async def _generate_chat_title(llm_client, messages: list[dict]) -> str | None:
     """Ask LLM to generate a short chat title from the first few messages."""
     try:
         summary_input = "\n".join(f"{m['role']}: {m['content'][:200]}" for m in messages)
+        title_prompt = (
+            "Generate a very short title (3-6 words) for this "
+            "chat. Reply with ONLY the title, no quotes."
+        )
         resp = await llm_client.chat([
-            {"role": "system", "content": "Generate a very short title (3-6 words) for this chat. Reply with ONLY the title, no quotes."},
+            {"role": "system", "content": title_prompt},
             {"role": "user", "content": summary_input},
         ])
         title = resp["choices"][0]["message"].get("content", "").strip().strip('"\'')
@@ -313,7 +325,7 @@ def _strip_large_widget_data(msg: dict, threshold: int) -> dict:
 
 
 def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _widget_type(tool_name: str, registry=None) -> str:
@@ -332,7 +344,9 @@ async def _quick_status(llm_client=None) -> dict:
         try:
             async with db.async_session_factory() as s:
                 status["indexed_files"] = (await s.execute(
-                    select(func.count()).select_from(IndexedFile).where(IndexedFile.status == "active")
+                    select(func.count())
+                    .select_from(IndexedFile)
+                    .where(IndexedFile.status == "active")
                 )).scalar()
                 status["sequences"] = (await s.execute(
                     select(func.count()).select_from(Sequence)
@@ -341,8 +355,6 @@ async def _quick_status(llm_client=None) -> dict:
         except Exception as e:
             logger.warning("Quick status DB query failed: %s", e)
     if llm_client:
-        try:
+        with contextlib.suppress(Exception):
             status["llm_available"] = await llm_client.health()
-        except Exception:
-            pass
     return status

@@ -1,9 +1,10 @@
 """FastAPI application factory."""
 
 import asyncio
+import contextlib
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -26,7 +27,7 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """Startup/shutdown lifecycle — graceful when services unavailable."""
     config: Settings = app.state.config
-    app.state.started_at = datetime.now(timezone.utc)
+    app.state.started_at = datetime.now(UTC)
     app.state.db_ready = False
 
     # --- Admin token ---
@@ -78,7 +79,11 @@ async def lifespan(app: FastAPI):
         stop_event = asyncio.Event()
         app.state.watcher_stop = stop_event
         app.state.watcher_task = asyncio.create_task(
-            watch_directory(config.watcher, stop_event=stop_event, blast_db_path=config.blast.db_path)
+            watch_directory(
+                config.watcher,
+                stop_event=stop_event,
+                blast_db_path=config.blast.db_path,
+            )
         )
 
     # --- BLAST index ---
@@ -97,10 +102,8 @@ async def lifespan(app: FastAPI):
         if stop:
             stop.set()
         task.cancel()
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await task
-        except asyncio.CancelledError:
-            pass
         logger.info("File watcher stopped")
 
     if llm_client:

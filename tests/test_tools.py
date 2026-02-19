@@ -1,15 +1,11 @@
 """Tests for tool system: base class, factory, import validation, prompts."""
 
 import textwrap
-from pathlib import Path
 from typing import Any
 
-import pytest
-
 from zerg.config import Settings
-from zerg.tools.base import Tool, ToolRegistry, _auto_summarize, _params_to_schema, SYSTEM_TAGS
-from zerg.tools.factory import ToolFactory, _validate_imports, _is_forbidden
-
+from zerg.tools.base import Tool, ToolRegistry, _auto_summarize, _params_to_schema
+from zerg.tools.factory import ToolFactory, _is_forbidden, _validate_imports
 
 # ── Helpers ──
 

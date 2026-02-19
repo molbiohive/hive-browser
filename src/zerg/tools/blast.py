@@ -85,7 +85,11 @@ class BlastTool(Tool):
     async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         """Run BLAST+ against the local index."""
         if not params.get("sequence"):
-            return {"error": "Missing required parameter: sequence (nucleotide sequence or name)", "hits": []}
+            return {
+                "error": "Missing required parameter: sequence "
+                "(nucleotide sequence or name)",
+                "hits": [],
+            }
 
         # Strip None values so Pydantic defaults apply
         cleaned = {k: v for k, v in params.items() if v is not None}
@@ -121,7 +125,9 @@ class BlastTool(Tool):
             self._binary,
             "-query", query_file,
             "-db", str(db_file),
-            "-outfmt", "6 sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore",
+            "-outfmt",
+            "6 sseqid pident length mismatch gapopen "
+            "qstart qend sstart send evalue bitscore",
             "-evalue", str(evalue),
             "-max_target_seqs", str(inp.max_hits),
         ]

@@ -1,8 +1,10 @@
 """Admin API endpoints — protected by bearer token."""
 
 import asyncio
+import contextlib
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -19,7 +21,7 @@ security = HTTPBearer()
 
 async def verify_token(
     request: Request,
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)],
 ):
     """Verify the admin bearer token."""
     expected = getattr(request.app.state, "admin_token", None)
@@ -38,10 +40,10 @@ async def admin_health(request: Request):
 
     if db.async_session_factory:
         try:
-            t0 = datetime.now(timezone.utc)
+            t0 = datetime.now(UTC)
             async with db.async_session_factory() as s:
                 await s.execute(text("SELECT 1"))
-            dt = datetime.now(timezone.utc) - t0
+            dt = datetime.now(UTC) - t0
             db_latency = round(dt.total_seconds() * 1000, 1)
             db_ok = True
         except Exception as e:
@@ -136,10 +138,8 @@ async def watcher_stop(request: Request):
     if stop:
         stop.set()
     task.cancel()
-    try:
+    with contextlib.suppress(asyncio.CancelledError):
         await task
-    except asyncio.CancelledError:
-        pass
 
     app.state.watcher_task = None
     app.state.watcher_stop = None
@@ -229,5 +229,5 @@ async def db_errors(request: Request):
 def _uptime(request: Request) -> float | None:
     started = getattr(request.app.state, "started_at", None)
     if started:
-        return round((datetime.now(timezone.utc) - started).total_seconds(), 1)
+        return round((datetime.now(UTC) - started).total_seconds(), 1)
     return None

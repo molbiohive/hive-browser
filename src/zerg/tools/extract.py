@@ -7,7 +7,6 @@ from typing import Any
 from Bio.Seq import Seq
 from pydantic import BaseModel, Field
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 
 from zerg.db import session as db
 from zerg.db.models import Feature, IndexedFile, Primer, Sequence
@@ -135,7 +134,10 @@ class ExtractTool(Tool):
                     start = int(parts[0])
                     end = int(parts[1])
                 except (ValueError, IndexError):
-                    return {"error": f"Invalid region format: {inp.region}. Use start:end (1-based)"}
+                    return {
+                        "error": f"Invalid region format: "
+                        f"{inp.region}. Use start:end (1-based)"
+                    }
 
                 subseq = _slice_sequence(parent_seq, start, end, topology)
                 return {

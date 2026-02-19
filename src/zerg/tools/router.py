@@ -231,7 +231,11 @@ async def _execute_and_summarize(
     fn = tool_call["function"]
 
     try:
-        params = json.loads(fn["arguments"]) if isinstance(fn["arguments"], str) else fn["arguments"]
+        params = (
+            json.loads(fn["arguments"])
+            if isinstance(fn["arguments"], str)
+            else fn["arguments"]
+        )
         params = {k: v for k, v in params.items() if v is not None}
         logger.info("LLM tool call: %s(%s)", tool.name, json.dumps(params))
         result = await tool.execute(params)
@@ -435,7 +439,7 @@ def _help_response(registry: ToolRegistry) -> dict:
     for tool in registry.visible_tools():
         tag = "" if "llm" in tool.tags else " *(direct only)*"
         lines.append(f"- **/{tool.name}**{tag} — {tool.description}")
-    lines.append(f"\nPrefix with `//` for direct execution (no LLM), e.g. `//search ampicillin`.")
+    lines.append("\nPrefix with `//` for direct execution (no LLM), e.g. `//search ampicillin`.")
     return {"type": "message", "content": "\n".join(lines)}
 
 

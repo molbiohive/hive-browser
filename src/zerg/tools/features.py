@@ -14,7 +14,10 @@ from zerg.tools.base import Tool
 
 class FeaturesInput(BaseModel):
     sequence_name: str = Field(..., description="Name of the sequence/plasmid")
-    type: str | None = Field(default=None, description="Filter by feature type (e.g. CDS, promoter)")
+    type: str | None = Field(
+        default=None,
+        description="Filter by feature type (e.g. CDS, promoter)",
+    )
 
 
 class FeaturesTool(Tool):

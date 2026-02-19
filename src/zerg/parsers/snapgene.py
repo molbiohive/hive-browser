@@ -44,13 +44,21 @@ def parse_snapgene(filepath: Path, extract: list[str] | None = None) -> ParseRes
                 tm=getattr(p, "tm", None),
                 start=getattr(p, "start", None),
                 end=getattr(p, "end", None),
-                strand=_parse_strand(getattr(p, "strand", None)) if getattr(p, "strand", None) is not None else None,
+                strand=(
+                    _parse_strand(getattr(p, "strand", None))
+                    if getattr(p, "strand", None) is not None
+                    else None
+                ),
             ))
 
     meta = {}
-    if extract is None or "notes" in extract:
-        if hasattr(sgff, "notes") and sgff.notes and sgff.notes.exists:
-            meta["notes"] = sgff.notes.data
+    if (
+        (extract is None or "notes" in extract)
+        and hasattr(sgff, "notes")
+        and sgff.notes
+        and sgff.notes.exists
+    ):
+        meta["notes"] = sgff.notes.data
 
     molecule_type = _BLOCK_MOLECULE_TYPE.get(sgff.sequence.block_id, "DNA")
     meta["molecule_type"] = molecule_type

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from pydantic import BaseModel, Field
-from sqlalchemy import func, or_, select, text
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import selectinload
 
 from zerg.db import session as db
@@ -14,10 +14,24 @@ from zerg.tools.base import Tool
 
 
 class SearchInput(BaseModel):
-    query: str = Field(..., description="Search text — matches against sequence names, feature names, and descriptions. Use the main search term here, e.g. 'GFP' or 'ampicillin'.")
+    query: str = Field(
+        ...,
+        description=(
+            "Search text — matches against sequence names, feature names, "
+            "and descriptions. Use the main search term here, "
+            "e.g. 'GFP' or 'ampicillin'."
+        ),
+    )
     filters: dict[str, Any] = Field(
         default_factory=dict,
-        description="Optional filters to narrow results. Keys: topology ('circular'|'linear'), size_min (int), size_max (int), feature_type (GenBank type like 'CDS', 'promoter', 'rep_origin' — NOT biological concepts like 'plasmid'). Only use filters when the user explicitly requests them.",
+        description=(
+            "Optional filters to narrow results. Keys: "
+            "topology ('circular'|'linear'), size_min (int), "
+            "size_max (int), feature_type (GenBank type like "
+            "'CDS', 'promoter', 'rep_origin' — NOT biological "
+            "concepts like 'plasmid'). Only use filters when "
+            "the user explicitly requests them."
+        ),
     )
     limit: int = Field(default=20, ge=1, le=100)
 

@@ -7,7 +7,7 @@ No user field in MVP (no accounts).
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
 
@@ -22,12 +22,18 @@ class ChatStorage:
         self.storage_dir.mkdir(parents=True, exist_ok=True)
 
     def new_chat_id(self) -> str:
-        ts = datetime.now(timezone.utc).isoformat()
+        ts = datetime.now(UTC).isoformat()
         return sha256(ts.encode()).hexdigest()[:8]
 
-    def save(self, chat_id: str, messages: list[dict], title: str | None = None, created: datetime | None = None):
+    def save(
+        self,
+        chat_id: str,
+        messages: list[dict],
+        title: str | None = None,
+        created: datetime | None = None,
+    ):
         if created is None:
-            created = datetime.now(timezone.utc)
+            created = datetime.now(UTC)
 
         filepath = self.storage_dir / f"{chat_id}.json"
 
@@ -72,7 +78,11 @@ class ChatStorage:
 
     def list_chats(self) -> list[dict]:
         chats = []
-        for filepath in sorted(self.storage_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True):
+        for filepath in sorted(
+            self.storage_dir.glob("*.json"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        ):
             try:
                 with open(filepath) as f:
                     data = json.load(f)
