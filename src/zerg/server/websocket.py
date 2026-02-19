@@ -318,7 +318,7 @@ def _widget_type(tool_name: str, registry=None) -> str:
     if registry:
         tool = registry.get(tool_name)
         if tool:
-            return tool.widget_type
+            return tool.widget
     return "text"
 
 

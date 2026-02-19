@@ -7,7 +7,10 @@
 		{ name: 'help', description: 'Show available commands' },
 	];
 
-	const commands = $derived([...$toolList, ...builtins]);
+	const commands = $derived([
+		...$toolList.filter(t => !t.tags?.includes('hidden')),
+		...builtins,
+	]);
 
 	function select(cmd) {
 		onSelect?.(cmd.name);
@@ -19,7 +22,7 @@
 	{#each commands as cmd}
 		<button class="cmd" onclick={() => select(cmd)}>
 			<span class="name">/{cmd.name}</span>
-			{#if cmd.use_llm === false}<span class="tag">direct</span>{/if}
+			{#if cmd.tags && !cmd.tags.includes('llm')}<span class="tag">direct</span>{/if}
 			<span class="desc">{cmd.description}</span>
 		</button>
 	{/each}

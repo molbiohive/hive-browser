@@ -32,8 +32,8 @@ interface AppConfig {
 interface ToolMeta {
 	name: string;
 	description: string;
-	widget_type: string;
-	use_llm: boolean;
+	widget: string;
+	tags: string[];
 }
 
 interface ChatState {
