@@ -8,6 +8,54 @@
 	let messagesDiv;
 	let showPalette = $state(false);
 	let prevMsgCount = $state(0);
+	let elapsed = $state(0);
+	let timerRef = $state(null);
+
+	const thinkingWords = ['Spawning', 'Hatching', 'Evolving', 'Multiplying', 'Spreading'];
+	const toolWords = {
+		search: 'Scouring',
+		extract: 'Extracting',
+		blast: 'Launching',
+		digest: 'Devouring',
+		translate: 'Mutating',
+		features: 'Scanning',
+		primers: 'Detecting',
+		gc: 'Analyzing',
+		revcomp: 'Inverting',
+		transcribe: 'Transcribing',
+		profile: 'Profiling',
+	};
+	let thinkingWord = $state(thinkingWords[0]);
+
+	function pickThinkingWord() {
+		thinkingWord = thinkingWords[Math.floor(Math.random() * thinkingWords.length)];
+	}
+
+	const progressWord = $derived.by(() => {
+		const p = $chatStore.progress;
+		if (!p) return thinkingWord;
+		if (p.phase === 'tool' && p.tool) return toolWords[p.tool] || 'Consuming';
+		return thinkingWord;
+	});
+
+	const progressMeta = $derived.by(() => {
+		const p = $chatStore.progress;
+		const parts = [];
+		if (p && p.tools_used > 0) parts.push(`${p.tools_used} tool${p.tools_used > 1 ? 's' : ''}`);
+		if (p && (p.tokens.in > 0 || p.tokens.out > 0)) parts.push(`${p.tokens.in}\u2192${p.tokens.out} tok`);
+		parts.push(`${elapsed.toFixed(1)}s`);
+		return parts.join(' \u00b7 ');
+	});
+
+	$effect(() => {
+		if ($chatStore.isWaiting) {
+			elapsed = 0;
+			pickThinkingWord();
+			timerRef = setInterval(() => { elapsed += 0.1; }, 100);
+		} else {
+			if (timerRef) { clearInterval(timerRef); timerRef = null; }
+		}
+	});
 
 	onMount(() => {
 		connect();
@@ -136,8 +184,9 @@
 					<MessageBubble {message} faded={i < contextStart} messageIndex={i} />
 				{/each}
 				{#if $chatStore.isWaiting}
-					<div class="typing-indicator">
-						<span class="dot"></span><span class="dot"></span><span class="dot"></span>
+					<div class="progress-indicator">
+						<span class="progress-word">{progressWord}...</span>
+						<span class="progress-meta">{progressMeta}</span>
 					</div>
 				{/if}
 			{/if}
@@ -468,37 +517,39 @@
 		color: #c66;
 	}
 
-	.typing-indicator {
+	.progress-indicator {
 		display: flex;
-		gap: 4px;
-		padding: 0.75rem 1rem;
-		background: white;
-		border-radius: 16px 16px 16px 4px;
-		width: fit-content;
+		align-items: baseline;
+		gap: 0.5rem;
+		padding: 0.6rem 1rem;
 		margin: 0.5rem 0;
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+		font-size: 0.85rem;
 	}
 
-	.dot {
-		width: 8px;
-		height: 8px;
-		background: #999;
-		border-radius: 50%;
-		animation: bounce 1.4s infinite ease-in-out both;
+	.progress-word {
+		font-weight: 600;
+		background: linear-gradient(
+			90deg,
+			#8b5cf6 0%,
+			#a78bfa 15%,
+			#666 30%,
+			#666 100%
+		);
+		background-size: 300% 100%;
+		background-clip: text;
+		-webkit-background-clip: text;
+		-webkit-text-fill-color: transparent;
+		animation: violet-sweep 1.5s ease-in-out infinite;
 	}
 
-	.dot:nth-child(1) { animation-delay: 0s; }
-	.dot:nth-child(2) { animation-delay: 0.16s; }
-	.dot:nth-child(3) { animation-delay: 0.32s; }
+	@keyframes violet-sweep {
+		0% { background-position: 100% 0; }
+		100% { background-position: -100% 0; }
+	}
 
-	@keyframes bounce {
-		0%, 80%, 100% {
-			transform: scale(0.6);
-			opacity: 0.4;
-		}
-		40% {
-			transform: scale(1);
-			opacity: 1;
-		}
+	.progress-meta {
+		color: #aaa;
+		font-size: 0.75rem;
+		font-variant-numeric: tabular-nums;
 	}
 </style>

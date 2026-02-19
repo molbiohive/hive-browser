@@ -42,10 +42,18 @@ interface ToolMeta {
 	tags: string[];
 }
 
+interface Progress {
+	phase: string;
+	tool?: string;
+	tools_used: number;
+	tokens: { in: number; out: number };
+}
+
 interface ChatState {
 	messages: Message[];
 	connected: boolean;
 	isWaiting: boolean;
+	progress: Progress | null;
 	chatId: string | null;
 	chatTitle: string | null;
 }
@@ -54,6 +62,7 @@ const initialState: ChatState = {
 	messages: [],
 	connected: false,
 	isWaiting: false,
+	progress: null,
 	chatId: null,
 	chatTitle: null,
 };
@@ -126,6 +135,16 @@ export function connect() {
 			if (data.status) {
 				statusBar.update(s => ({ ...s, ...data.status }));
 			}
+		} else if (data.type === 'progress') {
+			chatStore.update(s => ({
+				...s,
+				progress: {
+					phase: data.phase,
+					tool: data.tool,
+					tools_used: data.tools_used,
+					tokens: data.tokens,
+				},
+			}));
 		} else if (data.type === 'message') {
 			const msg: Message = {
 				role: 'assistant',
@@ -137,6 +156,7 @@ export function connect() {
 				...s,
 				messages: [...s.messages, msg],
 				isWaiting: false,
+				progress: null,
 			}));
 		} else if (data.type === 'chat_saved') {
 			chatStore.update(s => ({
