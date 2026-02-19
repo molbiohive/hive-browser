@@ -22,7 +22,11 @@
 	{#each commands as cmd}
 		<button class="cmd" onclick={() => select(cmd)}>
 			<span class="name">/{cmd.name}</span>
-			{#if cmd.tags && !cmd.tags.includes('llm')}<span class="tag">direct</span>{/if}
+			{#if cmd.tags}
+				{#each cmd.tags as tag}
+					<span class="tag">{tag}</span>
+				{/each}
+			{/if}
 			<span class="desc">{cmd.description}</span>
 		</button>
 	{/each}
