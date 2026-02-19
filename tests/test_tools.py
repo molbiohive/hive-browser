@@ -364,35 +364,16 @@ class TestToolFactoryExternal:
 
 
 class TestPrompts:
-    def test_system_prompt_groups(self):
+    def test_system_prompt_content(self):
         from zerg.llm.prompts import build_system_prompt
 
-        config = Settings()
-        registry = ToolFactory.discover(config)
-        prompt = build_system_prompt(registry)
-
-        assert "## search" in prompt
-        assert "## info" in prompt
-        assert "## analysis" in prompt
-        assert "- search:" in prompt
-        assert "- blast:" in prompt
-        assert "- profile:" in prompt
-        assert "- extract:" in prompt
-        assert "- translate:" in prompt
-        # Non-LLM tools should not appear
-        assert "- status:" not in prompt
-        assert "- model:" not in prompt
-
-    def test_system_prompt_has_guidelines(self):
-        from zerg.llm.prompts import build_system_prompt
-
-        config = Settings()
-        registry = ToolFactory.discover(config)
-        prompt = build_system_prompt(registry)
+        prompt = build_system_prompt()
 
         assert "Zerg Browser" in prompt
         assert "extract" in prompt
         assert "NEVER fabricate" in prompt
+        assert "## Workflow" in prompt
+        assert "## Rules" in prompt
 
     def test_tool_schema_format(self):
         from zerg.llm.prompts import build_tool_schema
@@ -406,3 +387,15 @@ class TestPrompts:
         assert schema[0]["type"] == "function"
         assert schema[0]["function"]["name"] == "search"
         assert "properties" in schema[0]["function"]["parameters"]
+
+    def test_tool_schema_uses_guidelines(self):
+        """When guidelines is set, it's used as the schema description (not description)."""
+        from zerg.llm.prompts import build_tool_schema
+
+        config = Settings()
+        registry = ToolFactory.discover(config)
+        search = registry.get("search")
+        schema = build_tool_schema(search)
+        # guidelines is concise, description is verbose
+        assert schema[0]["function"]["description"] == search.guidelines
+        assert schema[0]["function"]["description"] != search.description

@@ -21,7 +21,7 @@ class Tool(ABC):
         description: Shown in help, command palette, and LLM prompts.
         widget:      Widget type for frontend rendering (maps to FooWidget.svelte).
         tags:        Behavioral flags + group identifiers. Known: "llm", "hidden".
-        guidelines:  LLM-specific hints, injected only when tool is selected.
+        guidelines:  Concise LLM-facing description (used in tool schema if set).
         params:      Declarative param definitions for external tools (dict → JSON Schema).
     """
 

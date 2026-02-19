@@ -135,7 +135,7 @@ async def _unified_loop(
     schemas = build_multi_tool_schema(tools)
     tool_map = {t.name: t for t in tools}
 
-    messages = [{"role": "system", "content": build_system_prompt(registry)}]
+    messages = [{"role": "system", "content": build_system_prompt()}]
     if history:
         messages.extend(history)
     messages.append({"role": "user", "content": user_input})
