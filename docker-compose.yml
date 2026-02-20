@@ -1,62 +1,36 @@
 services:
-  zerg-server:
-    build: .
-    ports:
-      - "8080:8080"
-    volumes:
-      - ${ZERG_DATA_DIR:-./data/sequences}:/data/sequences:ro
-      - ${ZERG_CHAT_DIR:-./chats}:/var/zerg/chats
-      - ./zerg_config.yaml:/app/zerg_config.yaml:ro
-    environment:
-      - ZERG_CONFIG=/app/zerg_config.yaml
-      - DATABASE_URL=postgresql+asyncpg://zerg:zerg@postgres:5432/zerg
-    depends_on:
-      postgres:
-        condition: service_healthy
-      vllm:
-        condition: service_started
-    restart: unless-stopped
-
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: zerg
-      POSTGRES_PASSWORD: zerg
-      POSTGRES_DB: zerg
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - pgdata:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U zerg"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 5s
       timeout: 3s
       retries: 5
     restart: unless-stopped
 
-  vllm:
-    image: vllm/vllm-openai:latest
-    runtime: nvidia
-    environment:
-      - NVIDIA_VISIBLE_DEVICES=all
-    volumes:
-      - ${ZERG_MODELS_DIR:-./models}:/models
+  zerg:
+    build: .
     ports:
-      - "8000:8000"
-    command: >
-      --model ${ZERG_LLM_MODEL:-Qwen/Qwen2.5-14B-Instruct}
-      --download-dir /models
-      --host 0.0.0.0
-      --port 8000
-      --max-model-len 8192
-      --gpu-memory-utilization 0.9
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
+      - "${ZERG_PORT:-8080}:8080"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - ZERG_CONFIG=/app/config/config.docker.yaml
+      - ZERG_DATA_ROOT=/data
+      - ZERG_WATCHER_ROOT=/watcher
+      - LLM_BASE_URL=http://host.docker.internal:11434/v1
+    volumes:
+      - ${ZERG_DATA_ROOT}:/data
+      - ${ZERG_WATCHER_ROOT}:/watcher:ro
+      - ./config/config.docker.yaml:/app/config/config.docker.yaml:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:

@@ -1,32 +1,34 @@
-FROM python:3.11-slim AS builder
-
+# Stage 1 — frontend
+FROM oven/bun:1 AS frontend
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    ncbi-blast+ \
-    && rm -rf /var/lib/apt/lists/*
+COPY frontend/package.json frontend/bun.lock ./
+RUN bun install --frozen-lockfile
+COPY frontend/src ./src
+COPY frontend/static ./static
+COPY frontend/svelte.config.js frontend/vite.config.ts ./
+RUN bun run build
 
-COPY pyproject.toml ./
-RUN pip install --no-cache-dir .
-
-FROM python:3.11-slim
-
+# Stage 2 — Python deps
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS deps
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ncbi-blast+ \
-    && rm -rf /var/lib/apt/lists/*
-
-COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
-
+COPY pyproject.toml uv.lock ./
 COPY src/ ./src/
-COPY zerg_config.yaml ./
-COPY frontend/build/ ./static/
-COPY alembic/ ./alembic/
-COPY alembic.ini ./
+RUN uv sync --no-dev --frozen
 
-RUN mkdir -p /var/zerg/chats
-
+# Stage 3 — runtime
+FROM python:3.12-slim-bookworm
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ncbi-blast+ curl && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY --from=deps /app/.venv /app/.venv
+COPY --from=frontend /app/build /app/static
+COPY src/ /app/src/
+COPY alembic/ /app/alembic/
+COPY alembic.ini /app/
+COPY docker/entrypoint.sh /app/docker/entrypoint.sh
+RUN chmod +x /app/docker/entrypoint.sh
+ENV PATH="/app/.venv/bin:$PATH"
 EXPOSE 8080
-
-CMD ["uvicorn", "zerg.main:app", "--host", "0.0.0.0", "--port", "8080"]
+HEALTHCHECK --interval=10s --timeout=3s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+ENTRYPOINT ["/app/docker/entrypoint.sh"]

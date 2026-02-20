@@ -1,9 +1,11 @@
 """Alembic environment — async migration support."""
 
 import asyncio
+import os
 from logging.config import fileConfig
 
 from alembic import context
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from zerg.db.models import Base
@@ -14,10 +16,11 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 
+_db_url = os.environ.get("DATABASE_URL") or config.get_main_option("sqlalchemy.url")
+
 
 def run_migrations_offline():
-    url = config.get_main_option("sqlalchemy.url")
-    context.configure(url=url, target_metadata=target_metadata, literal_binds=True)
+    context.configure(url=_db_url, target_metadata=target_metadata, literal_binds=True)
     with context.begin_transaction():
         context.run_migrations()
 
@@ -29,8 +32,10 @@ def do_run_migrations(connection):
 
 
 async def run_migrations_online():
-    connectable = create_async_engine(config.get_main_option("sqlalchemy.url"))
+    connectable = create_async_engine(_db_url)
     async with connectable.connect() as connection:
+        await connection.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+        await connection.commit()
         await connection.run_sync(do_run_migrations)
     await connectable.dispose()
 
