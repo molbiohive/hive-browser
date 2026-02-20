@@ -10,10 +10,17 @@ database:
   url: "postgresql+asyncpg://zerg:zerg@localhost:5432/zerg"
 
 llm:
-  provider: "ollama"            # ollama, anthropic, openai
-  base_url: "http://localhost:11434/v1"
-  model: "qwen2.5:7b"
-  api_key: null                 # required for cloud providers (anthropic, openai)
+  models:
+    - provider: "ollama"
+      model: "qwen2.5:7b"
+      base_url: "http://localhost:11434/v1"
+    # - provider: "anthropic"
+    #   model: "claude-sonnet-4-20250514"
+    #   api_key: "sk-ant-..."
+    # - provider: "openai"
+    #   model: "gpt-4o"
+    #   api_key: "sk-..."
+  auto_discover: false          # auto-discover Ollama models at runtime
 
 blast:
   binary: "blastn"

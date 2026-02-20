@@ -5,7 +5,7 @@ import logging
 import httpx
 import litellm
 
-from zerg.config import LLMConfig
+from zerg.config import ModelEntry
 
 # Silence litellm's verbose logging
 litellm.suppress_debug_info = True
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class LLMClient:
     """Async LLM client supporting Ollama, Anthropic, OpenAI, and others."""
 
-    def __init__(self, config: LLMConfig):
+    def __init__(self, config: ModelEntry):
         self._config = config
 
         # Build litellm model identifier
@@ -35,6 +35,10 @@ class LLMClient:
     @property
     def model(self) -> str:
         return self._config.model
+
+    @property
+    def base_url(self) -> str:
+        return self._config.base_url
 
     async def chat(self, messages: list[dict], tools: list[dict] | None = None) -> dict:
         """Send a chat completion request via litellm."""

@@ -14,11 +14,22 @@ class DatabaseConfig(BaseSettings):
     model_config = {"env_prefix": "DATABASE_"}
 
 
-class LLMConfig(BaseSettings):
+class ModelEntry(BaseSettings):
+    """A configured LLM model."""
+
     provider: str = "ollama"  # ollama, anthropic, openai
-    base_url: str = "http://localhost:11434/v1"
     model: str = "qwen2.5:7b"
+    base_url: str = "http://localhost:11434/v1"
     api_key: str | None = None  # required for cloud providers
+
+    @property
+    def id(self) -> str:
+        return f"{self.provider}/{self.model}"
+
+
+class LLMConfig(BaseSettings):
+    models: list[ModelEntry] = Field(default_factory=lambda: [ModelEntry()])
+    auto_discover: bool = False  # auto-discover Ollama models at runtime
     summary_token_limit: int = 1000  # max tokens for auto-summarize sent to LLM
     agent_max_turns: int = 5  # max tool-call turns in agentic loop
     pipe_min_length: int = 200  # auto-pipe strings longer than this between tools
@@ -111,7 +122,4 @@ def load_config(config_path: str | None = None) -> Settings:
         settings.data_root = data_root
     if watcher_root := os.environ.get("ZERG_WATCHER_ROOT"):
         settings.watcher.root = watcher_root
-    if llm_base_url := os.environ.get("LLM_BASE_URL"):
-        settings.llm.base_url = llm_base_url
-
     return settings
