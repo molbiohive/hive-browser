@@ -31,23 +31,27 @@ class ChatStorage:
         messages: list[dict],
         title: str | None = None,
         created: datetime | None = None,
+        model: str | None = None,
     ):
         if created is None:
             created = datetime.now(UTC)
 
         filepath = self.storage_dir / f"{chat_id}.json"
 
-        # Preserve existing title/created if updating
+        # Preserve existing title/created/model if updating
         existing = self.load(chat_id)
         if existing:
             created = datetime.fromisoformat(existing["created"])
             if title is None:
                 title = existing.get("title")
+            if model is None:
+                model = existing.get("model")
 
         data = {
             "id": chat_id,
             "title": title,
             "created": created.isoformat(),
+            "model": model,
             "messages": messages,
         }
 

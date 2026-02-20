@@ -74,17 +74,21 @@ async def websocket_endpoint(websocket: WebSocket):
     app = websocket.app
     config = getattr(app.state, "config", None)
     registry = getattr(app.state, "tool_registry", None)
-    llm_client = getattr(app.state, "llm_client", None)
+    model_pool = getattr(app.state, "model_pool", None)
     chat_storage = getattr(app.state, "chat_storage", None)
     max_pairs = config.chat.max_history_pairs if config else 20
     save_threshold = config.chat.auto_save_after if config else 2
 
+    # Per-connection model selection (starts with default, user can switch)
+    current_model_id = model_pool.default_id if model_pool else None
+
     # Per-connection chat tracking (mutable dict so background tasks can update it)
-    chat = {"id": None, "messages": [], "title_generated": False}
+    chat = {"id": None, "messages": [], "title_generated": False, "model": current_model_id}
 
     try:
-        # Send config, tool metadata, and initial status to frontend on connect
-        init_status = await _quick_status(llm_client)
+        # Send config, tool metadata, models, and initial status to frontend
+        current_client = model_pool.get(current_model_id) if model_pool and current_model_id else None
+        init_status = await _quick_status(current_client)
         await manager.send_json(conn_id, {
             "type": "init",
             "config": {
@@ -97,6 +101,11 @@ async def websocket_endpoint(websocket: WebSocket):
             },
             "tools": registry.metadata() if registry else [],
             "status": init_status,
+            "models": [
+                {"id": m.id, "provider": m.provider, "model": m.model}
+                for m in model_pool.entries()
+            ] if model_pool else [],
+            "currentModel": current_model_id,
         })
 
         while True:
@@ -107,6 +116,19 @@ async def websocket_endpoint(websocket: WebSocket):
                 task = manager.tasks.get(conn_id)
                 if task and not task.done():
                     task.cancel()
+                continue
+
+            # Handle model switch — seamless, no chat message
+            if data.get("type") == "set_model":
+                model_id = data.get("modelId")
+                if model_pool and model_id and model_pool.get(model_id):
+                    current_model_id = model_id
+                    chat["model"] = model_id
+                    await manager.send_json(conn_id, {
+                        "type": "model_changed",
+                        "modelId": model_id,
+                    })
+                    logger.info("Connection %s switched to model %s", conn_id, model_id)
                 continue
 
             # Handle chat resume
@@ -122,11 +144,19 @@ async def websocket_endpoint(websocket: WebSocket):
                             {"role": m["role"], "content": m["content"]}
                             for m in chat["messages"]
                         ]
+                        # Restore model from saved chat (fallback to default)
+                        saved_model = saved.get("model")
+                        if saved_model and model_pool and model_pool.get(saved_model):
+                            current_model_id = saved_model
+                        elif model_pool:
+                            current_model_id = model_pool.default_id
+                        chat["model"] = current_model_id
                         await manager.send_json(conn_id, {
                             "type": "chat_loaded",
                             "chatId": chat["id"],
                             "messages": chat["messages"],
                             "title": saved.get("title"),
+                            "model": current_model_id,
                         })
                 continue
 
@@ -169,13 +199,17 @@ async def websocket_endpoint(websocket: WebSocket):
                 })
                 continue
 
+            # Resolve per-connection LLM client
+            current_client = model_pool.get(current_model_id) if model_pool and current_model_id else None
+
             # Process message as a cancellable background task
             manager.tasks[conn_id] = asyncio.create_task(
                 _handle_message(
                     conn_id=conn_id,
                     content=content,
                     registry=registry,
-                    llm_client=llm_client,
+                    llm_client=current_client,
+                    model_id=current_model_id,
                     chat=chat,
                     chat_storage=chat_storage,
                     max_pairs=max_pairs,
@@ -193,6 +227,7 @@ async def _handle_message(
     content: str,
     registry,
     llm_client,
+    model_id: str | None,
     chat: dict,
     chat_storage,
     max_pairs: int,
@@ -224,8 +259,8 @@ async def _handle_message(
         if assistant_content:
             manager.append_history(conn_id, "assistant", assistant_content, max_pairs)
 
-        # Build response
-        response = {"type": "message", "content": assistant_content}
+        # Build response — include model metadata
+        response: dict = {"type": "message", "content": assistant_content, "model": model_id}
 
         if result.get("type") == "tool_result" and result.get("data"):
             tool_name = result["tool"]
@@ -251,6 +286,7 @@ async def _handle_message(
                 "role": "assistant",
                 "content": assistant_content,
                 "ts": _now_iso(),
+                "model": model_id,
             }
             if response.get("widget"):
                 assistant_msg["widget"] = response["widget"]
@@ -269,7 +305,7 @@ async def _handle_message(
                 chat["id"] = chat_storage.new_chat_id()
             threshold = config.chat.widget_data_threshold if config else 2048
             messages_to_save = [_strip_large_widget_data(m, threshold) for m in chat["messages"]]
-            chat_storage.save(chat["id"], messages_to_save)
+            chat_storage.save(chat["id"], messages_to_save, model=chat.get("model"))
 
             # Generate title once via LLM
             if not chat["title_generated"] and llm_client:
