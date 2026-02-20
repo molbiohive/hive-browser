@@ -147,7 +147,7 @@
 	{/each}
 	<div class="form-actions">
 		<button type="submit">Run {toolName}</button>
-		<button type="button" class="cancel-btn" onclick={() => cancelForm(messageIndex)}>Cancel</button>
+		<button type="button" class="cancel-btn" onclick={(e) => { e.stopPropagation(); cancelForm(messageIndex); }}>Cancel</button>
 	</div>
 </form>
 

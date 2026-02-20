@@ -88,12 +88,19 @@
 		}
 	}
 
+	let paletteFilter = $state('');
+
 	function handleInput(e) {
 		const val = e.target.value;
-		if (val === '/') {
+		if (val.startsWith('//')) {
 			showPalette = true;
-		} else if (!val.startsWith('/')) {
+			paletteFilter = val.slice(2).split(' ')[0];
+		} else if (val.startsWith('/')) {
+			showPalette = true;
+			paletteFilter = val.slice(1).split(' ')[0];
+		} else {
 			showPalette = false;
+			paletteFilter = '';
 		}
 	}
 
@@ -185,7 +192,7 @@
 					{@const contextStart = Math.max(0, $chatStore.messages.length - $appConfig.max_history_pairs * 2)}
 					<MessageBubble {message} faded={i < contextStart} messageIndex={i} />
 				{/each}
-				{#if $chatStore.isWaiting}
+				{#if $chatStore.isWaiting && $chatStore.messages.at(-1)?.widget?.type !== 'form'}
 					<div class="progress-indicator">
 						<span class="progress-word">{progressWord}...</span>
 						<span class="progress-meta">{progressMeta}</span>
@@ -197,7 +204,7 @@
 		<div class="input-area">
 			<form class="input-bar" onsubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
 				<div class="input-wrapper">
-					<CommandPalette visible={showPalette} onSelect={handlePaletteSelect} />
+					<CommandPalette visible={showPalette} filter={paletteFilter} onSelect={handlePaletteSelect} />
 					<textarea
 						bind:value={inputText}
 						onkeydown={handleKeydown}

@@ -152,10 +152,11 @@ export function connect() {
 				widget: data.widget,
 				ts: new Date().toISOString(),
 			};
+			const isForm = data.widget?.type === 'form';
 			chatStore.update(s => ({
 				...s,
 				messages: [...s.messages, msg],
-				isWaiting: false,
+				isWaiting: isForm,  // keep waiting during form display
 				progress: null,
 			}));
 		} else if (data.type === 'chat_saved') {
@@ -226,6 +227,24 @@ export function sendRawMessage(content: string) {
 }
 
 export function cancelRequest() {
+	// Check if there's an active form — cancel locally without WS
+	let cancelled = false;
+	chatStore.update(s => {
+		const last = s.messages[s.messages.length - 1];
+		if (last?.widget?.type === 'form') {
+			const messages = [...s.messages];
+			messages.pop(); // remove form
+			// remove triggering user message
+			if (messages.length > 0 && messages[messages.length - 1]?.role === 'user') {
+				messages.pop();
+			}
+			cancelled = true;
+			return { ...s, messages, isWaiting: false, progress: null };
+		}
+		return s;
+	});
+	if (cancelled) return;
+	// Otherwise cancel the LLM request via WebSocket
 	if (!ws || ws.readyState !== WebSocket.OPEN) return;
 	ws.send(JSON.stringify({ type: 'cancel' }));
 }
@@ -254,15 +273,14 @@ export function submitForm(formIndex: number, commandText: string) {
 export function cancelForm(formIndex: number) {
 	chatStore.update(s => {
 		const messages = [...s.messages];
-		// Replace form with "Cancelled." assistant message
-		if (messages[formIndex]) {
-			messages[formIndex] = {
-				role: 'assistant',
-				content: 'Cancelled.',
-				ts: new Date().toISOString(),
-			};
+		if (formIndex < 0 || formIndex >= messages.length) return s;
+		// Remove the form message
+		messages.splice(formIndex, 1);
+		// Remove the triggering user message (e.g. "//blast")
+		if (formIndex > 0 && messages[formIndex - 1]?.role === 'user') {
+			messages.splice(formIndex - 1, 1);
 		}
-		return { ...s, messages };
+		return { ...s, messages, isWaiting: false, progress: null };
 	});
 }
 

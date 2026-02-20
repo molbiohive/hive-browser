@@ -1,23 +1,55 @@
 <script>
 	import { toolList } from '$lib/stores/chat.ts';
 
-	let { visible, onSelect } = $props();
+	let { visible, filter = '', maxVisible = 5, onSelect } = $props();
 
 	const builtins = [
 		{ name: 'help', description: 'Show available commands' },
 	];
 
-	const commands = $derived([
+	const allCommands = $derived([
 		...$toolList.filter(t => !t.tags?.includes('hidden')),
 		...builtins,
 	]);
+
+	function fuzzyMatch(name, query) {
+		if (!query) return true;
+		const q = query.toLowerCase();
+		const n = name.toLowerCase();
+		// Substring match first
+		if (n.includes(q)) return true;
+		// Fuzzy: all query chars appear in order
+		let qi = 0;
+		for (let i = 0; i < n.length && qi < q.length; i++) {
+			if (n[i] === q[qi]) qi++;
+		}
+		return qi === q.length;
+	}
+
+	function matchScore(name, query) {
+		if (!query) return 0;
+		const q = query.toLowerCase();
+		const n = name.toLowerCase();
+		if (n === q) return 3;                // exact
+		if (n.startsWith(q)) return 2;        // prefix
+		if (n.includes(q)) return 1;          // substring
+		return 0;                             // fuzzy
+	}
+
+	const commands = $derived.by(() => {
+		const q = filter.toLowerCase();
+		return allCommands
+			.filter(cmd => fuzzyMatch(cmd.name, q))
+			.sort((a, b) => matchScore(b.name, q) - matchScore(a.name, q))
+			.slice(0, maxVisible);
+	});
 
 	function select(cmd) {
 		onSelect?.(cmd.name);
 	}
 </script>
 
-{#if visible}
+{#if visible && commands.length > 0}
 <div class="palette">
 	{#each commands as cmd}
 		<button class="cmd" onclick={() => select(cmd)}>
