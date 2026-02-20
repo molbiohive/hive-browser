@@ -167,32 +167,34 @@
 
 	label {
 		font-weight: 600;
-		color: #555;
+		color: var(--text-secondary);
 		font-size: 0.8rem;
 	}
 
 	.req {
-		color: #dc2626;
+		color: var(--color-err);
 		margin-left: 0.1rem;
 	}
 
 	.desc {
-		color: #999;
+		color: var(--text-faint);
 		font-size: 0.75rem;
 	}
 
 	input, textarea {
-		border: 1px solid #ddd;
+		border: 1px solid var(--border);
 		border-radius: 4px;
 		padding: 0.35rem 0.5rem;
 		font-family: inherit;
 		font-size: 0.82rem;
 		outline: none;
 		resize: vertical;
+		background: var(--bg-surface);
+		color: var(--text);
 	}
 
 	input:focus, textarea:focus {
-		border-color: #999;
+		border-color: var(--text-faint);
 	}
 
 	input[type="checkbox"] {
@@ -204,7 +206,7 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.3rem;
-		border: 1px solid #ddd;
+		border: 1px solid var(--border);
 		border-radius: 4px;
 		padding: 0.25rem 0.4rem;
 		cursor: text;
@@ -213,7 +215,7 @@
 	}
 
 	label.tag-input:focus-within {
-		border-color: #999;
+		border-color: var(--text-faint);
 	}
 
 	label.tag-input input {
@@ -223,24 +225,26 @@
 		font-size: 0.82rem;
 		flex: 1;
 		min-width: 8rem;
+		background: transparent;
+		color: var(--text);
 	}
 
 	.tag {
 		display: inline-flex;
 		align-items: center;
 		gap: 0.25rem;
-		background: #e8e8e8;
+		background: var(--bg-hover);
 		border: none;
 		border-radius: 3px;
 		padding: 0.15rem 0.4rem;
 		font-size: 0.78rem;
 		font-family: inherit;
 		cursor: pointer;
-		color: #333;
+		color: var(--text);
 	}
 
 	.tag:hover {
-		background: #d0d0d0;
+		background: var(--bg-active);
 	}
 
 	.tag-key {
@@ -248,7 +252,7 @@
 	}
 
 	.tag-x {
-		color: #999;
+		color: var(--text-faint);
 		font-size: 0.9em;
 		margin-left: 0.1rem;
 	}
@@ -268,20 +272,20 @@
 	}
 
 	button[type="submit"] {
-		background: #333;
-		color: white;
+		background: var(--btn-bg);
+		color: var(--btn-fg);
 	}
 
 	button[type="submit"]:hover {
-		background: #555;
+		background: var(--btn-hover);
 	}
 
 	.cancel-btn {
-		background: #e8e8e8;
-		color: #666;
+		background: var(--bg-hover);
+		color: var(--text-muted);
 	}
 
 	.cancel-btn:hover {
-		background: #ddd;
+		background: var(--bg-active);
 	}
 </style>

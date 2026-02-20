@@ -44,7 +44,7 @@
 <style>
 	.profile { font-size: 0.85rem; }
 	.field { margin-bottom: 0.3rem; }
-	h4 { margin: 0.75rem 0 0.3rem; font-size: 0.85rem; color: #666; }
+	h4 { margin: 0.75rem 0 0.3rem; font-size: 0.85rem; color: var(--text-muted); }
 	:global(.mono) { font-family: 'SF Mono', Monaco, monospace; font-size: 0.78rem; }
-	.empty { color: #aaa; font-size: 0.85rem; }
+	.empty { color: var(--text-placeholder); font-size: 0.85rem; }
 </style>

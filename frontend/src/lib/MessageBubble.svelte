@@ -58,7 +58,7 @@
 	}
 
 	.bubble.user {
-		background: #e8e8e8;
+		background: var(--bg-hover);
 		padding: 0.5rem 0.9rem;
 		max-width: 60%;
 		border-bottom-right-radius: 4px;
@@ -67,8 +67,8 @@
 	.bubble.assistant {
 		max-width: 85%;
 		padding: 0.75rem 1rem;
-		background: white;
-		border: 1px solid #e0e0e0;
+		background: var(--bg-surface);
+		border: 1px solid var(--border-muted);
 		border-bottom-left-radius: 4px;
 	}
 
@@ -111,7 +111,7 @@
 	}
 
 	.markdown :global(code) {
-		background: #f0f0f0;
+		background: var(--bg-code);
 		padding: 0.1rem 0.35rem;
 		border-radius: 3px;
 		font-family: 'SF Mono', Monaco, monospace;
@@ -119,8 +119,8 @@
 	}
 
 	.markdown :global(pre) {
-		background: #f5f5f5;
-		border: 1px solid #e0e0e0;
+		background: var(--bg-code);
+		border: 1px solid var(--border-muted);
 		border-radius: 6px;
 		padding: 0.6rem 0.8rem;
 		overflow-x: auto;
@@ -137,7 +137,7 @@
 	}
 
 	.markdown :global(a) {
-		color: #2563eb;
+		color: var(--color-link);
 		text-decoration: none;
 	}
 
@@ -146,10 +146,10 @@
 	}
 
 	.markdown :global(blockquote) {
-		border-left: 3px solid #ddd;
+		border-left: 3px solid var(--border);
 		margin: 0.4rem 0;
 		padding: 0.2rem 0.8rem;
-		color: #666;
+		color: var(--text-muted);
 	}
 
 	.markdown :global(table) {
@@ -162,12 +162,12 @@
 	.markdown :global(td) {
 		padding: 0.3rem 0.5rem;
 		text-align: left;
-		border-bottom: 1px solid #e0e0e0;
+		border-bottom: 1px solid var(--border-muted);
 	}
 
 	.markdown :global(th) {
 		font-weight: 600;
 		font-size: 0.8rem;
-		color: #888;
+		color: var(--text-faint);
 	}
 </style>

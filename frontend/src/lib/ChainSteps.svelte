@@ -54,16 +54,16 @@
 		align-items: center;
 		gap: 0.3rem;
 		padding: 0.25rem 0.6rem;
-		background: #f0f0f0;
-		border: 1px solid #ddd;
+		background: var(--bg-muted);
+		border: 1px solid var(--border);
 		border-radius: 4px;
 		cursor: pointer;
 		font-size: 0.75rem;
-		color: #666;
+		color: var(--text-muted);
 	}
 
 	.chain-toggle:hover {
-		background: #e8e8e8;
+		background: var(--bg-hover);
 	}
 
 	.arrow {
@@ -72,7 +72,7 @@
 
 	.chain-steps {
 		margin-top: 0.4rem;
-		border-left: 2px solid #ddd;
+		border-left: 2px solid var(--border);
 		padding-left: 0.75rem;
 	}
 
@@ -89,11 +89,11 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background: #e8e8e8;
+		background: var(--bg-hover);
 		border-radius: 50%;
 		font-size: 0.65rem;
 		font-weight: 600;
-		color: #666;
+		color: var(--text-muted);
 		margin-top: 0.1rem;
 	}
 
@@ -112,12 +112,12 @@
 
 	.step-tool {
 		font-weight: 600;
-		color: #555;
+		color: var(--text-secondary);
 		flex-shrink: 0;
 	}
 
 	.step-summary {
-		color: #888;
+		color: var(--text-faint);
 	}
 
 	.step-cmd {
@@ -126,12 +126,12 @@
 		text-align: left;
 		margin-top: 0.2rem;
 		padding: 0.25rem 0.5rem;
-		background: #f5f5f5;
-		border: 1px solid #e8e8e8;
+		background: var(--bg-code);
+		border: 1px solid var(--border-muted);
 		border-radius: 4px;
 		font-family: 'SF Mono', Monaco, monospace;
 		font-size: 0.72rem;
-		color: #666;
+		color: var(--text-muted);
 		cursor: pointer;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -139,8 +139,8 @@
 	}
 
 	.step-cmd:hover {
-		background: #eee;
-		border-color: #ddd;
-		color: #333;
+		background: var(--bg-hover);
+		border-color: var(--border);
+		color: var(--text);
 	}
 </style>

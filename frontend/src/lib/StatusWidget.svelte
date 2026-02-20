@@ -45,18 +45,18 @@
 		justify-content: space-between;
 		align-items: center;
 		padding: 0.35rem 0.5rem;
-		background: #fafafa;
+		background: var(--bg-muted);
 		border-radius: 4px;
 		font-size: 0.82rem;
 	}
 
 	.label {
-		color: #888;
+		color: var(--text-faint);
 	}
 
 	.value {
 		font-weight: 600;
-		color: #333;
+		color: var(--text);
 	}
 
 	.indicator {
@@ -74,9 +74,9 @@
 		vertical-align: middle;
 	}
 
-	.ok { color: #16a34a; }
-	.ok::before { background: #16a34a; }
+	.ok { color: var(--color-ok); }
+	.ok::before { background: var(--color-ok); }
 
-	.fail { color: #dc2626; }
-	.fail::before { background: #dc2626; }
+	.fail { color: var(--color-err); }
+	.fail::before { background: var(--color-err); }
 </style>

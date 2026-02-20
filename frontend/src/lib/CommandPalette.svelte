@@ -71,10 +71,10 @@
 		bottom: 100%;
 		left: 0;
 		right: 0;
-		background: white;
-		border: 1px solid #ddd;
+		background: var(--bg-surface);
+		border: 1px solid var(--border);
 		border-radius: 8px;
-		box-shadow: 0 -4px 16px rgba(0,0,0,0.08);
+		box-shadow: 0 -4px 16px var(--shadow);
 		max-height: 300px;
 		overflow-y: auto;
 	}
@@ -88,17 +88,18 @@
 		cursor: pointer;
 		text-align: left;
 		font-size: 0.85rem;
+		color: var(--text);
 	}
-	.cmd:hover { background: #f5f5f5; }
-	.name { font-weight: 600; min-width: 80px; color: #333; }
+	.cmd:hover { background: var(--bg-muted); }
+	.name { font-weight: 600; min-width: 80px; color: var(--text); }
 	.tag {
 		font-size: 0.65rem;
 		padding: 0.1rem 0.35rem;
-		background: #eee;
-		color: #666;
+		background: var(--bg-hover);
+		color: var(--text-muted);
 		border-radius: 3px;
 		text-transform: uppercase;
 		letter-spacing: 0.03em;
 	}
-	.desc { color: #888; }
+	.desc { color: var(--text-faint); }
 </style>

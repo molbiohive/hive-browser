@@ -145,7 +145,7 @@
 <style>
 	.widget {
 		margin-top: 0.5rem;
-		border: 1px solid #ddd;
+		border: 1px solid var(--border);
 		border-radius: 8px;
 		overflow: hidden;
 	}
@@ -156,15 +156,15 @@
 		justify-content: space-between;
 		align-items: center;
 		padding: 0.5rem 0.75rem;
-		background: #f8f8f8;
+		background: var(--bg-muted);
 		font-size: 0.8rem;
-		color: #666;
+		color: var(--text-muted);
 	}
 
 	.header-cmd {
 		font-family: 'SF Mono', Monaco, Menlo, monospace;
 		font-size: 0.75rem;
-		color: #888;
+		color: var(--text-faint);
 		background: none;
 		border: none;
 		overflow: hidden;
@@ -180,7 +180,7 @@
 		background: none;
 		border: none;
 		cursor: pointer;
-		color: #888;
+		color: var(--text-faint);
 		font-size: 0.85rem;
 		padding: 0 0.15rem;
 	}
@@ -199,14 +199,14 @@
 		background: none;
 		border: none;
 		cursor: pointer;
-		color: #aaa;
+		color: var(--text-placeholder);
 		padding: 0.15rem;
 		border-radius: 3px;
 	}
 
 	.copy-btn:hover {
-		color: #555;
-		background: #eee;
+		color: var(--text-secondary);
+		background: var(--bg-hover);
 	}
 
 	.widget-body {
@@ -224,16 +224,16 @@
 
 	.rerun-btn {
 		padding: 0.4rem 1rem;
-		border: 1px solid #ddd;
-		background: white;
+		border: 1px solid var(--border);
+		background: var(--bg-surface);
 		border-radius: 6px;
 		cursor: pointer;
 		font-size: 0.82rem;
-		color: #555;
+		color: var(--text-secondary);
 	}
 
 	.rerun-btn:hover {
-		background: #f0f0f0;
+		background: var(--bg-hover);
 	}
 
 	.rerun-btn:disabled {
@@ -242,7 +242,7 @@
 	}
 
 	.generic-error {
-		color: #dc2626;
+		color: var(--color-err);
 		font-size: 0.85rem;
 		margin: 0;
 	}
@@ -259,7 +259,7 @@
 		gap: 0.5rem 1rem;
 		margin-bottom: 0.5rem;
 		font-size: 0.78rem;
-		color: #666;
+		color: var(--text-muted);
 		overflow-wrap: break-word;
 		word-break: break-word;
 	}

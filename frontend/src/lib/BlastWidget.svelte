@@ -52,7 +52,7 @@
 {/if}
 
 <style>
-	.empty { color: #aaa; font-size: 0.85rem; }
-	.error { color: #dc2626; font-size: 0.85rem; }
+	.empty { color: var(--text-placeholder); font-size: 0.85rem; }
+	.error { color: var(--color-err); font-size: 0.85rem; }
 	:global(.name) { font-weight: 500; }
 </style>

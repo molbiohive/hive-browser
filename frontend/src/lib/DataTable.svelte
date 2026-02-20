@@ -125,20 +125,21 @@
 
 <style>
 	table { width: 100%; border-collapse: collapse; font-size: 0.82rem; table-layout: fixed; }
-	th, td { padding: 0.4rem 0.6rem; text-align: left; border-bottom: 1px solid #f0f0f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-	th { font-weight: 600; color: #888; font-size: 0.75rem; text-transform: uppercase; }
+	th, td { padding: 0.4rem 0.6rem; text-align: left; border-bottom: 1px solid var(--border-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	th { font-weight: 600; color: var(--text-faint); font-size: 0.75rem; text-transform: uppercase; }
 	.actions { white-space: nowrap; }
 	.action-btn {
 		font-size: 0.75rem;
 		padding: 0.2rem 0.6rem;
 		cursor: pointer;
-		border: 1px solid #ddd;
-		background: white;
+		border: 1px solid var(--border);
+		background: var(--bg-surface);
 		border-radius: 4px;
 		margin-left: 0.25rem;
+		color: var(--text);
 	}
-	.action-btn:hover { background: #f0f0f0; }
-	.empty { color: #aaa; font-size: 0.85rem; }
+	.action-btn:hover { background: var(--bg-muted); }
+	.empty { color: var(--text-placeholder); font-size: 0.85rem; }
 
 	.table-controls {
 		display: flex;
@@ -146,7 +147,7 @@
 		align-items: center;
 		margin-bottom: 0.5rem;
 		font-size: 0.75rem;
-		color: #888;
+		color: var(--text-faint);
 	}
 
 	.page-size {
@@ -157,17 +158,18 @@
 
 	.page-size button {
 		padding: 0.15rem 0.5rem;
-		border: 1px solid #ddd;
-		background: white;
+		border: 1px solid var(--border);
+		background: var(--bg-surface);
 		border-radius: 3px;
 		cursor: pointer;
 		font-size: 0.75rem;
+		color: var(--text);
 	}
 
 	.page-size button.active {
-		background: #333;
-		color: white;
-		border-color: #333;
+		background: var(--btn-bg);
+		color: var(--btn-fg);
+		border-color: var(--btn-bg);
 	}
 
 	.page-nav {
@@ -178,11 +180,12 @@
 
 	.page-nav button {
 		padding: 0.15rem 0.4rem;
-		border: 1px solid #ddd;
-		background: white;
+		border: 1px solid var(--border);
+		background: var(--bg-surface);
 		border-radius: 3px;
 		cursor: pointer;
 		font-size: 0.75rem;
+		color: var(--text);
 	}
 
 	.page-nav button:disabled {
@@ -196,7 +199,7 @@
 	}
 
 	.sortable:hover {
-		color: #333;
+		color: var(--text);
 	}
 
 	.sort-arrow {

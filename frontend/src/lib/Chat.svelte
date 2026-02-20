@@ -10,6 +10,7 @@
 	let prevMsgCount = $state(0);
 	let elapsed = $state(0);
 	let _timerRef = null; // plain var — must not be $state to avoid retriggering $effect
+	let dark = $state(false);
 
 	const thinkingWords = ['Spawning', 'Hatching', 'Evolving', 'Multiplying', 'Spreading'];
 	const toolWords = {
@@ -62,7 +63,20 @@
 	onMount(() => {
 		connect();
 		fetchChatList();
+		dark = localStorage.getItem('theme') === 'dark';
+		if (dark) document.documentElement.setAttribute('data-theme', 'dark');
 	});
+
+	function toggleTheme() {
+		dark = !dark;
+		if (dark) {
+			document.documentElement.setAttribute('data-theme', 'dark');
+			localStorage.setItem('theme', 'dark');
+		} else {
+			document.documentElement.removeAttribute('data-theme');
+			localStorage.setItem('theme', 'light');
+		}
+	}
 
 	function handleSubmit() {
 		if (!inputText.trim() || $chatStore.isWaiting) return;
@@ -185,6 +199,15 @@
 				</div>
 			{/if}
 		</div>
+		<div class="sidebar-footer">
+			<button class="theme-btn" onclick={toggleTheme} aria-label="Toggle theme">
+				{#if dark}
+					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+				{:else}
+					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+				{/if}
+			</button>
+		</div>
 	</aside>
 
 	<div class="chat-main">
@@ -270,8 +293,8 @@
 
 	.sidebar {
 		width: 240px;
-		background: #f0f0f0;
-		border-right: 1px solid #ddd;
+		background: var(--bg-sidebar);
+		border-right: 1px solid var(--border);
 		display: flex;
 		flex-direction: column;
 		flex-shrink: 0;
@@ -279,7 +302,7 @@
 
 	.sidebar-header {
 		padding: 1rem;
-		border-bottom: 1px solid #ddd;
+		border-bottom: 1px solid var(--border);
 		display: flex;
 		align-items: center;
 		gap: 0.6rem;
@@ -297,6 +320,22 @@
 		display: block;
 	}
 
+	.theme-btn {
+		background: none;
+		border: none;
+		cursor: pointer;
+		color: var(--text-faint);
+		padding: 0.2rem;
+		border-radius: 4px;
+		display: flex;
+		align-items: center;
+	}
+
+	.theme-btn:hover {
+		color: var(--text);
+		background: var(--bg-hover);
+	}
+
 	.sidebar-actions {
 		padding: 0.5rem 0.75rem;
 	}
@@ -304,17 +343,17 @@
 	.new-chat-btn {
 		width: 100%;
 		padding: 0.45rem;
-		border: 1px solid #ccc;
-		background: white;
+		border: 1px solid var(--border);
+		background: var(--bg-surface);
 		border-radius: 6px;
 		cursor: pointer;
 		font-size: 0.82rem;
-		color: #555;
+		color: var(--text-secondary);
 		transition: background 0.15s;
 	}
 
 	.new-chat-btn:hover {
-		background: #e8e8e8;
+		background: var(--bg-hover);
 	}
 
 	.sidebar-section {
@@ -327,13 +366,13 @@
 		margin: 0 0 0.5rem;
 		font-size: 0.75rem;
 		text-transform: uppercase;
-		color: #888;
+		color: var(--text-faint);
 		letter-spacing: 0.05em;
 	}
 
 	.placeholder {
 		font-size: 0.85rem;
-		color: #aaa;
+		color: var(--text-placeholder);
 	}
 
 	.chat-list {
@@ -358,11 +397,13 @@
 	}
 
 	.chat-item:hover {
-		background: #e4e4e4;
+		background: var(--bg-hover);
 	}
 
 	.chat-item.active {
-		background: #ddd;
+		background: var(--bg-active);
+		border-left: 2px solid var(--color-accent);
+		padding-left: calc(0.5rem - 2px);
 	}
 
 	.chat-info {
@@ -374,7 +415,7 @@
 
 	.chat-title {
 		font-size: 0.82rem;
-		color: #333;
+		color: var(--text);
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
@@ -382,14 +423,14 @@
 
 	.chat-meta {
 		font-size: 0.68rem;
-		color: #aaa;
+		color: var(--text-placeholder);
 	}
 
 	.delete-btn {
 		display: none;
 		border: none;
 		background: transparent;
-		color: #aaa;
+		color: var(--text-placeholder);
 		cursor: pointer;
 		font-size: 1rem;
 		line-height: 1;
@@ -403,8 +444,29 @@
 	}
 
 	.delete-btn:hover {
-		color: #dc2626;
+		color: var(--color-err);
 		background: rgba(220, 38, 38, 0.1);
+	}
+
+	.sidebar-footer {
+		padding: 0.5rem 0.75rem;
+		border-top: 1px solid var(--border);
+	}
+
+	.theme-btn {
+		background: none;
+		border: none;
+		cursor: pointer;
+		color: var(--text-faint);
+		padding: 0.3rem;
+		border-radius: 4px;
+		display: flex;
+		align-items: center;
+	}
+
+	.theme-btn:hover {
+		color: var(--text);
+		background: var(--bg-hover);
 	}
 
 	.chat-main {
@@ -412,7 +474,7 @@
 		display: flex;
 		flex-direction: column;
 		min-width: 0;
-		background: #fafafa;
+		background: var(--bg-app);
 	}
 
 	.messages {
@@ -428,7 +490,7 @@
 		justify-content: center;
 		height: 100%;
 		text-align: center;
-		color: #666;
+		color: var(--text-muted);
 	}
 
 	.welcome-logo {
@@ -441,7 +503,7 @@
 	.welcome h2 {
 		margin: 0 0 0.5rem;
 		font-size: 1.5rem;
-		color: #333;
+		color: var(--text);
 	}
 
 	.welcome p {
@@ -458,31 +520,31 @@
 
 	.suggestions button {
 		padding: 0.5rem 1rem;
-		border: 1px solid #ddd;
-		background: white;
+		border: 1px solid var(--border);
+		background: var(--bg-surface);
 		border-radius: 20px;
 		cursor: pointer;
 		font-size: 0.85rem;
-		color: #555;
+		color: var(--text-secondary);
 		transition: all 0.15s;
 	}
 
 	.suggestions button:hover {
-		border-color: #999;
-		color: #333;
+		border-color: var(--text-faint);
+		color: var(--text);
 	}
 
 	.input-area {
 		padding: 0 2rem 1rem;
-		background: #fafafa;
+		background: var(--bg-app);
 	}
 
 	.input-bar {
-		background: white;
-		border: 1px solid #ddd;
+		background: var(--bg-surface);
+		border: 1px solid var(--border);
 		border-radius: 16px;
 		padding: 0.75rem;
-		box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+		box-shadow: 0 2px 12px var(--shadow);
 	}
 
 	.input-wrapper {
@@ -503,14 +565,19 @@
 		padding: 0.25rem 0;
 		outline: none;
 		min-height: 2.5rem;
+		color: var(--text);
+	}
+
+	textarea::placeholder {
+		color: var(--text-placeholder);
 	}
 
 	.send-btn {
 		width: 32px;
 		height: 32px;
 		border: none;
-		background: #333;
-		color: white;
+		background: var(--btn-bg);
+		color: var(--btn-fg);
 		border-radius: 8px;
 		cursor: pointer;
 		display: flex;
@@ -526,7 +593,8 @@
 	}
 
 	.send-btn.cancel {
-		background: #dc2626;
+		background: var(--color-err);
+		color: white;
 	}
 
 	.input-hint {
@@ -534,7 +602,7 @@
 		justify-content: space-between;
 		margin-top: 0.5rem;
 		font-size: 0.7rem;
-		color: #bbb;
+		color: var(--text-hint);
 		padding: 0 0.25rem;
 	}
 
@@ -549,11 +617,11 @@
 	}
 
 	.indicator.ok {
-		color: #6b6;
+		color: var(--color-ok);
 	}
 
 	.indicator.err {
-		color: #c66;
+		color: var(--color-err);
 	}
 
 	.progress-indicator {
@@ -569,10 +637,10 @@
 		font-weight: 600;
 		background: linear-gradient(
 			90deg,
-			#8b5cf6 0%,
-			#a78bfa 15%,
-			#666 30%,
-			#666 100%
+			var(--color-accent) 0%,
+			var(--color-accent-light) 15%,
+			var(--text-muted) 30%,
+			var(--text-muted) 100%
 		);
 		background-size: 300% 100%;
 		background-clip: text;
@@ -587,7 +655,7 @@
 	}
 
 	.progress-meta {
-		color: #aaa;
+		color: var(--text-placeholder);
 		font-size: 0.75rem;
 		font-variant-numeric: tabular-nums;
 	}

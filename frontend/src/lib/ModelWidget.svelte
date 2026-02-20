@@ -29,12 +29,12 @@
 		display: flex;
 		justify-content: space-between;
 		padding: 0.35rem 0.5rem;
-		background: #fafafa;
+		background: var(--bg-muted);
 		border-radius: 4px;
 		margin-bottom: 0.3rem;
 	}
-	.label { color: #888; }
-	.value { font-weight: 600; color: #333; }
+	.label { color: var(--text-faint); }
+	.value { font-weight: 600; color: var(--text); }
 	.mono { font-family: 'SF Mono', Monaco, monospace; font-size: 0.8rem; }
 	.indicator { font-weight: 500; font-size: 0.78rem; }
 	.indicator::before {
@@ -46,8 +46,8 @@
 		margin-right: 0.35rem;
 		vertical-align: middle;
 	}
-	.ok { color: #16a34a; }
-	.ok::before { background: #16a34a; }
-	.fail { color: #dc2626; }
-	.fail::before { background: #dc2626; }
+	.ok { color: var(--color-ok); }
+	.ok::before { background: var(--color-ok); }
+	.fail { color: var(--color-err); }
+	.fail::before { background: var(--color-err); }
 </style>
