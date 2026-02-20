@@ -1,5 +1,6 @@
 """Application configuration — loads from env vars and zerg_config.yaml."""
 
+import os
 from pathlib import Path
 
 import yaml
@@ -26,25 +27,17 @@ class LLMConfig(BaseSettings):
 
 
 class BlastConfig(BaseSettings):
-    db_path: str = "~/.zerg/blast"
     binary: str = "blastn"
-
-    model_config = {"env_prefix": "BLAST_"}
 
 
 class SearchConfig(BaseSettings):
     columns: list[str] = ["name", "size_bp", "topology", "features"]
 
-    model_config = {"env_prefix": "SEARCH_"}
-
 
 class ChatConfig(BaseSettings):
-    storage_dir: str = "~/.zerg/chats"
     max_history_pairs: int = 20
     auto_save_after: int = 2  # save chat after N user messages
     widget_data_threshold: int = 2048  # bytes — strip widget data above this size
-
-    model_config = {"env_prefix": "CHAT_"}
 
 
 class WatcherRule(BaseSettings):
@@ -56,7 +49,7 @@ class WatcherRule(BaseSettings):
 
 
 class WatcherConfig(BaseSettings):
-    root: str = "/data/sequences"
+    root: str = "~/sequences"
     recursive: bool = True
     poll_interval: int = 5
     rules: list[WatcherRule] = Field(default_factory=list)
@@ -67,13 +60,8 @@ class ServerConfig(BaseSettings):
     port: int = 8080
 
 
-class ToolsConfig(BaseSettings):
-    directory: str = "~/.zerg/tools"
-
-    model_config = {"env_prefix": "TOOLS_"}
-
-
 class Settings(BaseSettings):
+    data_root: str = "./data"
     server: ServerConfig = Field(default_factory=ServerConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
@@ -81,9 +69,20 @@ class Settings(BaseSettings):
     chat: ChatConfig = Field(default_factory=ChatConfig)
     search: SearchConfig = Field(default_factory=SearchConfig)
     watcher: WatcherConfig = Field(default_factory=WatcherConfig)
-    tools: ToolsConfig = Field(default_factory=ToolsConfig)
 
     model_config = {"env_prefix": "ZERG_"}
+
+    @property
+    def blast_dir(self) -> str:
+        return str(Path(self.data_root).expanduser() / "blast")
+
+    @property
+    def chats_dir(self) -> str:
+        return str(Path(self.data_root).expanduser() / "chats")
+
+    @property
+    def tools_dir(self) -> str:
+        return str(Path(self.data_root).expanduser() / "tools")
 
 
 def load_config(config_path: str | None = None) -> Settings:
@@ -94,8 +93,6 @@ def load_config(config_path: str | None = None) -> Settings:
       2. ``ZERG_CONFIG`` environment variable
       3. ``config/config.local.yaml`` (dev default)
     """
-    import os
-
     if config_path is None:
         config_path = os.environ.get("ZERG_CONFIG", "config/config.local.yaml")
 
@@ -103,6 +100,18 @@ def load_config(config_path: str | None = None) -> Settings:
     if path.exists():
         with open(path) as f:
             data = yaml.safe_load(f)
-        return Settings(**data)
+        settings = Settings(**data)
+    else:
+        settings = Settings()
 
-    return Settings()
+    # Docker env var overrides (container paths replace host paths)
+    if db_url := os.environ.get("DATABASE_URL"):
+        settings.database.url = db_url
+    if data_root := os.environ.get("ZERG_DATA_ROOT"):
+        settings.data_root = data_root
+    if watcher_root := os.environ.get("ZERG_WATCHER_ROOT"):
+        settings.watcher.root = watcher_root
+    if llm_base_url := os.environ.get("LLM_BASE_URL"):
+        settings.llm.base_url = llm_base_url
+
+    return settings

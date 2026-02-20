@@ -37,7 +37,7 @@ async def lifespan(app: FastAPI):
     logger.info("Admin token: %s", token)
 
     # --- Chat storage ---
-    app.state.chat_storage = ChatStorage(config.chat.storage_dir)
+    app.state.chat_storage = ChatStorage(config.chats_dir)
 
     # --- Database ---
     try:
@@ -71,7 +71,7 @@ async def lifespan(app: FastAPI):
         from zerg.watcher.watcher import scan_and_ingest, watch_directory
 
         try:
-            count = await scan_and_ingest(config.watcher, blast_db_path=config.blast.db_path)
+            count = await scan_and_ingest(config.watcher, blast_db_path=config.blast_dir)
             logger.info("Initial scan indexed %d files", count)
         except Exception as e:
             logger.warning("Initial scan failed: %s", e)
@@ -82,14 +82,14 @@ async def lifespan(app: FastAPI):
             watch_directory(
                 config.watcher,
                 stop_event=stop_event,
-                blast_db_path=config.blast.db_path,
+                blast_db_path=config.blast_dir,
             )
         )
 
     # --- BLAST index ---
     if app.state.db_ready:
         try:
-            await build_blast_index(config.blast.db_path)
+            await build_blast_index(config.blast_dir)
         except Exception as e:
             logger.warning("BLAST index build failed: %s", e)
 

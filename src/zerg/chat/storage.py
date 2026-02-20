@@ -18,7 +18,7 @@ class ChatStorage:
     """Persists chat sessions as JSON files in a server-side directory."""
 
     def __init__(self, storage_dir: str):
-        self.storage_dir = Path(storage_dir).expanduser()
+        self.storage_dir = Path(storage_dir)
         self.storage_dir.mkdir(parents=True, exist_ok=True)
 
     def new_chat_id(self) -> str:

@@ -286,10 +286,11 @@ class TestToolFactoryExternal:
                 async def execute(self, params):
                     return {"gc_content": 42.5}
         """)
-        (tmp_path / "gc_content.py").write_text(tool_code)
+        tools_dir = tmp_path / "tools"
+        tools_dir.mkdir()
+        (tools_dir / "gc_content.py").write_text(tool_code)
 
-        config = Settings()
-        config.tools.directory = str(tmp_path)
+        config = Settings(data_root=str(tmp_path))
         registry = ToolFactory.discover(config, llm_client=None)
 
         gc = registry.get("gc")
@@ -309,20 +310,22 @@ class TestToolFactoryExternal:
                 async def execute(self, params):
                     return {}
         """)
-        (tmp_path / "bad_tool.py").write_text(bad_code)
+        tools_dir = tmp_path / "tools"
+        tools_dir.mkdir()
+        (tools_dir / "bad_tool.py").write_text(bad_code)
 
-        config = Settings()
-        config.tools.directory = str(tmp_path)
+        config = Settings(data_root=str(tmp_path))
         registry = ToolFactory.discover(config, llm_client=None)
 
         assert registry.get("bad") is None  # rejected
 
     def test_skip_underscore_files(self, tmp_path):
-        (tmp_path / "_helper.py").write_text("x = 1")
-        (tmp_path / "__init__.py").write_text("")
+        tools_dir = tmp_path / "tools"
+        tools_dir.mkdir()
+        (tools_dir / "_helper.py").write_text("x = 1")
+        (tools_dir / "__init__.py").write_text("")
 
-        config = Settings()
-        config.tools.directory = str(tmp_path)
+        config = Settings(data_root=str(tmp_path))
         registry = ToolFactory.discover(config, llm_client=None)
 
         # Only internal tools, no external loaded
@@ -344,18 +347,18 @@ class TestToolFactoryExternal:
                 async def execute(self, params):
                     return {"custom": True}
         """)
-        (tmp_path / "custom_search.py").write_text(override_code)
+        tools_dir = tmp_path / "tools"
+        tools_dir.mkdir()
+        (tools_dir / "custom_search.py").write_text(override_code)
 
-        config = Settings()
-        config.tools.directory = str(tmp_path)
+        config = Settings(data_root=str(tmp_path))
         registry = ToolFactory.discover(config, llm_client=None)
 
         search = registry.get("search")
         assert search.description == "Custom search override"
 
     def test_missing_directory_no_error(self):
-        config = Settings()
-        config.tools.directory = "/nonexistent/path"
+        config = Settings(data_root="/nonexistent")
         registry = ToolFactory.discover(config, llm_client=None)
         assert len(registry.all()) == 13  # just internal tools
 

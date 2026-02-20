@@ -54,7 +54,7 @@ class BlastTool(Tool):
     def __init__(self, config=None, **_):
         if not config:
             raise ValueError("BlastTool requires config")
-        self._db_path = Path(config.blast.db_path).expanduser()
+        self._db_path = Path(config.blast_dir)
         self._binary = config.blast.binary
 
     def input_schema(self) -> dict:

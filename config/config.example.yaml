@@ -1,5 +1,5 @@
 # Zerg Browser Configuration
-# Copy this file to config.local.yaml or config.prod.yaml and adjust values.
+# Copy this file to config.local.yaml and adjust values.
 # Select config via: ZERG_CONFIG=config/config.local.yaml
 
 server:
@@ -16,11 +16,9 @@ llm:
   api_key: null                 # required for cloud providers (anthropic, openai)
 
 blast:
-  db_path: "~/.zerg/blast"
   binary: "blastn"
 
 chat:
-  storage_dir: "~/.zerg/chats"
   max_history_pairs: 20        # LLM conversation memory depth
   auto_save_after: 2           # save chat after N user messages
 

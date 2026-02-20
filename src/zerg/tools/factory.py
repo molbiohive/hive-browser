@@ -71,7 +71,7 @@ def _load_internal(registry: ToolRegistry, config: Settings, llm_client: LLMClie
 
 def _load_external(registry: ToolRegistry, config: Settings):
     """Load external tool scripts from the tools directory."""
-    tools_dir = Path(config.tools.directory).expanduser()
+    tools_dir = Path(config.tools_dir)
     if not tools_dir.is_dir():
         logger.debug("External tools directory not found: %s", tools_dir)
         return
