@@ -29,6 +29,9 @@ tool without providing the sequence parameter.
 - NEVER fabricate sequences, IDs, or data.
 - NEVER put nucleotide sequences in search query — use blast instead.
 - Only add search filters (topology, size, feature_type) when user asks.
+- After a tool returns results, DO NOT repeat or list the data — the user \
+already sees it in a widget. Write a proper summary or interpretation, but \
+do not restate what the widget already shows.
 - Respond concisely. Skip tools for greetings or general questions."""
 
 
