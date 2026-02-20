@@ -3,6 +3,7 @@
 	import { chatStore, chatList, appConfig, statusBar, connect, sendMessage, cancelRequest, toggleStatusBar, loadChat, newChat, fetchChatList, deleteChat } from '$lib/stores/chat.ts';
 	import MessageBubble from '$lib/MessageBubble.svelte';
 	import CommandPalette from '$lib/CommandPalette.svelte';
+	import ModelSelector from '$lib/ModelSelector.svelte';
 
 	let inputText = $state('');
 	let messagesDiv;
@@ -274,7 +275,7 @@
 							<span class="indicator" class:ok={$statusBar.db_connected} class:err={!$statusBar.db_connected}>DB</span>
 							<span>{$statusBar.indexed_files} files</span>
 							<span>{$statusBar.sequences} seq</span>
-							<span class="indicator" class:ok={$statusBar.llm_available} class:err={!$statusBar.llm_available}>LLM</span>
+							<ModelSelector />
 						</span>
 					{/if}
 					<span>/ opens command palette</span>

@@ -21,6 +21,13 @@ interface Message {
 		}>;
 	};
 	ts: string;
+	model?: string;
+}
+
+export interface ModelInfo {
+	id: string;
+	provider: string;
+	model: string;
 }
 
 interface ChatMeta {
@@ -91,6 +98,8 @@ export const statusBar = writable<StatusBar>({
 	llm_available: false,
 	visible: true,
 });
+export const modelList = writable<ModelInfo[]>([]);
+export const currentModel = writable<string | null>(null);
 
 let ws: WebSocket | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -131,6 +140,12 @@ export function connect() {
 			if (data.status) {
 				statusBar.update(s => ({ ...s, ...data.status }));
 			}
+			if (data.models) {
+				modelList.set(data.models);
+			}
+			if (data.currentModel) {
+				currentModel.set(data.currentModel);
+			}
 		} else if (data.type === 'status_update') {
 			if (data.status) {
 				statusBar.update(s => ({ ...s, ...data.status }));
@@ -145,12 +160,15 @@ export function connect() {
 					tokens: data.tokens,
 				},
 			}));
+		} else if (data.type === 'model_changed') {
+			currentModel.set(data.modelId);
 		} else if (data.type === 'message') {
 			const msg: Message = {
 				role: 'assistant',
 				content: data.content,
 				widget: data.widget,
 				ts: new Date().toISOString(),
+				model: data.model,
 			};
 			const isForm = data.widget?.type === 'form';
 			chatStore.update(s => ({
@@ -173,6 +191,9 @@ export function connect() {
 				chatTitle: data.title,
 				messages: data.messages || [],
 			}));
+			if (data.model) {
+				currentModel.set(data.model);
+			}
 		} else if (data.type === 'widget_data') {
 			chatStore.update(s => {
 				const messages = [...s.messages];
@@ -212,6 +233,11 @@ export function sendMessage(content: string) {
 
 	chatStore.update(s => ({ ...s, isWaiting: true }));
 	ws.send(JSON.stringify({ type: 'message', content }));
+}
+
+export function setModel(modelId: string) {
+	if (!ws || ws.readyState !== WebSocket.OPEN) return;
+	ws.send(JSON.stringify({ type: 'set_model', modelId }));
 }
 
 export function toggleStatusBar() {
