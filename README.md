@@ -32,19 +32,27 @@ Zerg is a reference to the species from the StarCraft universe, known for rapid 
 - [uv](https://docs.astral.sh/uv/) (Python package manager)
 - [bun](https://bun.sh) (frontend package manager)
 
-### Setup
+### Local Development Setup
 
 ```bash
 git clone https://github.com/merv1n34k/zerg-browser.git
 cd zerg-browser
 
 make check-deps   # verify uv, bun, psql, blastn, ollama are installed
-make setup        # install deps, create configs, set up DB, run migrations
+make setup-dev    # install deps, create config, set up DB, run migrations
 ```
 
-Edit `config/config.local.yaml` with your paths, database URL, and LLM settings.
+Edit `config/config.local.yaml` — set your LLM provider and watcher path:
 
-### Run
+```yaml
+llm:
+  provider: "ollama"              # or "anthropic", "openai"
+  model: "qwen2.5:7b"
+  api_key: null                   # required for cloud providers
+
+watcher:
+  root: ~/sequences               # directory with your .dna, .gb, .fasta files
+```
 
 ```bash
 make back-dev     # Backend on :8080
@@ -52,6 +60,59 @@ make front-dev    # Frontend on :5173 (in another terminal)
 ```
 
 Open http://localhost:5173 and start searching.
+
+### Docker Deployment
+
+Docker bundles PostgreSQL + BLAST+ + the server. You provide your own LLM (Ollama on host, or a cloud API key).
+
+```bash
+make docker-init    # creates config/config.docker.yaml + .env with secure DB password
+```
+
+Edit `.env` to set your host paths:
+
+```bash
+ZERG_DATA_ROOT=~/.zerg            # where chats, BLAST index, tools are stored
+ZERG_WATCHER_ROOT=~/sequences     # directory with your sequence files (mounted read-only)
+```
+
+Edit `config/config.docker.yaml` to set your LLM provider:
+
+```yaml
+llm:
+  provider: "anthropic"           # or "ollama", "openai"
+  model: "claude-sonnet-4-5-20250929"
+  api_key: "sk-ant-..."           # required for cloud providers
+```
+
+> If using Ollama on the host, no config changes needed — Docker automatically routes to `host.docker.internal:11434`.
+
+Start:
+
+```bash
+make docker-up      # builds image, starts postgres + app
+```
+
+Open http://localhost:8080.
+
+**Updating** — pull new code and rebuild:
+
+```bash
+make docker-update  # rebuilds image, restarts containers, runs migrations
+```
+
+**Config changes** — edit `config/config.docker.yaml`, then:
+
+```bash
+docker compose restart zerg
+```
+
+**Other commands:**
+
+```bash
+make docker-down    # stop all containers
+make docker-logs    # tail app logs
+```
 
 ## Architecture
 
@@ -114,20 +175,18 @@ The LLM self-selects between two modes:
 
 ## Data Storage
 
-Zerg stores its working data in `~/.zerg/` by default (configurable in YAML config):
+Zerg stores working data under `data_root` (`./data` in dev, configurable via `ZERG_DATA_ROOT` in Docker):
 
 ```
-~/.zerg/
-├── blast/       # BLAST database index files (rebuilt on ingestion)
+{data_root}/
+├── blast/       # BLAST database index (rebuilt automatically on ingestion)
 ├── chats/       # Chat history as JSON files (auto-saved)
 └── tools/       # External tool plugins (*.py, auto-discovered)
 ```
 
-- **BLAST index** — rebuilt automatically when files are ingested. Path: `blast.db_path`
-- **Chat history** — each chat saved as a JSON file with messages, widgets, and chain data. Path: `chat.storage_dir`
-- **External tools** — drop a `.py` file here to add custom tools. Must import from `zerg.sdk` only. Path: `tools.directory`
-
-All paths are configurable in `config/config.local.yaml`.
+- **BLAST index** — rebuilt automatically when sequence files are ingested
+- **Chat history** — each chat saved as JSON with messages, widgets, and chain data
+- **External tools** — drop a `.py` file here to add custom tools (must import from `zerg.sdk` only)
 
 ## Development
 
@@ -135,21 +194,18 @@ All paths are configurable in `config/config.local.yaml`.
 
 | Target | Description |
 |--------|-------------|
-| `make setup` | Full setup: deps + config + db + migrate |
-| `make deps` | Install Python + frontend dependencies |
-| `make config` | Create config files (if missing) + `~/.zerg/` directories |
-| `make db` | Create PostgreSQL database + pg_trgm extension |
-| `make migrate` | Run Alembic database migrations |
+| `make setup-dev` | Full dev setup: deps, config, DB, migrations |
 | `make back-dev` | Start backend with hot reload on :8080 |
 | `make front-dev` | Start frontend dev server on :5173 |
 | `make static` | Build frontend into `static/` |
-| `make prod` | Build frontend + start production server |
+| `make docker-init` | Create `config.docker.yaml` + `.env` with secure password |
+| `make docker-up` | Build and start Docker containers |
+| `make docker-update` | Rebuild image and restart containers |
+| `make docker-down` | Stop Docker containers |
+| `make docker-logs` | Tail app container logs |
 | `make test` | Run pytest |
 | `make lint` | Run ruff linter |
-| `make check-deps` | Verify system tools (uv, bun, psql, blastn, ollama) |
-| `make check-backend` | Lint + test |
-| `make check-frontend` | Build frontend (catches Svelte compilation errors) |
-| `make check-all` | check-deps + check-backend + check-frontend |
+| `make check-all` | check-deps + lint + test + frontend build |
 | `make clean` | Remove build artifacts and caches |
 
 ### Checking for Issues

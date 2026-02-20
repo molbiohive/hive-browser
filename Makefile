@@ -1,7 +1,8 @@
 # Zerg Browser — Development & Deployment
 
-.PHONY: setup deps config db migrate \
-        back-dev front-dev static prod \
+.PHONY: setup-dev \
+        back-dev front-dev static \
+        docker-init docker-build docker-up docker-down docker-update docker-logs \
         test lint check-deps check-backend check-frontend check-all clean
 
 SHELL := /bin/bash
@@ -10,39 +11,23 @@ DB_USER ?= zerg
 DB_NAME ?= zerg
 DB_PASS ?= zerg
 
-# ── Aggregate ─────────────────────────────────────────────
-
-setup: deps config db migrate
-
 # ── Setup ─────────────────────────────────────────────────
 
-deps:
+setup-dev:
 	uv sync --group dev
 	cd frontend && bun install
-
-config:
-	@mkdir -p ~/.zerg/blast ~/.zerg/chats ~/.zerg/tools
+	@mkdir -p data/{blast,chats,tools}
 	@if [ ! -f config/config.local.yaml ]; then \
 		cp config/config.example.yaml config/config.local.yaml; \
 		echo "Created config/config.local.yaml"; \
 	else \
 		echo "config/config.local.yaml already exists, skipping"; \
 	fi
-	@if [ ! -f config/config.prod.yaml ]; then \
-		cp config/config.example.yaml config/config.prod.yaml; \
-		echo "Created config/config.prod.yaml"; \
-	else \
-		echo "config/config.prod.yaml already exists, skipping"; \
-	fi
-
-db:
 	@createuser -s $(DB_USER) 2>/dev/null || true
 	@psql -U $(DB_USER) -c "ALTER USER $(DB_USER) WITH PASSWORD '$(DB_PASS)';" 2>/dev/null || true
 	@createdb -U $(DB_USER) $(DB_NAME) 2>/dev/null || true
 	@psql -U $(DB_USER) -d $(DB_NAME) -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;" 2>/dev/null || true
 	@echo "Database ready: $(DB_NAME)"
-
-migrate:
 	ZERG_CONFIG=config/config.local.yaml uv run alembic upgrade head
 
 # ── Dev ───────────────────────────────────────────────────
@@ -58,9 +43,38 @@ static:
 	cd frontend && bun install && bun run build
 	rm -rf static && cp -r frontend/build static
 
-prod: static
-	ZERG_CONFIG=config/config.prod.yaml uv run uvicorn zerg.main:app \
-		--host 0.0.0.0 --port 8080 --workers 2
+# ── Docker ────────────────────────────────────────────────
+
+docker-init:
+	@if [ ! -f config/config.docker.yaml ]; then \
+		cp config/config.example.yaml config/config.docker.yaml; \
+		echo "Created config/config.docker.yaml"; \
+	else \
+		echo "config/config.docker.yaml already exists, skipping"; \
+	fi
+	@if [ ! -f .env ]; then \
+		PG_PASS=$$(openssl rand -base64 24 | tr -d '/+=' | head -c 32) && \
+		printf 'POSTGRES_USER=zerg\nPOSTGRES_PASSWORD=%s\nPOSTGRES_DB=zerg\nZERG_PORT=8080\nZERG_DATA_ROOT=~/.zerg\nZERG_WATCHER_ROOT=~/sequences\n' "$$PG_PASS" > .env && \
+		echo ".env created — edit ZERG_DATA_ROOT and ZERG_WATCHER_ROOT before starting"; \
+	else \
+		echo ".env already exists, skipping"; \
+	fi
+
+docker-build:
+	docker compose build
+
+docker-up: docker-init
+	docker compose up -d
+
+docker-down:
+	docker compose down
+
+docker-update:
+	docker compose build
+	docker compose up -d
+
+docker-logs:
+	docker compose logs -f zerg
 
 # ── Quality ───────────────────────────────────────────────
 

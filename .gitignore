@@ -16,6 +16,9 @@ models/*.pt
 # Database
 pgdata/
 
+# Docker data
+data/
+
 # IDE
 .vscode/
 .idea/
@@ -31,6 +34,7 @@ Thumbs.db
 # Config (local/prod are gitignored, only example is committed)
 config/config.local.yaml
 config/config.prod.yaml
+config/config.docker.yaml
 
 # Test
 .pytest_cache/
