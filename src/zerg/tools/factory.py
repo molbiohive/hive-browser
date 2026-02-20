@@ -15,7 +15,6 @@ from zerg.tools.base import Tool, ToolRegistry
 
 if TYPE_CHECKING:
     from zerg.config import Settings
-    from zerg.llm.client import LLMClient
 
 logger = logging.getLogger(__name__)
 
@@ -29,19 +28,19 @@ class ToolFactory:
     """Discover and instantiate tools from internal modules and external scripts."""
 
     @staticmethod
-    def discover(config: Settings, llm_client: LLMClient | None = None) -> ToolRegistry:
+    def discover(config: Settings) -> ToolRegistry:
         registry = ToolRegistry()
-        _load_internal(registry, config, llm_client)
+        _load_internal(registry, config)
         _load_external(registry, config)
         return registry
 
 
-def _load_internal(registry: ToolRegistry, config: Settings, llm_client: LLMClient | None):
+def _load_internal(registry: ToolRegistry, config: Settings):
     """Scan zerg.tools.* for Tool subclasses and register them."""
     import zerg.tools as tools_pkg
 
     skip = {"base", "router", "factory"}
-    kwargs = {"config": config, "llm_client": llm_client}
+    kwargs = {"config": config}
 
     for info in pkgutil.iter_modules(tools_pkg.__path__):
         if info.name in skip:

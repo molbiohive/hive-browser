@@ -14,7 +14,7 @@ from zerg.admin.routes import admin_router
 from zerg.admin.token import generate_token, save_token
 from zerg.chat.storage import ChatStorage
 from zerg.config import Settings
-from zerg.llm.client import LLMClient
+from zerg.llm.pool import ModelPool
 from zerg.server.routes import router
 from zerg.server.websocket import ws_router
 from zerg.tools.blast import build_blast_index
@@ -46,21 +46,21 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("Database init skipped: %s", e)
 
-    # --- LLM client ---
-    llm_client = LLMClient(config.llm)
-    app.state.llm_client = llm_client
-    try:
-        if await llm_client.health():
-            logger.info("LLM connected: %s", config.llm.model)
-        else:
-            logger.warning("LLM not available at %s", config.llm.base_url)
-            app.state.llm_client = None
-    except Exception:
-        logger.warning("LLM not available at %s", config.llm.base_url)
-        app.state.llm_client = None
+    # --- Model pool ---
+    pool = ModelPool(config.llm.models)
+    app.state.model_pool = pool
+    default_client = pool.get(pool.default_id) if pool.default_id else None
+    if default_client:
+        try:
+            if await default_client.health():
+                logger.info("LLM connected: %s", pool.default_id)
+            else:
+                logger.warning("Default LLM not available: %s", pool.default_id)
+        except Exception:
+            logger.warning("Default LLM not available: %s", pool.default_id)
 
     # --- Tool registry ---
-    app.state.tool_registry = ToolFactory.discover(config, app.state.llm_client)
+    app.state.tool_registry = ToolFactory.discover(config)
     logger.info("Tool registry: %d tools", len(app.state.tool_registry.all()))
 
     # --- File watcher (only if DB is available) ---
@@ -106,8 +106,7 @@ async def lifespan(app: FastAPI):
             await task
         logger.info("File watcher stopped")
 
-    if llm_client:
-        await llm_client.close()
+    # ModelPool clients are stateless (litellm manages connections)
 
 
 def create_app(config: Settings) -> FastAPI:
