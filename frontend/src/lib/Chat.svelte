@@ -122,6 +122,22 @@
 		deleteChat(chatId);
 	}
 
+	function timeAgo(iso) {
+		const d = new Date(iso);
+		const diff = Date.now() - d.getTime();
+		const mins = Math.floor(diff / 60000);
+		if (mins < 1) return 'just now';
+		if (mins < 60) return `${mins}m ago`;
+		const hrs = Math.floor(mins / 60);
+		if (hrs < 24) return `${hrs}h ago`;
+		const days = Math.floor(hrs / 24);
+		if (days < 7) return `${days}d ago`;
+		const y = d.getFullYear();
+		const m = String(d.getMonth() + 1).padStart(2, '0');
+		const dd = String(d.getDate()).padStart(2, '0');
+		return `${y}.${m}.${dd}`;
+	}
+
 	$effect(() => {
 		const count = $chatStore.messages.length;
 		if (count > prevMsgCount && messagesDiv) {
@@ -155,7 +171,10 @@
 							role="button"
 							tabindex="0"
 						>
-							<span class="chat-title">{chat.title || 'Untitled'}</span>
+							<div class="chat-info">
+								<span class="chat-title">{chat.title || 'Untitled'}</span>
+								<span class="chat-meta">{timeAgo(chat.created)} · {chat.message_count} msg</span>
+							</div>
 							<button
 								class="delete-btn"
 								onclick={(e) => handleDeleteChat(e, chat.id)}
@@ -346,13 +365,24 @@
 		background: #ddd;
 	}
 
+	.chat-info {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+	}
+
 	.chat-title {
 		font-size: 0.82rem;
 		color: #333;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
-		flex: 1;
+	}
+
+	.chat-meta {
+		font-size: 0.68rem;
+		color: #aaa;
 	}
 
 	.delete-btn {
