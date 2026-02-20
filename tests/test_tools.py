@@ -232,17 +232,17 @@ class TestImportValidation:
 class TestToolFactoryInternal:
     def test_discovers_all_internal_tools(self):
         config = Settings()
-        registry = ToolFactory.discover(config, llm_client=None)
+        registry = ToolFactory.discover(config)
         names = {t.name for t in registry.all()}
         assert names == {
-            "search", "blast", "profile", "status", "model",
+            "search", "blast", "profile",
             "extract", "translate", "transcribe", "digest",
             "gc", "revcomp", "features", "primers",
         }
 
     def test_tool_attributes(self):
         config = Settings()
-        registry = ToolFactory.discover(config, llm_client=None)
+        registry = ToolFactory.discover(config)
         search = registry.get("search")
         assert search is not None
         assert search.widget == "table"
@@ -251,7 +251,7 @@ class TestToolFactoryInternal:
 
     def test_llm_tools_subset(self):
         config = Settings()
-        registry = ToolFactory.discover(config, llm_client=None)
+        registry = ToolFactory.discover(config)
         llm_names = {t.name for t in registry.llm_tools()}
         assert llm_names == {
             "search", "blast", "profile",
@@ -262,8 +262,8 @@ class TestToolFactoryInternal:
     def test_visible_tools_all_visible(self):
         """No internal tools are hidden."""
         config = Settings()
-        registry = ToolFactory.discover(config, llm_client=None)
-        assert len(registry.visible_tools()) == 13
+        registry = ToolFactory.discover(config)
+        assert len(registry.visible_tools()) == 11
 
 
 # ── ToolFactory — External Discovery ──
@@ -291,7 +291,7 @@ class TestToolFactoryExternal:
         (tools_dir / "gc_content.py").write_text(tool_code)
 
         config = Settings(data_root=str(tmp_path))
-        registry = ToolFactory.discover(config, llm_client=None)
+        registry = ToolFactory.discover(config)
 
         gc = registry.get("gc")
         assert gc is not None
@@ -315,7 +315,7 @@ class TestToolFactoryExternal:
         (tools_dir / "bad_tool.py").write_text(bad_code)
 
         config = Settings(data_root=str(tmp_path))
-        registry = ToolFactory.discover(config, llm_client=None)
+        registry = ToolFactory.discover(config)
 
         assert registry.get("bad") is None  # rejected
 
@@ -326,11 +326,11 @@ class TestToolFactoryExternal:
         (tools_dir / "__init__.py").write_text("")
 
         config = Settings(data_root=str(tmp_path))
-        registry = ToolFactory.discover(config, llm_client=None)
+        registry = ToolFactory.discover(config)
 
         # Only internal tools, no external loaded
         internal_names = {
-            "search", "blast", "profile", "status", "model",
+            "search", "blast", "profile",
             "extract", "translate", "transcribe", "digest",
             "gc", "revcomp", "features", "primers",
         }
@@ -352,15 +352,15 @@ class TestToolFactoryExternal:
         (tools_dir / "custom_search.py").write_text(override_code)
 
         config = Settings(data_root=str(tmp_path))
-        registry = ToolFactory.discover(config, llm_client=None)
+        registry = ToolFactory.discover(config)
 
         search = registry.get("search")
         assert search.description == "Custom search override"
 
     def test_missing_directory_no_error(self):
         config = Settings(data_root="/nonexistent")
-        registry = ToolFactory.discover(config, llm_client=None)
-        assert len(registry.all()) == 13  # just internal tools
+        registry = ToolFactory.discover(config)
+        assert len(registry.all()) == 11  # just internal tools
 
 
 # ── Prompts ──
