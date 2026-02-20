@@ -1,6 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
-	import { chatStore, chatList, appConfig, statusBar, connect, sendMessage, cancelRequest, toggleStatusBar, loadChat, newChat, fetchChatList, deleteChat } from '$lib/stores/chat.ts';
+	import { chatStore, chatList, appConfig, statusBar, connect, sendMessage, cancelRequest, loadChat, newChat, fetchChatList, deleteChat } from '$lib/stores/chat.ts';
 	import MessageBubble from '$lib/MessageBubble.svelte';
 	import CommandPalette from '$lib/CommandPalette.svelte';
 	import ModelSelector from '$lib/ModelSelector.svelte';
@@ -79,15 +79,20 @@
 		}
 	}
 
+	function formatLastUpdated(ts) {
+		if (!ts) return 'never synced';
+		const d = new Date(ts);
+		const diffMin = Math.floor((Date.now() - d.getTime()) / 60000);
+		if (diffMin < 1) return 'synced just now';
+		if (diffMin < 60) return `synced ${diffMin}m ago`;
+		const diffHrs = Math.floor(diffMin / 60);
+		if (diffHrs < 24) return `synced ${diffHrs}h ago`;
+		return `synced ${d.toLocaleDateString()}`;
+	}
+
 	function handleSubmit() {
 		if (!inputText.trim() || $chatStore.isWaiting) return;
 		const text = inputText.trim();
-		if (text === '/status') {
-			toggleStatusBar();
-			inputText = '';
-			showPalette = false;
-			return;
-		}
 		sendMessage(text);
 		inputText = '';
 		showPalette = false;
@@ -270,14 +275,25 @@
 					{/if}
 				</div>
 				<div class="input-hint">
-					{#if $statusBar.visible}
-						<span class="status-items">
+					<span class="status-items">
+						<span class="status-group">
 							<span class="indicator" class:ok={$statusBar.db_connected} class:err={!$statusBar.db_connected}>DB</span>
-							<span>{$statusBar.indexed_files} files</span>
-							<span>{$statusBar.sequences} seq</span>
-							<ModelSelector />
 						</span>
-					{/if}
+						<span class="status-sep"></span>
+						<span class="status-group">
+							<span>{$statusBar.indexed_files} files</span>
+							<span class="status-dot">&middot;</span>
+							<span>{$statusBar.sequences} seq</span>
+							<span class="status-dot">&middot;</span>
+							<span>{$statusBar.features} feat</span>
+						</span>
+						<span class="status-sep"></span>
+						<span class="status-group">
+							<span>{formatLastUpdated($statusBar.last_updated)}</span>
+						</span>
+						<span class="status-sep"></span>
+						<ModelSelector />
+					</span>
 					<span>/ opens command palette</span>
 				</div>
 			</form>
@@ -451,7 +467,6 @@
 
 	.sidebar-footer {
 		padding: 0.5rem 0.75rem;
-		border-top: 1px solid var(--border);
 	}
 
 	.theme-btn {
@@ -609,8 +624,24 @@
 
 	.status-items {
 		display: flex;
-		gap: 0.6rem;
+		gap: 0.5rem;
 		align-items: center;
+	}
+
+	.status-group {
+		display: flex;
+		gap: 0.3rem;
+		align-items: center;
+	}
+
+	.status-sep {
+		width: 1px;
+		height: 0.7rem;
+		background: var(--border-muted);
+	}
+
+	.status-dot {
+		color: var(--text-placeholder);
 	}
 
 	.indicator {

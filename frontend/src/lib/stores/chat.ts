@@ -82,9 +82,10 @@ const defaultConfig: AppConfig = {
 interface StatusBar {
 	indexed_files: number;
 	sequences: number;
+	features: number;
 	db_connected: boolean;
 	llm_available: boolean;
-	visible: boolean;
+	last_updated: string | null;
 }
 
 export const chatStore = writable<ChatState>(initialState);
@@ -94,9 +95,10 @@ export const toolList = writable<ToolMeta[]>([]);
 export const statusBar = writable<StatusBar>({
 	indexed_files: 0,
 	sequences: 0,
+	features: 0,
 	db_connected: false,
 	llm_available: false,
-	visible: true,
+	last_updated: null,
 });
 export const modelList = writable<ModelInfo[]>([]);
 export const currentModel = writable<string | null>(null);
@@ -240,9 +242,6 @@ export function setModel(modelId: string) {
 	ws.send(JSON.stringify({ type: 'set_model', modelId }));
 }
 
-export function toggleStatusBar() {
-	statusBar.update(s => ({ ...s, visible: !s.visible }));
-}
 
 export function sendRawMessage(content: string) {
 	if (!ws || ws.readyState !== WebSocket.OPEN) {

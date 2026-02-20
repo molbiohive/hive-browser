@@ -11,7 +11,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy import func, select
 
 from zerg.db import session as db
-from zerg.db.models import IndexedFile, Sequence
+from zerg.db.models import Feature, IndexedFile, Sequence
 from zerg.tools.router import route_input
 
 logger = logging.getLogger(__name__)
@@ -380,7 +380,10 @@ def _widget_type(tool_name: str, registry=None) -> str:
 
 async def _quick_status(llm_client=None) -> dict:
     """Lightweight status for the status bar (no full tool execution)."""
-    status = {"indexed_files": 0, "sequences": 0, "db_connected": False, "llm_available": False}
+    status = {
+        "indexed_files": 0, "sequences": 0, "features": 0,
+        "db_connected": False, "llm_available": False, "last_updated": None,
+    }
     if db.async_session_factory:
         try:
             async with db.async_session_factory() as s:
@@ -392,6 +395,13 @@ async def _quick_status(llm_client=None) -> dict:
                 status["sequences"] = (await s.execute(
                     select(func.count()).select_from(Sequence)
                 )).scalar()
+                status["features"] = (await s.execute(
+                    select(func.count()).select_from(Feature)
+                )).scalar()
+                last = (await s.execute(
+                    select(func.max(IndexedFile.indexed_at))
+                )).scalar()
+                status["last_updated"] = last.isoformat() if last else None
             status["db_connected"] = True
         except Exception as e:
             logger.warning("Quick status DB query failed: %s", e)
