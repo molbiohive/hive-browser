@@ -1,11 +1,15 @@
-"""Search tool — fuzzy metadata + feature search using pg_trgm."""
+"""Search tool — fuzzy metadata + feature search using pg_trgm.
+
+Supports boolean queries: "KanR && circular" (AND), "GFP || RFP" (OR).
+"""
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from pydantic import BaseModel, Field
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import selectinload
 
 from zerg.db import session as db
@@ -13,8 +17,22 @@ from zerg.db.models import Feature, IndexedFile, Sequence
 from zerg.tools.base import Tool
 
 
+def _parse_bool_query(query: str) -> tuple[list[str], str]:
+    """Parse boolean operators in query string.
+
+    Returns (terms, operator) where operator is 'and', 'or', or 'single'.
+    """
+    if "&&" in query:
+        terms = [t.strip() for t in re.split(r"\s*&&\s*", query) if t.strip()]
+        return (terms, "and") if len(terms) > 1 else (terms, "single")
+    if "||" in query:
+        terms = [t.strip() for t in re.split(r"\s*\|\|\s*", query) if t.strip()]
+        return (terms, "or") if len(terms) > 1 else (terms, "single")
+    return [query.strip()], "single"
+
+
 class SearchInput(BaseModel):
-    query: str = Field(..., description="Keyword (name, feature, or description)")
+    query: str = Field(..., description="Keyword (name, feature, or description). Use && for AND, || for OR.")
     filters: dict[str, Any] = Field(
         default_factory=dict,
         description="Optional: topology, size_min, size_max, feature_type",
@@ -63,52 +81,76 @@ class SearchTool(Tool):
         return f"Found {total} result(s) for '{query}': {', '.join(names)}."
 
     async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Execute search with pg_trgm similarity + filters."""
+        """Execute search with pg_trgm similarity + filters.
+
+        Supports boolean queries: "KanR && circular" (AND), "GFP || RFP" (OR).
+        """
         inp = SearchInput(**params)
 
         if not db.async_session_factory:
             return {"results": [], "total": 0, "query": inp.query, "error": "Database unavailable"}
 
+        terms, op = _parse_bool_query(inp.query)
+
         async with db.async_session_factory() as session:
-            # Build trigram similarity score expressions
-            seq_sim = func.similarity(Sequence.name, inp.query)
-            desc_sim = func.coalesce(func.similarity(Sequence.description, inp.query), 0)
+            # Per-term: similarity expressions, feature subqueries, match conditions
+            term_scores = []
+            term_conditions = []
+            feat_subs = []
 
-            # Subquery: best feature match score per sequence
-            feat_sub = (
-                select(
-                    Feature.seq_id,
-                    func.max(func.similarity(Feature.name, inp.query)).label("feat_score"),
+            for i, term in enumerate(terms):
+                seq_sim = func.similarity(Sequence.name, term)
+                desc_sim = func.coalesce(func.similarity(Sequence.description, term), 0)
+
+                fsub = (
+                    select(
+                        Feature.seq_id,
+                        func.max(func.similarity(Feature.name, term)).label(f"fs_{i}"),
+                    )
+                    .group_by(Feature.seq_id)
+                    .subquery(name=f"feat_{i}")
                 )
-                .group_by(Feature.seq_id)
-                .subquery()
-            )
+                feat_score = func.coalesce(getattr(fsub.c, f"fs_{i}"), 0)
 
-            # Combined score: max of (name_sim, desc_sim, feat_sim)
-            feat_score = func.coalesce(feat_sub.c.feat_score, 0)
-            combined = func.greatest(seq_sim, desc_sim, feat_score)
+                # Exact match on topology (circular/linear)
+                topo_match = func.lower(Sequence.topology) == func.lower(term)
+
+                score = func.greatest(seq_sim, desc_sim, feat_score)
+                condition = or_(seq_sim > 0.1, desc_sim > 0.1, feat_score > 0.1, topo_match)
+
+                term_scores.append(score)
+                term_conditions.append(condition)
+                feat_subs.append(fsub)
+
+            # Ordering: worst term for AND (all must be good), best for OR
+            if len(term_scores) == 1:
+                combined = term_scores[0]
+            elif op == "and":
+                combined = func.least(*term_scores)
+            else:
+                combined = func.greatest(*term_scores)
 
             # Base query
             stmt = (
-                select(
-                    Sequence,
-                    combined.label("score"),
-                    IndexedFile.file_path,
-                )
+                select(Sequence, combined.label("score"), IndexedFile.file_path)
                 .join(IndexedFile, Sequence.file_id == IndexedFile.id)
-                .outerjoin(feat_sub, Sequence.id == feat_sub.c.seq_id)
                 .options(selectinload(Sequence.features))
                 .where(IndexedFile.status == "active")
-                .where(
-                    or_(
-                        seq_sim > 0.1,
-                        desc_sim > 0.1,
-                        feat_score > 0.1,
-                    )
-                )
-                .order_by(combined.desc())
-                .limit(inp.limit)
             )
+
+            # Join feature subqueries
+            for fsub in feat_subs:
+                stmt = stmt.outerjoin(fsub, Sequence.id == fsub.c.seq_id)
+
+            # Boolean condition
+            if op == "and":
+                stmt = stmt.where(and_(*term_conditions))
+            elif op == "or":
+                stmt = stmt.where(or_(*term_conditions))
+            else:
+                stmt = stmt.where(term_conditions[0])
+
+            stmt = stmt.order_by(combined.desc()).limit(inp.limit)
 
             # Apply filters
             if topo := inp.filters.get("topology"):
@@ -118,7 +160,6 @@ class SearchTool(Tool):
             if size_max := inp.filters.get("size_max"):
                 stmt = stmt.where(Sequence.size_bp <= int(size_max))
             if feat_type := inp.filters.get("feature_type"):
-                # Unwrap list if LLM sends ["plasmid"] instead of "plasmid"
                 if isinstance(feat_type, list):
                     feat_type = feat_type[0] if feat_type else None
                 if feat_type:

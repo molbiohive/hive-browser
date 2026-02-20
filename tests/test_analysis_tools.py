@@ -8,6 +8,7 @@ from zerg.tools.digest import DigestTool
 from zerg.tools.gc import GCTool
 from zerg.tools.revcomp import RevCompTool
 from zerg.tools.extract import _slice_sequence
+from zerg.tools.search import _parse_bool_query
 
 
 # ── Translate ──
@@ -247,3 +248,34 @@ class TestSliceSequence:
 
     def test_single_base(self):
         assert _slice_sequence("ABCDE", 2, 3, "linear") == "C"
+
+
+class TestParseBoolQuery:
+    def test_single_term(self):
+        assert _parse_bool_query("GFP") == (["GFP"], "single")
+
+    def test_and_two_terms(self):
+        assert _parse_bool_query("KanR && circular") == (["KanR", "circular"], "and")
+
+    def test_and_three_terms(self):
+        terms, op = _parse_bool_query("KanR && circular && promoter")
+        assert op == "and"
+        assert terms == ["KanR", "circular", "promoter"]
+
+    def test_or_two_terms(self):
+        assert _parse_bool_query("GFP || RFP") == (["GFP", "RFP"], "or")
+
+    def test_empty_parts_stripped(self):
+        terms, op = _parse_bool_query("KanR &&  && GFP")
+        assert op == "and"
+        assert terms == ["KanR", "GFP"]
+
+    def test_single_term_with_dangling_op(self):
+        terms, op = _parse_bool_query("GFP &&")
+        assert op == "single"
+        assert terms == ["GFP"]
+
+    def test_whitespace_handling(self):
+        terms, op = _parse_bool_query("  KanR  &&  circular  ")
+        assert terms == ["KanR", "circular"]
+        assert op == "and"
