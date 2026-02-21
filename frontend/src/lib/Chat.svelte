@@ -283,9 +283,9 @@
 						<span class="status-group">
 							<span>{$statusBar.indexed_files} files</span>
 							<span class="status-dot">&middot;</span>
-							<span>{$statusBar.sequences} seq</span>
+							<span>{$statusBar.sequences} sequences</span>
 							<span class="status-dot">&middot;</span>
-							<span>{$statusBar.features} feat</span>
+							<span>{$statusBar.features} features</span>
 						</span>
 						<span class="status-sep"></span>
 						<span class="status-group">
@@ -322,6 +322,7 @@
 		border-bottom: 1px solid var(--border);
 		display: flex;
 		align-items: center;
+		justify-content: center;
 		gap: 0.6rem;
 	}
 
@@ -466,7 +467,7 @@
 	}
 
 	.sidebar-footer {
-		padding: 0.5rem 0.75rem;
+		padding: 0.75rem 1rem;
 	}
 
 	.theme-btn {
