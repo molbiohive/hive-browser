@@ -113,7 +113,7 @@ above.
 
 ```bash
 make check-deps     # verify system tools are installed
-make setup          # install deps, create configs, set up DB, run migrations
+make setup-dev      # install deps, create configs, set up DB, run migrations
 make back-dev       # backend (terminal 1)
 make front-dev      # frontend (terminal 2)
 ```
