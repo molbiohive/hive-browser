@@ -6,7 +6,7 @@ Hive Browser watches your local directories for biological sequence files (.dna,
 
 ## Why Hive?
 
-Hive is a reference to the species from the StarCraft universe, known for rapid mutation and adaptation. This tool helps you tame the beast — rapidly growing and changing sequence data scattered across lab file systems.
+A bee hive is a model of organized collective work — thousands of workers building, maintaining, and navigating complex structures. Hive Browser does the same for your sequence data: indexing, connecting, and helping you navigate the growing collection of constructs scattered across lab file systems.
 
 ## Features
 
@@ -46,9 +46,13 @@ Edit `config/config.local.yaml` — set your LLM provider and watcher path:
 
 ```yaml
 llm:
-  provider: "ollama"              # or "anthropic", "openai"
-  model: "qwen2.5:7b"
-  api_key: null                   # required for cloud providers
+  models:
+    - provider: "ollama"
+      model: "qwen2.5:7b"
+      base_url: "http://localhost:11434/v1"
+    # - provider: "anthropic"
+    #   model: "claude-sonnet-4-5-20250929"
+    #   api_key: "sk-ant-..."
 
 watcher:
   root: ~/sequences               # directory with your .dna, .gb, .fasta files
@@ -80,9 +84,10 @@ Edit `config/config.docker.yaml` to set your LLM provider:
 
 ```yaml
 llm:
-  provider: "anthropic"           # or "ollama", "openai"
-  model: "claude-sonnet-4-5-20250929"
-  api_key: "sk-ant-..."           # required for cloud providers
+  models:
+    - provider: "anthropic"
+      model: "claude-sonnet-4-5-20250929"
+      api_key: "sk-ant-..."
 ```
 
 > If using Ollama on the host, no config changes needed — Docker automatically routes to `host.docker.internal:11434`.
@@ -124,7 +129,7 @@ Browser  <-->  Svelte 5 frontend  <-->  FastAPI + WebSocket  <-->  PostgreSQL
                                SIMPLE    LOOP      Direct
                               (3-step)  (agentic)  (//cmd)
                                  |         |
-                            Tool System (13 tools)
+                            Tool System (11 tools)
                            /    |    |    |    \
                        Search BLAST Extract Digest ...
                                  |
@@ -154,8 +159,6 @@ Tools are self-describing and auto-discovered. Each tool declares its name, sche
 | revcomp | llm, analysis | Reverse complement |
 | features | llm, info | List features on a sequence |
 | primers | llm, info | List primers on a sequence |
-| status | info | Database stats and health |
-| model | info | LLM config and connection status |
 
 ### LLM Modes
 
@@ -254,7 +257,7 @@ src/hive/
 ├── db/                  # SQLAlchemy models + async session
 ├── parsers/             # File parsers (snapgene, genbank, fasta)
 ├── watcher/             # File system watcher + ingestion
-├── tools/               # Tool system (13 tools + router + factory)
+├── tools/               # Tool system (11 tools + router + factory)
 │   ├── base.py          # Tool ABC, ToolRegistry
 │   ├── factory.py       # Auto-discovery (internal + external)
 │   ├── router.py        # Dispatch: direct / guided / SIMPLE / LOOP
