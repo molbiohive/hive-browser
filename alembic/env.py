@@ -8,7 +8,7 @@ from alembic import context
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from zerg.db.models import Base
+from hive.db.models import Base
 
 config = context.config
 if config.config_file_name is not None:

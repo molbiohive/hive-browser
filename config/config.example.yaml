@@ -1,13 +1,13 @@
-# Zerg Browser Configuration
+# Hive Browser Configuration
 # Copy this file to config.local.yaml and adjust values.
-# Select config via: ZERG_CONFIG=config/config.local.yaml
+# Select config via: HIVE_CONFIG=config/config.local.yaml
 
 server:
   host: "0.0.0.0"
   port: 8080
 
 database:
-  url: "postgresql+asyncpg://zerg:zerg@localhost:5432/zerg"
+  url: "postgresql+asyncpg://hive:hive@localhost:5432/hive"
 
 llm:
   models:

@@ -6,9 +6,9 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from zerg.db.models import Base, Feature, IndexedFile, Sequence
-from zerg.watcher.ingest import ingest_file, remove_file
-from zerg.watcher.rules import MatchResult
+from hive.db.models import Base, Feature, IndexedFile, Sequence
+from hive.watcher.ingest import ingest_file, remove_file
+from hive.watcher.rules import MatchResult
 
 FIXTURES = Path(__file__).parent / "fixtures"
 

@@ -170,8 +170,8 @@
 <div class="chat-layout">
 	<aside class="sidebar">
 		<div class="sidebar-header">
-			<img src="/logo.svg" alt="Zerg Browser" class="logo" />
-			<h2>Zerg Browser</h2>
+			<img src="/logo.svg" alt="Hive Browser" class="logo" />
+			<h2>Hive Browser</h2>
 		</div>
 		<div class="sidebar-actions">
 			<button class="new-chat-btn" onclick={handleNewChat}>+ New Chat</button>
@@ -220,8 +220,8 @@
 		<div class="messages" bind:this={messagesDiv}>
 			{#if $chatStore.messages.length === 0}
 				<div class="welcome">
-					<img src="/logo.svg" alt="Zerg Browser" class="welcome-logo" />
-					<h2>Zerg Browser</h2>
+					<img src="/logo.svg" alt="Hive Browser" class="welcome-logo" />
+					<h2>Hive Browser</h2>
 					<p>Search your lab sequences using natural language.</p>
 					<div class="suggestions">
 						<button onclick={() => { inputText = 'find all GFP plasmids'; handleSubmit(); }}>

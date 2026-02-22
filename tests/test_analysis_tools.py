@@ -2,13 +2,13 @@
 
 import pytest
 
-from zerg.tools.translate import TranslateTool
-from zerg.tools.transcribe import TranscribeTool
-from zerg.tools.digest import DigestTool
-from zerg.tools.gc import GCTool
-from zerg.tools.revcomp import RevCompTool
-from zerg.tools.extract import _slice_sequence
-from zerg.tools.search import _parse_bool_query
+from hive.tools.translate import TranslateTool
+from hive.tools.transcribe import TranscribeTool
+from hive.tools.digest import DigestTool
+from hive.tools.gc import GCTool
+from hive.tools.revcomp import RevCompTool
+from hive.tools.extract import _slice_sequence
+from hive.tools.search import _parse_bool_query
 
 
 # ── Translate ──

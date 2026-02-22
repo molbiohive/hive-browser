@@ -8,4 +8,4 @@ mkdir -p /data/chats /data/blast /data/tools
 alembic upgrade head
 
 # Start server
-exec uvicorn zerg.main:app --host 0.0.0.0 --port 8080
+exec uvicorn hive.main:app --host 0.0.0.0 --port 8080

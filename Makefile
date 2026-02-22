@@ -1,4 +1,4 @@
-# Zerg Browser — Development & Deployment
+# Hive Browser — Development & Deployment
 
 .PHONY: setup-dev \
         back-dev front-dev static \
@@ -7,9 +7,9 @@
 
 SHELL := /bin/bash
 
-DB_USER ?= zerg
-DB_NAME ?= zerg
-DB_PASS ?= zerg
+DB_USER ?= hive
+DB_NAME ?= hive
+DB_PASS ?= hive
 
 # ── Setup ─────────────────────────────────────────────────
 
@@ -28,12 +28,12 @@ setup-dev:
 	@createdb -U $(DB_USER) $(DB_NAME) 2>/dev/null || true
 	@psql -U $(DB_USER) -d $(DB_NAME) -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;" 2>/dev/null || true
 	@echo "Database ready: $(DB_NAME)"
-	ZERG_CONFIG=config/config.local.yaml uv run alembic upgrade head
+	HIVE_CONFIG=config/config.local.yaml uv run alembic upgrade head
 
 # ── Dev ───────────────────────────────────────────────────
 
 back-dev:
-	ZERG_CONFIG=config/config.local.yaml uv run uvicorn zerg.main:app \
+	HIVE_CONFIG=config/config.local.yaml uv run uvicorn hive.main:app \
 		--reload --host 127.0.0.1 --port 8080
 
 front-dev:
@@ -54,8 +54,8 @@ docker-init:
 	fi
 	@if [ ! -f .env ]; then \
 		PG_PASS=$$(openssl rand -base64 24 | tr -d '/+=' | head -c 32) && \
-		printf 'POSTGRES_USER=zerg\nPOSTGRES_PASSWORD=%s\nPOSTGRES_DB=zerg\nZERG_PORT=8080\nZERG_DATA_ROOT=~/.zerg\nZERG_WATCHER_ROOT=~/sequences\n' "$$PG_PASS" > .env && \
-		echo ".env created — edit ZERG_DATA_ROOT and ZERG_WATCHER_ROOT before starting"; \
+		printf 'POSTGRES_USER=hive\nPOSTGRES_PASSWORD=%s\nPOSTGRES_DB=hive\nHIVE_PORT=8080\nHIVE_DATA_ROOT=~/.hive\nHIVE_WATCHER_ROOT=~/sequences\n' "$$PG_PASS" > .env && \
+		echo ".env created — edit HIVE_DATA_ROOT and HIVE_WATCHER_ROOT before starting"; \
 	else \
 		echo ".env already exists, skipping"; \
 	fi
@@ -74,7 +74,7 @@ docker-update:
 	docker compose up -d
 
 docker-logs:
-	docker compose logs -f zerg
+	docker compose logs -f hive
 
 # ── Quality ───────────────────────────────────────────────
 

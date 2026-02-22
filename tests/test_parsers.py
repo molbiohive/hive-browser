@@ -2,10 +2,10 @@
 
 from pathlib import Path
 
-from zerg.parsers import BIOPYTHON_PARSERS, PARSERS
-from zerg.parsers.base import ParseResult
-from zerg.parsers.fasta import parse_fasta
-from zerg.parsers.genbank import parse_genbank
+from hive.parsers import BIOPYTHON_PARSERS, PARSERS
+from hive.parsers.base import ParseResult
+from hive.parsers.fasta import parse_fasta
+from hive.parsers.genbank import parse_genbank
 
 FIXTURES = Path(__file__).parent / "fixtures"
 

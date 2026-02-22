@@ -2,8 +2,8 @@
 
 from pathlib import Path
 
-from zerg.config import WatcherRule
-from zerg.watcher.rules import match_file
+from hive.config import WatcherRule
+from hive.watcher.rules import match_file
 
 
 def _rules():

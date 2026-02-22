@@ -3,9 +3,9 @@
 import textwrap
 from typing import Any
 
-from zerg.config import Settings
-from zerg.tools.base import Tool, ToolRegistry, _auto_summarize, _params_to_schema
-from zerg.tools.factory import ToolFactory, _is_forbidden, _validate_imports
+from hive.config import Settings
+from hive.tools.base import Tool, ToolRegistry, _auto_summarize, _params_to_schema
+from hive.tools.factory import ToolFactory, _is_forbidden, _validate_imports
 
 # ── Helpers ──
 
@@ -193,16 +193,16 @@ class TestToolRegistry:
 
 class TestImportValidation:
     def test_sdk_allowed(self):
-        assert _validate_imports("from zerg.sdk import Tool") == []
-        assert _validate_imports("from zerg.sdk.db import ToolDB") == []
-        assert _validate_imports("import zerg.sdk.widgets") == []
+        assert _validate_imports("from hive.sdk import Tool") == []
+        assert _validate_imports("from hive.sdk.db import ToolDB") == []
+        assert _validate_imports("import hive.sdk.widgets") == []
 
     def test_internal_forbidden(self):
-        assert _validate_imports("from zerg.db.models import Sequence") == ["zerg.db.models"]
-        assert _validate_imports("from zerg.tools.base import Tool") == ["zerg.tools.base"]
-        assert _validate_imports("import zerg.config") == ["zerg.config"]
-        assert _validate_imports("from zerg.llm.client import LLMClient") == ["zerg.llm.client"]
-        assert _validate_imports("from zerg.server.app import create_app") == ["zerg.server.app"]
+        assert _validate_imports("from hive.db.models import Sequence") == ["hive.db.models"]
+        assert _validate_imports("from hive.tools.base import Tool") == ["hive.tools.base"]
+        assert _validate_imports("import hive.config") == ["hive.config"]
+        assert _validate_imports("from hive.llm.client import LLMClient") == ["hive.llm.client"]
+        assert _validate_imports("from hive.server.app import create_app") == ["hive.server.app"]
 
     def test_stdlib_and_thirdparty_allowed(self):
         assert _validate_imports("import os\nimport json\nimport pathlib") == []
@@ -214,15 +214,15 @@ class TestImportValidation:
         assert violations == ["<syntax error>"]
 
     def test_multiple_violations(self):
-        code = "from zerg.db import session\nfrom zerg.config import Settings"
+        code = "from hive.db import session\nfrom hive.config import Settings"
         violations = _validate_imports(code)
         assert len(violations) == 2
 
     def test_is_forbidden_helper(self):
-        assert _is_forbidden("zerg.db") is True
-        assert _is_forbidden("zerg.db.models") is True
-        assert _is_forbidden("zerg.sdk") is False
-        assert _is_forbidden("zerg.sdk.db") is False
+        assert _is_forbidden("hive.db") is True
+        assert _is_forbidden("hive.db.models") is True
+        assert _is_forbidden("hive.sdk") is False
+        assert _is_forbidden("hive.sdk.db") is False
         assert _is_forbidden("os") is False
 
 
@@ -272,7 +272,7 @@ class TestToolFactoryInternal:
 class TestToolFactoryExternal:
     def test_load_valid_external_tool(self, tmp_path):
         tool_code = textwrap.dedent("""\
-            from zerg.sdk import Tool
+            from hive.sdk import Tool
 
             class GCTool(Tool):
                 name = "gc"
@@ -301,8 +301,8 @@ class TestToolFactoryExternal:
 
     def test_reject_forbidden_imports(self, tmp_path):
         bad_code = textwrap.dedent("""\
-            from zerg.db.models import Sequence
-            from zerg.sdk import Tool
+            from hive.db.models import Sequence
+            from hive.sdk import Tool
 
             class BadTool(Tool):
                 name = "bad"
@@ -338,7 +338,7 @@ class TestToolFactoryExternal:
 
     def test_external_overrides_internal(self, tmp_path):
         override_code = textwrap.dedent("""\
-            from zerg.sdk import Tool
+            from hive.sdk import Tool
 
             class CustomSearch(Tool):
                 name = "search"
@@ -368,18 +368,18 @@ class TestToolFactoryExternal:
 
 class TestPrompts:
     def test_system_prompt_content(self):
-        from zerg.llm.prompts import build_system_prompt
+        from hive.llm.prompts import build_system_prompt
 
         prompt = build_system_prompt()
 
-        assert "Zerg Browser" in prompt
+        assert "Hive Browser" in prompt
         assert "extract" in prompt
         assert "NEVER fabricate" in prompt
         assert "## Workflow" in prompt
         assert "## Rules" in prompt
 
     def test_tool_schema_format(self):
-        from zerg.llm.prompts import build_tool_schema
+        from hive.llm.prompts import build_tool_schema
 
         config = Settings()
         registry = ToolFactory.discover(config)
@@ -393,7 +393,7 @@ class TestPrompts:
 
     def test_tool_schema_uses_guidelines(self):
         """When guidelines is set, it's used as the schema description (not description)."""
-        from zerg.llm.prompts import build_tool_schema
+        from hive.llm.prompts import build_tool_schema
 
         config = Settings()
         registry = ToolFactory.discover(config)

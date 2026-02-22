@@ -48,7 +48,7 @@ frontend/build/
 /static/
 
 # BLAST temp
-/tmp/zerg_blast/
+/tmp/hive_blast/
 
 # Chat storage (local dev)
 chats/
