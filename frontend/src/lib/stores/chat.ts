@@ -3,6 +3,7 @@
  */
 
 import { writable } from 'svelte/store';
+import { getToken, currentUser } from './user.ts';
 
 interface Message {
 	role: 'user' | 'assistant';
@@ -112,17 +113,30 @@ export function connect() {
 		reconnectTimer = null;
 	}
 
+	const token = getToken();
+	if (!token) {
+		// No token — trigger auth flow
+		currentUser.set(null);
+		return;
+	}
+
 	const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-	ws = new WebSocket(`${protocol}//${location.host}/ws`);
+	ws = new WebSocket(`${protocol}//${location.host}/ws?token=${encodeURIComponent(token)}`);
 
 	ws.onopen = () => {
 		console.log('[ws] connected');
 		chatStore.update(s => ({ ...s, connected: true }));
 	};
 
-	ws.onclose = () => {
-		console.log('[ws] disconnected, reconnecting in 3s...');
+	ws.onclose = (event) => {
 		chatStore.update(s => ({ ...s, connected: false, isWaiting: false }));
+		if (event.code === 4001) {
+			// Auth failed — clear state, show welcome modal
+			console.log('[ws] auth failed, clearing token');
+			currentUser.set(null);
+			return;
+		}
+		console.log('[ws] disconnected, reconnecting in 3s...');
 		reconnectTimer = setTimeout(connect, 3000);
 	};
 
@@ -148,6 +162,9 @@ export function connect() {
 			if (data.currentModel) {
 				currentModel.set(data.currentModel);
 			}
+			if (data.user) {
+				currentUser.set(data.user);
+			}
 		} else if (data.type === 'status_update') {
 			if (data.status) {
 				statusBar.update(s => ({ ...s, ...data.status }));
@@ -164,6 +181,8 @@ export function connect() {
 			}));
 		} else if (data.type === 'model_changed') {
 			currentModel.set(data.modelId);
+		} else if (data.type === 'preferences_updated') {
+			currentUser.update(u => u ? { ...u, preferences: data.preferences } : u);
 		} else if (data.type === 'message') {
 			const msg: Message = {
 				role: 'assistant',
@@ -214,6 +233,22 @@ export function connect() {
 			});
 		}
 	};
+}
+
+export function reconnect() {
+	if (ws) {
+		ws.onclose = null; // prevent auto-reconnect from old socket
+		ws.close();
+		ws = null;
+	}
+	chatStore.set({ ...initialState });
+	chatList.set([]);
+	connect();
+}
+
+export function setPreference(key: string, value: unknown) {
+	if (!ws || ws.readyState !== WebSocket.OPEN) return;
+	ws.send(JSON.stringify({ type: 'set_preference', key, value }));
 }
 
 export function sendMessage(content: string) {
