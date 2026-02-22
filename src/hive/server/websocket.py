@@ -96,7 +96,7 @@ async def websocket_endpoint(websocket: WebSocket):
     # Per-connection model selection — use user preference if valid, else default
     current_model_id = model_pool.default_id if model_pool else None
     pref_model = (user.preferences or {}).get("model_id")
-    if pref_model and model_pool and model_pool.get(pref_model):
+    if pref_model and model_pool and _resolve_model(model_pool, pref_model, config):
         current_model_id = pref_model
 
     # Per-connection chat tracking (mutable dict so background tasks can update it)
@@ -105,7 +105,8 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         # Send config, tool metadata, models, user, and initial status to frontend
         current_client = (
-            model_pool.get(current_model_id) if model_pool and current_model_id else None
+            _resolve_model(model_pool, current_model_id, config)
+            if model_pool and current_model_id else None
         )
         init_status = await _quick_status(current_client)
         await manager.send_json(conn_id, {
@@ -146,7 +147,10 @@ async def websocket_endpoint(websocket: WebSocket):
             # Handle model switch — seamless, no chat message
             if data.get("type") == "set_model":
                 model_id = data.get("modelId")
-                if model_pool and model_id and model_pool.get(model_id):
+                client = _resolve_model(
+                    model_pool, model_id, config,
+                ) if model_pool and model_id else None
+                if client:
                     current_model_id = model_id
                     chat["model"] = model_id
                     await manager.send_json(conn_id, {
@@ -251,8 +255,9 @@ async def websocket_endpoint(websocket: WebSocket):
 
             # Resolve per-connection LLM client
             current_client = (
-            model_pool.get(current_model_id) if model_pool and current_model_id else None
-        )
+                _resolve_model(model_pool, current_model_id, config)
+                if model_pool and current_model_id else None
+            )
 
             # Process message as a cancellable background task
             manager.tasks[conn_id] = asyncio.create_task(
@@ -382,6 +387,28 @@ async def _handle_message(
         await manager.send_json(conn_id, {"type": "message", "content": f"Error: {e}"})
     finally:
         manager.tasks.pop(conn_id, None)
+
+
+def _resolve_model(model_pool, model_id: str, config=None):
+    """Get a client for configured or auto-discovered Ollama models."""
+    client = model_pool.get(model_id)
+    if client:
+        return client
+    # Auto-discovered Ollama model: register on the fly
+    if model_id.startswith("ollama/") and config and config.llm.auto_discover:
+        from hive.config import ModelEntry
+
+        ollama_base = next(
+            (e.base_url for e in model_pool.entries() if e.provider == "ollama"),
+            "http://localhost:11434/v1",
+        )
+        entry = ModelEntry(
+            provider="ollama",
+            model=model_id.removeprefix("ollama/"),
+            base_url=ollama_base,
+        )
+        return model_pool.get_or_create(model_id, entry)
+    return None
 
 
 async def _generate_chat_title(llm_client, messages: list[dict]) -> str | None:
