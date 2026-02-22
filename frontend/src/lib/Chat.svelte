@@ -13,32 +13,23 @@
 	let _timerRef = null; // plain var — must not be $state to avoid retriggering $effect
 	let dark = $state(false);
 
-	const thinkingWords = ['Spawning', 'Hatching', 'Evolving', 'Multiplying', 'Spreading'];
-	const toolWords = {
-		search: 'Scouring',
-		extract: 'Extracting',
-		blast: 'Launching',
-		digest: 'Devouring',
-		translate: 'Mutating',
-		features: 'Scanning',
-		primers: 'Detecting',
-		gc: 'Analyzing',
-		revcomp: 'Inverting',
-		transcribe: 'Transcribing',
-		profile: 'Profiling',
-	};
+	const thinkingWords = [
+		'Fermenting', 'Sequencing', 'Culturing', 'Incubating', 'Lysing',
+		'Centrifuging', 'Eluting', 'Amplifying', 'Ligating', 'Transforming',
+		'Inoculating', 'Pelleting', 'Pipetting', 'Titrating', 'Replicating',
+		'Hybridizing', 'Denaturing', 'Annealing', 'Elongating', 'Purifying',
+		'Dialyzing', 'Vortexing', 'Aliquoting', 'Transfecting', 'Subcloning',
+		'Lyophilizing', 'Conjugating', 'Fractionating', 'Crosslinking', 'Sonifying',
+		'Miniprepping', 'Autoclaving', 'Desalting', 'Electrophoresing', 'Blotting',
+		'Permeabilizing', 'Quenching', 'Staining', 'Passaging', 'Cryopreserving',
+	];
 	let thinkingWord = $state(thinkingWords[0]);
 
 	function pickThinkingWord() {
 		thinkingWord = thinkingWords[Math.floor(Math.random() * thinkingWords.length)];
 	}
 
-	const progressWord = $derived.by(() => {
-		const p = $chatStore.progress;
-		if (!p) return thinkingWord;
-		if (p.phase === 'tool' && p.tool) return toolWords[p.tool] || 'Consuming';
-		return thinkingWord;
-	});
+	const progressWord = $derived(thinkingWord);
 
 	const progressMeta = $derived.by(() => {
 		const p = $chatStore.progress;
