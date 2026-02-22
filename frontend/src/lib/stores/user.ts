@@ -70,6 +70,26 @@ export async function fetchUsers() {
 	}
 }
 
+export async function loginUser(slug: string): Promise<User> {
+	const res = await fetch('/api/users/login', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ slug }),
+	});
+	if (!res.ok) {
+		const err = await res.json();
+		throw new Error(err.error || 'Login failed');
+	}
+	const data = await res.json();
+	setToken(data.token);
+	saveUserToken(data.slug, data.token);
+	currentUser.set({
+		id: data.id, username: data.username,
+		slug: data.slug, preferences: {},
+	});
+	return data;
+}
+
 export function switchUser(slug: string): boolean {
 	const token = getUserToken(slug);
 	if (!token) return false;

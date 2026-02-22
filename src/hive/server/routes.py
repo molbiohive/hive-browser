@@ -11,7 +11,9 @@ from sqlalchemy import func, select
 
 from hive.db import session as db
 from hive.db.models import Feature, IndexedFile, Primer, Sequence
-from hive.users.service import create_user, get_user_by_token, list_users, validate_username
+from hive.users.service import (
+    create_user, get_user_by_slug, get_user_by_token, list_users, validate_username,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +54,23 @@ async def list_users_endpoint():
     async with db.async_session_factory() as s:
         users = await list_users(s)
         return [{"id": u.id, "username": u.username, "slug": u.slug} for u in users]
+
+
+@router.post("/users/login")
+async def login_user(request: Request):
+    """Passwordless login by slug (local server, no passwords)."""
+    body = await request.json()
+    slug = body.get("slug", "").strip()
+    if not slug or not db.async_session_factory:
+        return JSONResponse({"error": "Invalid request"}, status_code=400)
+    async with db.async_session_factory() as s:
+        user = await get_user_by_slug(s, slug)
+        if not user:
+            return JSONResponse({"error": "User not found"}, status_code=404)
+        return {
+            "id": user.id, "username": user.username,
+            "slug": user.slug, "token": user.token,
+        }
 
 
 @router.get("/users/me")

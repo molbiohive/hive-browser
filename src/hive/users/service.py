@@ -47,6 +47,11 @@ async def get_user_by_token(session: AsyncSession, token: str) -> User | None:
     return (await session.execute(select(User).where(User.token == token))).scalar_one_or_none()
 
 
+async def get_user_by_slug(session: AsyncSession, slug: str) -> User | None:
+    """Look up user by slug (for passwordless local login)."""
+    return (await session.execute(select(User).where(User.slug == slug))).scalar_one_or_none()
+
+
 async def list_users(session: AsyncSession) -> list[User]:
     """Return all users ordered by creation date."""
     result = await session.execute(select(User).order_by(User.created_at))

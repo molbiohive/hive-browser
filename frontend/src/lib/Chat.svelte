@@ -1,7 +1,7 @@
 <script>
 	import { onMount } from 'svelte';
 	import { chatStore, chatList, appConfig, statusBar, connect, sendMessage, cancelRequest, loadChat, newChat, fetchChatList, deleteChat, setPreference } from '$lib/stores/chat.ts';
-	import { currentUser, needsAuth, clearToken } from '$lib/stores/user.ts';
+	import { currentUser, needsAuth, clearToken, setToken, getUserToken } from '$lib/stores/user.ts';
 	import MessageBubble from '$lib/MessageBubble.svelte';
 	import CommandPalette from '$lib/CommandPalette.svelte';
 	import ModelSelector from '$lib/ModelSelector.svelte';
@@ -9,13 +9,15 @@
 	import UserPicker from '$lib/UserPicker.svelte';
 
 	let inputText = $state('');
-	let messagesDiv;
+	let messagesDiv = $state(undefined);
 	let showPalette = $state(false);
 	let prevMsgCount = $state(0);
 	let elapsed = $state(0);
 	let _timerRef = null; // plain var — must not be $state to avoid retriggering $effect
 	let dark = $state(false);
 	let showAddUser = $state(false);
+	let previousUserSlug = $state(null);
+	const modalMode = $derived(showAddUser ? 'new' : 'return');
 
 	const thinkingWords = [
 		'Fermenting', 'Sequencing', 'Culturing', 'Incubating', 'Lysing',
@@ -91,9 +93,22 @@
 	}
 
 	function handleAddUser() {
+		previousUserSlug = $currentUser?.slug || null;
 		showAddUser = true;
-		clearToken();
 		currentUser.set(null);
+	}
+
+	function handleCancelAddUser() {
+		showAddUser = false;
+		if (previousUserSlug) {
+			const token = getUserToken(previousUserSlug);
+			if (token) {
+				setToken(token);
+				connect();
+				fetchChatList();
+			}
+		}
+		previousUserSlug = null;
 	}
 
 	function formatLastUpdated(ts) {
@@ -185,7 +200,7 @@
 </script>
 
 {#if $needsAuth}
-	<WelcomeModal />
+	<WelcomeModal mode={modalMode} onCancel={showAddUser ? handleCancelAddUser : undefined} />
 {:else}
 <div class="chat-layout">
 	<aside class="sidebar">

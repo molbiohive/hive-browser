@@ -3,7 +3,7 @@
  */
 
 import { writable } from 'svelte/store';
-import { getToken, currentUser } from './user.ts';
+import { getToken, clearToken, currentUser } from './user.ts';
 
 interface Message {
 	role: 'user' | 'assistant';
@@ -131,8 +131,9 @@ export function connect() {
 	ws.onclose = (event) => {
 		chatStore.update(s => ({ ...s, connected: false, isWaiting: false }));
 		if (event.code === 4001) {
-			// Auth failed — clear state, show welcome modal
+			// Auth failed — clear cookie + state, show welcome modal
 			console.log('[ws] auth failed, clearing token');
+			clearToken();
 			currentUser.set(null);
 			return;
 		}
