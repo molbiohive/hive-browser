@@ -1,6 +1,7 @@
 """Admin CLI — talk to a running Hive server."""
 
 import argparse
+import asyncio
 import json
 import sys
 
@@ -110,6 +111,95 @@ def cmd_token(args):
         sys.exit(1)
 
 
+# ── User commands (direct DB, no server needed) ─────────────────────
+
+
+def _db_url():
+    """Resolve database URL from config."""
+    from hive.config import load_config
+
+    return load_config().database.url
+
+
+async def _run_user_cmd(coro_fn):
+    """Init async DB and run a coroutine."""
+    from hive.db import session as db
+
+    await db.init_db(type("C", (), {"url": _db_url()})())
+    async with db.async_session_factory() as s:
+        await coro_fn(s)
+
+
+def cmd_users(args):
+    """List all users."""
+    async def _list(s):
+        from hive.users.service import list_users
+
+        users = await list_users(s)
+        if not users:
+            print("No users.")
+            return
+        for u in users:
+            print(f"  {u.id:3d}  {u.slug:<20s}  {u.username}")
+
+    asyncio.run(_run_user_cmd(_list))
+
+
+def cmd_user_add(args):
+    """Create a new user."""
+    async def _add(s):
+        from hive.users.service import create_user
+
+        try:
+            user = await create_user(s, args.username)
+            await s.commit()
+            print(f"Created user: {user.username} (slug: {user.slug})")
+            print(f"Token: {user.token}")
+        except ValueError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+
+    asyncio.run(_run_user_cmd(_add))
+
+
+def cmd_user_rm(args):
+    """Remove a user by slug."""
+    async def _rm(s):
+        from sqlalchemy import delete
+
+        from hive.db.models import User
+
+        result = await s.execute(
+            delete(User).where(User.slug == args.slug)
+        )
+        await s.commit()
+        if result.rowcount:
+            print(f"Deleted user: {args.slug}")
+        else:
+            print(f"User not found: {args.slug}", file=sys.stderr)
+            sys.exit(1)
+
+    asyncio.run(_run_user_cmd(_rm))
+
+
+def cmd_user_edit(args):
+    """Edit a user's username."""
+    async def _edit(s):
+        from hive.users.service import get_user_by_slug, make_slug
+
+        user = await get_user_by_slug(s, args.slug)
+        if not user:
+            print(f"User not found: {args.slug}", file=sys.stderr)
+            sys.exit(1)
+        old_name = user.username
+        user.username = args.new_name
+        user.slug = make_slug(args.new_name)
+        await s.commit()
+        print(f"Renamed: {old_name} -> {user.username} (slug: {user.slug})")
+
+    asyncio.run(_run_user_cmd(_edit))
+
+
 # ── Entry point ──────────────────────────────────────────────────────
 
 
@@ -142,6 +232,16 @@ def main():
     sub.add_parser("files", help="List indexed files")
     sub.add_parser("errors", help="List parse errors")
 
+    # Users (direct DB — no server needed)
+    sub.add_parser("users", help="List all users")
+    p_add = sub.add_parser("user-add", help="Create a new user")
+    p_add.add_argument("username", help="Display name for the new user")
+    p_rm = sub.add_parser("user-rm", help="Remove a user by slug")
+    p_rm.add_argument("slug", help="User slug to remove")
+    p_edit = sub.add_parser("user-edit", help="Rename a user")
+    p_edit.add_argument("slug", help="Current user slug")
+    p_edit.add_argument("new_name", help="New display name")
+
     args = parser.parse_args()
 
     dispatch = {
@@ -153,6 +253,10 @@ def main():
         "watcher-rescan": cmd_watcher_rescan,
         "files": cmd_files,
         "errors": cmd_errors,
+        "users": cmd_users,
+        "user-add": cmd_user_add,
+        "user-rm": cmd_user_rm,
+        "user-edit": cmd_user_edit,
     }
 
     dispatch[args.command](args)
