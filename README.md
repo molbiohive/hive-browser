@@ -1,8 +1,14 @@
+<p align="center">
+  <img src="frontend/static/logo.svg" alt="Hive Browser" width="128">
+</p>
+
 # Hive Browser
 
 Local-first lab sequence search platform with natural language queries powered by LLM.
 
 Hive Browser watches your local directories for biological sequence files (.dna, .rna, .prot, .gb, .fasta), indexes them into a PostgreSQL database, and lets you search, explore, and compare sequences through a chat interface — using either natural language or direct commands.
+
+![Hive Browser preview](docs/preview.png)
 
 ## Why Hive?
 
