@@ -153,6 +153,15 @@ async def websocket_endpoint(websocket: WebSocket):
                         "type": "model_changed",
                         "modelId": model_id,
                     })
+                    # Persist as user preference
+                    if db.async_session_factory:
+                        try:
+                            async with db.async_session_factory() as s:
+                                await update_preferences(
+                                    s, user.id, "model_id", model_id,
+                                )
+                        except Exception as e:
+                            logger.warning("Model pref save failed: %s", e)
                     logger.info("Connection %s switched to model %s", conn_id, model_id)
                 continue
 
