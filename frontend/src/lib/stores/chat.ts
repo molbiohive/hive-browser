@@ -113,6 +113,13 @@ export function connect() {
 		reconnectTimer = null;
 	}
 
+	// Close any existing connection to prevent orphaned sockets
+	if (ws) {
+		ws.onclose = null;
+		ws.close();
+		ws = null;
+	}
+
 	const token = getToken();
 	if (!token) {
 		// No token — trigger auth flow

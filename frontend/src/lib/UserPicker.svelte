@@ -1,5 +1,5 @@
 <script>
-	import { currentUser, userList, fetchUsers, switchUser } from '$lib/stores/user.ts';
+	import { currentUser, userList, fetchUsers, switchUser, loginUser } from '$lib/stores/user.ts';
 	import { reconnect } from '$lib/stores/chat.ts';
 
 	let { onAddUser = () => {} } = $props();
@@ -10,7 +10,7 @@
 		open = !open;
 	}
 
-	function handleSwitch(slug) {
+	async function handleSwitch(slug) {
 		if (slug === $currentUser?.slug) {
 			open = false;
 			return;
@@ -18,6 +18,15 @@
 		if (switchUser(slug)) {
 			open = false;
 			reconnect();
+			return;
+		}
+		// Token not in localStorage — fetch from server
+		try {
+			await loginUser(slug);
+			open = false;
+			reconnect();
+		} catch (e) {
+			console.warn('[user] switch failed:', e);
 		}
 	}
 
