@@ -1,12 +1,12 @@
-# Contributing to Zerg Browser
+# Contributing to Hive Browser
 
-Thank you for your interest in contributing to Zerg Browser! This document
+Thank you for your interest in contributing to Hive Browser! This document
 outlines the process for contributing and the legal terms that apply to all
 contributions.
 
 ## Licensing
 
-Zerg Browser is dual-licensed:
+Hive Browser is dual-licensed:
 
 - **AGPL-3.0** for open source and community use
 - **Commercial license** for proprietary use
@@ -29,7 +29,7 @@ communication sent to the project, including but not limited to pull requests,
 patches, commits, issues, and comments.
 
 "Project Author" means Oleksii Stroganov (merv1n@proton.me), the copyright
-holder and maintainer of Zerg Browser.
+holder and maintainer of Hive Browser.
 
 ### 2. Grant of Rights
 
@@ -120,16 +120,16 @@ make front-dev      # frontend (terminal 2)
 
 ### Adding a New Tool
 
-**Internal tools** (in `src/zerg/tools/`):
+**Internal tools** (in `src/hive/tools/`):
 
-1. Create `src/zerg/tools/mytool.py` — subclass `Tool`, set `name`, `description`, `widget`, `tags`
+1. Create `src/hive/tools/mytool.py` — subclass `Tool`, set `name`, `description`, `widget`, `tags`
 2. Implement `input_schema()`, `execute()`, `format_result()`
 3. If using a custom widget, create `frontend/src/lib/MyToolWidget.svelte`
 4. Auto-discovered on startup — no registration needed
 
-**External tools** (in `~/.zerg/tools/`):
+**External tools** (in `~/.hive/tools/`):
 
-1. Drop a `.py` file — must import from `zerg.sdk` only
+1. Drop a `.py` file — must import from `hive.sdk` only
 2. Auto-discovered with import validation (internal imports are rejected)
 
 ### Code Style

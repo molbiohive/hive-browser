@@ -1,12 +1,12 @@
-# Zerg Browser
+# Hive Browser
 
 Local-first lab sequence search platform with natural language queries powered by LLM.
 
-Zerg Browser watches your local directories for biological sequence files (.dna, .rna, .prot, .gb, .fasta), indexes them into a PostgreSQL database, and lets you search, explore, and compare sequences through a chat interface — using either natural language or direct commands.
+Hive Browser watches your local directories for biological sequence files (.dna, .rna, .prot, .gb, .fasta), indexes them into a PostgreSQL database, and lets you search, explore, and compare sequences through a chat interface — using either natural language or direct commands.
 
-## Why Zerg?
+## Why Hive?
 
-Zerg is a reference to the species from the StarCraft universe, known for rapid mutation and adaptation. This tool helps you tame the beast — rapidly growing and changing sequence data scattered across lab file systems.
+Hive is a reference to the species from the StarCraft universe, known for rapid mutation and adaptation. This tool helps you tame the beast — rapidly growing and changing sequence data scattered across lab file systems.
 
 ## Features
 
@@ -35,8 +35,8 @@ Zerg is a reference to the species from the StarCraft universe, known for rapid 
 ### Local Development Setup
 
 ```bash
-git clone https://github.com/merv1n34k/zerg-browser.git
-cd zerg-browser
+git clone https://github.com/merv1n34k/hive-browser.git
+cd hive-browser
 
 make check-deps   # verify uv, bun, psql, blastn, ollama are installed
 make setup-dev    # install deps, create config, set up DB, run migrations
@@ -72,8 +72,8 @@ make docker-init    # creates config/config.docker.yaml + .env with secure DB pa
 Edit `.env` to set your host paths:
 
 ```bash
-ZERG_DATA_ROOT=~/.zerg            # where chats, BLAST index, tools are stored
-ZERG_WATCHER_ROOT=~/sequences     # directory with your sequence files (mounted read-only)
+HIVE_DATA_ROOT=~/.hive            # where chats, BLAST index, tools are stored
+HIVE_WATCHER_ROOT=~/sequences     # directory with your sequence files (mounted read-only)
 ```
 
 Edit `config/config.docker.yaml` to set your LLM provider:
@@ -104,7 +104,7 @@ make docker-update  # rebuilds image, restarts containers, runs migrations
 **Config changes** — edit `config/config.docker.yaml`, then:
 
 ```bash
-docker compose restart zerg
+docker compose restart hive
 ```
 
 **Other commands:**
@@ -175,7 +175,7 @@ The LLM self-selects between two modes:
 
 ## Data Storage
 
-Zerg stores working data under `data_root` (`./data` in dev, configurable via `ZERG_DATA_ROOT` in Docker):
+Hive stores working data under `data_root` (`./data` in dev, configurable via `HIVE_DATA_ROOT` in Docker):
 
 ```
 {data_root}/
@@ -186,7 +186,7 @@ Zerg stores working data under `data_root` (`./data` in dev, configurable via `Z
 
 - **BLAST index** — rebuilt automatically when sequence files are ingested
 - **Chat history** — each chat saved as JSON with messages, widgets, and chain data
-- **External tools** — drop a `.py` file here to add custom tools (must import from `zerg.sdk` only)
+- **External tools** — drop a `.py` file here to add custom tools (must import from `hive.sdk` only)
 
 ## Development
 
@@ -225,8 +225,8 @@ uv run pytest tests/test_tools.py::TestToolFactoryInternal -v
 
 # Quick import sanity check
 uv run python -c "
-from zerg.tools.factory import ToolFactory
-from zerg.config import Settings
+from hive.tools.factory import ToolFactory
+from hive.config import Settings
 r = ToolFactory.discover(Settings())
 print(f'{len(r.all())} tools discovered')
 "
@@ -248,7 +248,7 @@ make check-all
 ### Project Structure
 
 ```
-src/zerg/
+src/hive/
 ├── main.py              # Entry point (create_app)
 ├── config.py            # Settings from YAML
 ├── db/                  # SQLAlchemy models + async session

@@ -81,7 +81,7 @@ class Settings(BaseSettings):
     search: SearchConfig = Field(default_factory=SearchConfig)
     watcher: WatcherConfig = Field(default_factory=WatcherConfig)
 
-    model_config = {"env_prefix": "ZERG_"}
+    model_config = {"env_prefix": "HIVE_"}
 
     @property
     def blast_dir(self) -> str:
@@ -101,11 +101,11 @@ def load_config(config_path: str | None = None) -> Settings:
 
     Resolution order:
       1. Explicit ``config_path`` argument
-      2. ``ZERG_CONFIG`` environment variable
+      2. ``HIVE_CONFIG`` environment variable
       3. ``config/config.local.yaml`` (dev default)
     """
     if config_path is None:
-        config_path = os.environ.get("ZERG_CONFIG", "config/config.local.yaml")
+        config_path = os.environ.get("HIVE_CONFIG", "config/config.local.yaml")
 
     path = Path(config_path)
     if path.exists():
@@ -118,8 +118,8 @@ def load_config(config_path: str | None = None) -> Settings:
     # Docker env var overrides (container paths replace host paths)
     if db_url := os.environ.get("DATABASE_URL"):
         settings.database.url = db_url
-    if data_root := os.environ.get("ZERG_DATA_ROOT"):
+    if data_root := os.environ.get("HIVE_DATA_ROOT"):
         settings.data_root = data_root
-    if watcher_root := os.environ.get("ZERG_WATCHER_ROOT"):
+    if watcher_root := os.environ.get("HIVE_WATCHER_ROOT"):
         settings.watcher.root = watcher_root
     return settings
