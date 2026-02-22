@@ -1,8 +1,7 @@
 """Chat storage — JSON file persistence on the server.
 
-File naming: {chat_id}.json
+File naming: {user_slug}-{chat_id}.json (or {chat_id}.json without user).
 Storage dir: configurable via config.chat.storage_dir.
-No user field in MVP (no accounts).
 """
 
 import json
@@ -21,6 +20,11 @@ class ChatStorage:
         self.storage_dir = Path(storage_dir)
         self.storage_dir.mkdir(parents=True, exist_ok=True)
 
+    def _filepath(self, chat_id: str, user_slug: str | None = None) -> Path:
+        if user_slug:
+            return self.storage_dir / f"{user_slug}-{chat_id}.json"
+        return self.storage_dir / f"{chat_id}.json"
+
     def new_chat_id(self) -> str:
         ts = datetime.now(UTC).isoformat()
         return sha256(ts.encode()).hexdigest()[:8]
@@ -29,6 +33,7 @@ class ChatStorage:
         self,
         chat_id: str,
         messages: list[dict],
+        user_slug: str | None = None,
         title: str | None = None,
         created: datetime | None = None,
         model: str | None = None,
@@ -36,10 +41,10 @@ class ChatStorage:
         if created is None:
             created = datetime.now(UTC)
 
-        filepath = self.storage_dir / f"{chat_id}.json"
+        filepath = self._filepath(chat_id, user_slug)
 
         # Preserve existing title/created/model if updating
-        existing = self.load(chat_id)
+        existing = self.load(chat_id, user_slug)
         if existing:
             created = datetime.fromisoformat(existing["created"])
             if title is None:
@@ -58,40 +63,48 @@ class ChatStorage:
         with open(filepath, "w") as f:
             json.dump(data, f, indent=2, default=str)
 
-    def load(self, chat_id: str) -> dict | None:
-        filepath = self.storage_dir / f"{chat_id}.json"
+    def load(self, chat_id: str, user_slug: str | None = None) -> dict | None:
+        filepath = self._filepath(chat_id, user_slug)
         if filepath.exists():
             with open(filepath) as f:
                 return json.load(f)
         return None
 
-    def update_title(self, chat_id: str, title: str):
-        data = self.load(chat_id)
+    def update_title(self, chat_id: str, title: str, user_slug: str | None = None):
+        data = self.load(chat_id, user_slug)
         if data:
             data["title"] = title
-            filepath = self.storage_dir / f"{chat_id}.json"
+            filepath = self._filepath(chat_id, user_slug)
             with open(filepath, "w") as f:
                 json.dump(data, f, indent=2, default=str)
 
-    def delete(self, chat_id: str) -> bool:
-        filepath = self.storage_dir / f"{chat_id}.json"
+    def delete(self, chat_id: str, user_slug: str | None = None) -> bool:
+        filepath = self._filepath(chat_id, user_slug)
         if filepath.exists():
             filepath.unlink()
             return True
         return False
 
-    def list_chats(self) -> list[dict]:
+    def list_chats(self, user_slug: str | None = None) -> list[dict]:
+        if user_slug:
+            pattern = f"{user_slug}-*.json"
+            prefix_len = len(user_slug) + 1  # slug + hyphen
+        else:
+            pattern = "*.json"
+            prefix_len = 0
+
         chats = []
         for filepath in sorted(
-            self.storage_dir.glob("*.json"),
+            self.storage_dir.glob(pattern),
             key=lambda p: p.stat().st_mtime,
             reverse=True,
         ):
             try:
                 with open(filepath) as f:
                     data = json.load(f)
+                chat_id = filepath.stem[prefix_len:] if prefix_len else filepath.stem
                 chats.append({
-                    "id": data["id"],
+                    "id": chat_id,
                     "title": data.get("title"),
                     "created": data["created"],
                     "message_count": len(data.get("messages", [])),
