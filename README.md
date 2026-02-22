@@ -35,7 +35,7 @@ A bee hive is a model of organized collective work — thousands of workers buil
 ### Local Development Setup
 
 ```bash
-git clone https://github.com/merv1n34k/hive-browser.git
+git clone https://github.com/molbiohive/hive-browser.git
 cd hive-browser
 
 make check-deps   # verify uv, bun, psql, blastn, ollama are installed
