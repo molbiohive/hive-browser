@@ -6,14 +6,65 @@ import subprocess
 from pathlib import Path
 
 from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
 
 from hive.db import session as db
 from hive.db.models import Feature, IndexedFile, Primer, Sequence
+from hive.users.service import create_user, get_user_by_token, list_users, validate_username
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api")
+
+
+# ── User endpoints ────────────────────────────────────────
+
+
+@router.post("/users")
+async def create_user_endpoint(request: Request):
+    body = await request.json()
+    username = body.get("username", "").strip()
+    if not validate_username(username):
+        return JSONResponse(
+            {"error": "Invalid username: ASCII letters, digits, hyphens, underscores, spaces (1-50 chars)"},
+            status_code=422,
+        )
+    if not db.async_session_factory:
+        return JSONResponse({"error": "Database not available"}, status_code=503)
+    try:
+        async with db.async_session_factory() as s:
+            user = await create_user(s, username)
+            await s.commit()
+            return {"id": user.id, "username": user.username, "slug": user.slug, "token": user.token}
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=409)
+
+
+@router.get("/users")
+async def list_users_endpoint():
+    if not db.async_session_factory:
+        return []
+    async with db.async_session_factory() as s:
+        users = await list_users(s)
+        return [{"id": u.id, "username": u.username, "slug": u.slug} for u in users]
+
+
+@router.get("/users/me")
+async def get_current_user(request: Request):
+    token = request.cookies.get("hive_token")
+    if not token or not db.async_session_factory:
+        return JSONResponse({"error": "Not authenticated"}, status_code=401)
+    async with db.async_session_factory() as s:
+        user = await get_user_by_token(s, token)
+        if not user:
+            return JSONResponse({"error": "Invalid token"}, status_code=401)
+        return {
+            "id": user.id,
+            "username": user.username,
+            "slug": user.slug,
+            "preferences": user.preferences,
+        }
 
 
 # ── Chat endpoints ────────────────────────────────────────
