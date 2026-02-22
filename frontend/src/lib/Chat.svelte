@@ -19,6 +19,22 @@
 	let previousUserSlug = $state(null);
 	const modalMode = $derived(showAddUser ? 'new' : 'return');
 
+	const allSuggestions = [
+		{ label: 'Find all GFP plasmids', cmd: 'find all GFP plasmids' },
+		{ label: 'What can you do?', cmd: '/help' },
+		{ label: 'Search for ampicillin resistance', cmd: 'search ampicillin' },
+		{ label: 'Show all circular vectors', cmd: 'find circular plasmids' },
+		{ label: 'List features on pUC19', cmd: '/features pUC19' },
+		{ label: 'BLAST a sequence', cmd: '//blast' },
+		{ label: 'Find kanamycin markers', cmd: 'search kanamycin' },
+		{ label: 'Compare two sequences', cmd: 'how do I compare sequences?' },
+		{ label: 'Show primers on a plasmid', cmd: '/primers' },
+	];
+	let suggestionOffset = $state(Math.floor(Math.random() * allSuggestions.length));
+	const visibleSuggestions = $derived(
+		Array.from({ length: 3 }, (_, i) => allSuggestions[(suggestionOffset + i) % allSuggestions.length])
+	);
+
 	const thinkingWords = [
 		'Fermenting', 'Sequencing', 'Culturing', 'Incubating', 'Lysing',
 		'Centrifuging', 'Eluting', 'Amplifying', 'Ligating', 'Transforming',
@@ -167,6 +183,7 @@
 
 	function handleNewChat() {
 		newChat();
+		suggestionOffset = (suggestionOffset + 3) % allSuggestions.length;
 	}
 
 	function handleDeleteChat(e, chatId) {
@@ -260,15 +277,11 @@
 					<h2>Hive Browser</h2>
 					<p>Search your lab sequences using natural language.</p>
 					<div class="suggestions">
-						<button onclick={() => { inputText = 'find all GFP plasmids'; handleSubmit(); }}>
-							Find all GFP plasmids
-						</button>
-						<button onclick={() => { inputText = '//status'; handleSubmit(); }}>
-							Show system status
-						</button>
-						<button onclick={() => { inputText = '/help'; handleSubmit(); }}>
-							What can you do?
-						</button>
+						{#each visibleSuggestions as s}
+							<button onclick={() => { inputText = s.cmd; handleSubmit(); }}>
+								{s.label}
+							</button>
+						{/each}
 					</div>
 				</div>
 			{:else}

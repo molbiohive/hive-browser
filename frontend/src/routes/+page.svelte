@@ -26,15 +26,15 @@
 		--text-placeholder: #aaa;
 		--text-hint: #bbb;
 
-		--btn-bg: #ad68f7;
+		--btn-bg: #2e6ede;
 		--btn-fg: white;
-		--btn-hover: #9b50f0;
+		--btn-hover: #245bba;
 
-		--color-ok: #16a34a;
+		--color-ok: #73c600;
 		--color-err: #dc2626;
-		--color-link: #51baea;
-		--color-accent: #ad68f7;
-		--color-accent-light: #c99dfa;
+		--color-link: #2e6ede;
+		--color-accent: #2e6ede;
+		--color-accent-light: #5a93f0;
 		--color-warn: #c4a000;
 
 		--shadow: rgba(0, 0, 0, 0.06);
@@ -59,15 +59,15 @@
 		--text-placeholder: #555;
 		--text-hint: #444;
 
-		--btn-bg: #ad68f7;
+		--btn-bg: #2e6ede;
 		--btn-fg: white;
-		--btn-hover: #c99dfa;
+		--btn-hover: #5a93f0;
 
-		--color-ok: #22c55e;
+		--color-ok: #73c600;
 		--color-err: #f87171;
-		--color-link: #51baea;
-		--color-accent: #ad68f7;
-		--color-accent-light: #c99dfa;
+		--color-link: #5a93f0;
+		--color-accent: #5a93f0;
+		--color-accent-light: #82b0f5;
 		--color-warn: #e2da1c;
 
 		--shadow: rgba(0, 0, 0, 0.3);
