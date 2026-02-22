@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "hive-browser"
-version = "0.2.0-dev"
+version = "0.3.0-dev"
 description = "Lightweight platform for managing and querying lab sequence data using natural language"
 requires-python = ">=3.12"
 dependencies = [
