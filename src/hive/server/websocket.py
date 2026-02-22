@@ -13,6 +13,7 @@ from sqlalchemy import func, select
 from hive.db import session as db
 from hive.db.models import Feature, IndexedFile, Sequence
 from hive.tools.router import route_input
+from hive.users.service import get_user_by_token, update_preferences
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +71,19 @@ manager = ConnectionManager()
 async def websocket_endpoint(websocket: WebSocket):
     conn_id = await manager.connect(websocket)
 
+    # --- Authenticate via token query param ---
+    token = websocket.query_params.get("token")
+    user = None
+    if token and db.async_session_factory:
+        async with db.async_session_factory() as s:
+            user = await get_user_by_token(s, token)
+    if not user:
+        await websocket.close(code=4001, reason="auth_required")
+        manager.disconnect(conn_id)
+        return
+
+    user_slug = user.slug
+
     # Get services from app state
     app = websocket.app
     config = getattr(app.state, "config", None)
@@ -79,15 +93,20 @@ async def websocket_endpoint(websocket: WebSocket):
     max_pairs = config.chat.max_history_pairs if config else 20
     save_threshold = config.chat.auto_save_after if config else 2
 
-    # Per-connection model selection (starts with default, user can switch)
+    # Per-connection model selection — use user preference if valid, else default
     current_model_id = model_pool.default_id if model_pool else None
+    pref_model = (user.preferences or {}).get("model_id")
+    if pref_model and model_pool and model_pool.get(pref_model):
+        current_model_id = pref_model
 
     # Per-connection chat tracking (mutable dict so background tasks can update it)
     chat = {"id": None, "messages": [], "title_generated": False, "model": current_model_id}
 
     try:
-        # Send config, tool metadata, models, and initial status to frontend
-        current_client = model_pool.get(current_model_id) if model_pool and current_model_id else None
+        # Send config, tool metadata, models, user, and initial status to frontend
+        current_client = (
+            model_pool.get(current_model_id) if model_pool and current_model_id else None
+        )
         init_status = await _quick_status(current_client)
         await manager.send_json(conn_id, {
             "type": "init",
@@ -106,6 +125,12 @@ async def websocket_endpoint(websocket: WebSocket):
                 for m in model_pool.entries()
             ] if model_pool else [],
             "currentModel": current_model_id,
+            "user": {
+                "id": user.id,
+                "username": user.username,
+                "slug": user.slug,
+                "preferences": user.preferences or {},
+            },
         })
 
         while True:
@@ -131,11 +156,27 @@ async def websocket_endpoint(websocket: WebSocket):
                     logger.info("Connection %s switched to model %s", conn_id, model_id)
                 continue
 
+            # Handle preference update
+            if data.get("type") == "set_preference" and db.async_session_factory:
+                key = data.get("key")
+                value = data.get("value")
+                if key:
+                    try:
+                        async with db.async_session_factory() as s:
+                            prefs = await update_preferences(s, user.id, key, value)
+                        await manager.send_json(conn_id, {
+                            "type": "preferences_updated",
+                            "preferences": prefs,
+                        })
+                    except Exception as e:
+                        logger.warning("Preference update failed: %s", e)
+                continue
+
             # Handle chat resume
             if data.get("type") == "load_chat" and chat_storage:
                 requested_id = data.get("chatId")
                 if requested_id:
-                    saved = chat_storage.load(requested_id)
+                    saved = chat_storage.load(requested_id, user_slug)
                     if saved:
                         chat["id"] = requested_id
                         chat["messages"] = saved.get("messages", [])
@@ -195,12 +236,14 @@ async def websocket_endpoint(websocket: WebSocket):
             if not registry:
                 await manager.send_json(conn_id, {
                     "type": "message",
-                    "content": "Server not ready — tool registry not initialized.",
+                    "content": "Server not ready -- tool registry not initialized.",
                 })
                 continue
 
             # Resolve per-connection LLM client
-            current_client = model_pool.get(current_model_id) if model_pool and current_model_id else None
+            current_client = (
+            model_pool.get(current_model_id) if model_pool and current_model_id else None
+        )
 
             # Process message as a cancellable background task
             manager.tasks[conn_id] = asyncio.create_task(
@@ -212,6 +255,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     model_id=current_model_id,
                     chat=chat,
                     chat_storage=chat_storage,
+                    user_slug=user_slug,
                     max_pairs=max_pairs,
                     save_threshold=save_threshold,
                     config=config,
@@ -230,6 +274,7 @@ async def _handle_message(
     model_id: str | None,
     chat: dict,
     chat_storage,
+    user_slug: str | None,
     max_pairs: int,
     save_threshold: int,
     config,
@@ -305,14 +350,16 @@ async def _handle_message(
                 chat["id"] = chat_storage.new_chat_id()
             threshold = config.chat.widget_data_threshold if config else 2048
             messages_to_save = [_strip_large_widget_data(m, threshold) for m in chat["messages"]]
-            chat_storage.save(chat["id"], messages_to_save, model=chat.get("model"))
+            chat_storage.save(
+                chat["id"], messages_to_save, user_slug=user_slug, model=chat.get("model"),
+            )
 
             # Generate title once via LLM
             if not chat["title_generated"] and llm_client:
                 chat["title_generated"] = True
                 title = await _generate_chat_title(llm_client, chat["messages"][:4])
                 if title:
-                    chat_storage.update_title(chat["id"], title)
+                    chat_storage.update_title(chat["id"], title, user_slug=user_slug)
                     await manager.send_json(conn_id, {
                         "type": "chat_saved",
                         "chatId": chat["id"],

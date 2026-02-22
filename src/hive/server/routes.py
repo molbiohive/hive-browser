@@ -27,7 +27,8 @@ async def create_user_endpoint(request: Request):
     username = body.get("username", "").strip()
     if not validate_username(username):
         return JSONResponse(
-            {"error": "Invalid username: ASCII letters, digits, hyphens, underscores, spaces (1-50 chars)"},
+            {"error": "Invalid username: ASCII letters, digits, hyphens,"
+             " underscores, spaces (1-50 chars)"},
             status_code=422,
         )
     if not db.async_session_factory:
@@ -36,7 +37,10 @@ async def create_user_endpoint(request: Request):
         async with db.async_session_factory() as s:
             user = await create_user(s, username)
             await s.commit()
-            return {"id": user.id, "username": user.username, "slug": user.slug, "token": user.token}
+            return {
+                "id": user.id, "username": user.username,
+                "slug": user.slug, "token": user.token,
+            }
     except ValueError as e:
         return JSONResponse({"error": str(e)}, status_code=409)
 
@@ -70,12 +74,23 @@ async def get_current_user(request: Request):
 # ── Chat endpoints ────────────────────────────────────────
 
 
+async def _get_user_slug(request: Request) -> str | None:
+    """Extract user slug from hive_token cookie."""
+    token = request.cookies.get("hive_token")
+    if not token or not db.async_session_factory:
+        return None
+    async with db.async_session_factory() as s:
+        user = await get_user_by_token(s, token)
+        return user.slug if user else None
+
+
 @router.get("/chats")
 async def list_chats(request: Request):
     storage = getattr(request.app.state, "chat_storage", None)
     if not storage:
         return []
-    return storage.list_chats()
+    slug = await _get_user_slug(request)
+    return storage.list_chats(slug)
 
 
 @router.get("/chats/{chat_id}")
@@ -83,7 +98,8 @@ async def get_chat(chat_id: str, request: Request):
     storage = getattr(request.app.state, "chat_storage", None)
     if not storage:
         return {"error": "Chat storage not available"}
-    data = storage.load(chat_id)
+    slug = await _get_user_slug(request)
+    data = storage.load(chat_id, slug)
     if not data:
         return {"error": "Chat not found"}
     return data
@@ -94,7 +110,8 @@ async def delete_chat(chat_id: str, request: Request):
     storage = getattr(request.app.state, "chat_storage", None)
     if not storage:
         return {"error": "Chat storage not available"}
-    deleted = storage.delete(chat_id)
+    slug = await _get_user_slug(request)
+    deleted = storage.delete(chat_id, slug)
     return {"deleted": deleted}
 
 
