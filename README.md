@@ -132,14 +132,16 @@ Browser  <-->  Svelte 5 frontend  <-->  FastAPI + WebSocket  <-->  PostgreSQL
                                             |
                                        Tool Router
                                       /     |      \
-                               SIMPLE    LOOP      Direct
-                              (3-step)  (agentic)  (//cmd)
-                                 |         |
+                               Guided   Agentic    Direct
+                              (/cmd)    (free text) (//cmd)
+                                 \        |
+                              Unified agentic loop
+                                      |
                             Tool System (11 tools)
                            /    |    |    |    \
                        Search BLAST Extract Digest ...
-                                 |
-                          Ollama / litellm
+                                      |
+                               Ollama / litellm
 ```
 
 **Backend**: Python 3.12, FastAPI, SQLAlchemy (async), Pydantic, sgffp, Biopython
@@ -166,12 +168,12 @@ Tools are self-describing and auto-discovered. Each tool declares its name, sche
 | features | llm, info | List features on a sequence |
 | primers | llm, info | List primers on a sequence |
 
-### LLM Modes
+### Agentic Loop
 
-The LLM self-selects between two modes:
+A single unified loop handles all LLM interactions. The LLM picks tools, chains them as needed, and uses a hybrid auto-pipe cache to pass large data (sequences, etc.) between tools without sending it through LLM context.
 
-- **SIMPLE** — 3-step flow (select tool → extract params → summarize). Used for straightforward queries like "search GFP".
-- **LOOP** — Agentic loop that chains multiple tools. Used when the query requires extracting data from one tool to feed into another, e.g. "translate the GFP CDS from pEGFP-N1" → extract → translate.
+- **Single query** — LLM selects tool, extracts params, summarizes. E.g. "search GFP".
+- **Multi-step chain** — LLM chains multiple tools when needed. E.g. "translate the GFP CDS from pEGFP-N1" automatically runs extract → translate.
 
 ## Commands
 
@@ -266,7 +268,7 @@ src/hive/
 ├── tools/               # Tool system (11 tools + router + factory)
 │   ├── base.py          # Tool ABC, ToolRegistry
 │   ├── factory.py       # Auto-discovery (internal + external)
-│   ├── router.py        # Dispatch: direct / guided / SIMPLE / LOOP
+│   ├── router.py        # Dispatch: direct / guided / agentic loop
 │   └── *.py             # Individual tools
 ├── sdk/                 # Public SDK for external tools
 ├── llm/                 # LLM client + prompts
