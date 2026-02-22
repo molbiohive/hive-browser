@@ -48,6 +48,7 @@ class PrimersTool(Tool):
         for p in primers:
             tm = f" Tm={p['tm']:.1f}" if p.get("tm") else ""
             lines.append(f"  {p['name']}: {p['sequence'][:30]}...{tm}")
+        lines.append("[User sees full table — summarize, do not list.]")
         return "\n".join(lines)
 
     async def execute(self, params: dict[str, Any]) -> dict[str, Any]:

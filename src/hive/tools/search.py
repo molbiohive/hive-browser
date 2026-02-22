@@ -78,7 +78,10 @@ class SearchTool(Tool):
         if not total:
             return f"No results for '{query}'."
         names = [r["name"] for r in result.get("results", [])]
-        return f"Found {total} result(s) for '{query}': {', '.join(names)}."
+        return (
+            f"Found {total} result(s) for '{query}': {', '.join(names)}. "
+            "[User sees full table — summarize, do not list.]"
+        )
 
     async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         """Execute search with pg_trgm similarity + filters.

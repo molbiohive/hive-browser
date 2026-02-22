@@ -173,6 +173,7 @@ export function connect() {
 			if (data.user) {
 				currentUser.set(data.user);
 			}
+			fetchChatList();
 		} else if (data.type === 'status_update') {
 			if (data.status) {
 				statusBar.update(s => ({ ...s, ...data.status }));

@@ -75,7 +75,10 @@ class BlastTool(Tool):
         if not hits:
             return "No BLAST hits found."
         parts = [f"{h['subject']} ({h['identity']:.1f}%)" for h in hits]
-        return f"Found {len(hits)} BLAST hit(s): {', '.join(parts)}."
+        return (
+            f"Found {len(hits)} BLAST hit(s): {', '.join(parts)}. "
+            "[User sees full table — summarize, do not list.]"
+        )
 
     async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         """Run BLAST+ against the local index."""

@@ -51,6 +51,7 @@ class FeaturesTool(Tool):
         for f in features:
             strand = "+" if f["strand"] == 1 else "-" if f["strand"] == -1 else "."
             lines.append(f"  {f['name']} ({f['type']}) {f['start']}..{f['end']} [{strand}]")
+        lines.append("[User sees full table — summarize, do not list.]")
         return "\n".join(lines)
 
     async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
