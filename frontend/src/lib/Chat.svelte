@@ -1,9 +1,12 @@
 <script>
 	import { onMount } from 'svelte';
-	import { chatStore, chatList, appConfig, statusBar, connect, sendMessage, cancelRequest, loadChat, newChat, fetchChatList, deleteChat } from '$lib/stores/chat.ts';
+	import { chatStore, chatList, appConfig, statusBar, connect, sendMessage, cancelRequest, loadChat, newChat, fetchChatList, deleteChat, setPreference } from '$lib/stores/chat.ts';
+	import { currentUser, needsAuth, clearToken } from '$lib/stores/user.ts';
 	import MessageBubble from '$lib/MessageBubble.svelte';
 	import CommandPalette from '$lib/CommandPalette.svelte';
 	import ModelSelector from '$lib/ModelSelector.svelte';
+	import WelcomeModal from '$lib/WelcomeModal.svelte';
+	import UserPicker from '$lib/UserPicker.svelte';
 
 	let inputText = $state('');
 	let messagesDiv;
@@ -12,6 +15,7 @@
 	let elapsed = $state(0);
 	let _timerRef = null; // plain var — must not be $state to avoid retriggering $effect
 	let dark = $state(false);
+	let showAddUser = $state(false);
 
 	const thinkingWords = [
 		'Fermenting', 'Sequencing', 'Culturing', 'Incubating', 'Lysing',
@@ -55,19 +59,41 @@
 	onMount(() => {
 		connect();
 		fetchChatList();
+		// Apply theme from localStorage (pre-auth), will be overridden by user prefs
 		dark = localStorage.getItem('theme') === 'dark';
 		if (dark) document.documentElement.setAttribute('data-theme', 'dark');
 	});
 
+	// Apply user's theme preference when currentUser changes
+	$effect(() => {
+		const pref = $currentUser?.preferences?.theme;
+		if (pref === 'dark' || pref === 'light') {
+			dark = pref === 'dark';
+			if (dark) {
+				document.documentElement.setAttribute('data-theme', 'dark');
+			} else {
+				document.documentElement.removeAttribute('data-theme');
+			}
+			localStorage.setItem('theme', pref);
+		}
+	});
+
 	function toggleTheme() {
 		dark = !dark;
+		const theme = dark ? 'dark' : 'light';
 		if (dark) {
 			document.documentElement.setAttribute('data-theme', 'dark');
-			localStorage.setItem('theme', 'dark');
 		} else {
 			document.documentElement.removeAttribute('data-theme');
-			localStorage.setItem('theme', 'light');
 		}
+		localStorage.setItem('theme', theme);
+		setPreference('theme', theme);
+	}
+
+	function handleAddUser() {
+		showAddUser = true;
+		clearToken();
+		currentUser.set(null);
 	}
 
 	function formatLastUpdated(ts) {
@@ -158,6 +184,9 @@
 	});
 </script>
 
+{#if $needsAuth}
+	<WelcomeModal />
+{:else}
 <div class="chat-layout">
 	<aside class="sidebar">
 		<div class="sidebar-header">
@@ -197,6 +226,7 @@
 			{/if}
 		</div>
 		<div class="sidebar-footer">
+			<UserPicker onAddUser={handleAddUser} />
 			<button class="theme-btn" onclick={toggleTheme} aria-label="Toggle theme">
 				{#if dark}
 					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
@@ -291,6 +321,7 @@
 		</div>
 	</div>
 </div>
+{/if}
 
 <style>
 	.chat-layout {
@@ -459,6 +490,9 @@
 
 	.sidebar-footer {
 		padding: 0.75rem 1rem;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
 	}
 
 	.theme-btn {
