@@ -200,6 +200,75 @@ def cmd_user_edit(args):
     asyncio.run(_run_user_cmd(_edit))
 
 
+# ── Feedback commands (direct DB, no server needed) ──────────────────
+
+
+def cmd_feedback_stats(args):
+    """Show feedback summary."""
+    async def _stats(s):
+        from hive.users.service import feedback_stats
+
+        st = await feedback_stats(s)
+        total = st["total"]
+        if not total:
+            print("No feedback yet.")
+            return
+        good = st["good"]
+        bad = st["bad"]
+        good_pct = good * 100 // total if total else 0
+        bad_pct = bad * 100 // total if total else 0
+        print("Feedback stats:")
+        print(f"  Total: {total}")
+        print(f"  Good:  {good} ({good_pct}%)")
+        print(f"  Bad:   {bad} ({bad_pct}%)")
+        if st["last_at"]:
+            print(f"  Last:  {st['last_at']} by {st['last_by']}")
+
+    asyncio.run(_run_user_cmd(_stats))
+
+
+def cmd_feedback_report(args):
+    """Generate feedback report as markdown file."""
+    async def _report(s):
+        from hive.users.service import feedback_stats, list_feedback
+
+        items = await list_feedback(s)
+        if not items:
+            print("No feedback to report.")
+            return
+
+        st = await feedback_stats(s)
+        from datetime import datetime, UTC
+
+        lines = [
+            "# Hive Browser Feedback Report",
+            "",
+            f"Generated: {datetime.now(UTC).strftime('%Y-%m-%d %H:%M UTC')}",
+            "",
+            "## Summary",
+            f"- Total: {st['total']} | Good: {st['good']} | Bad: {st['bad']}",
+            "",
+            "## Feedback",
+            "",
+            "| # | Date | User | Rating | Priority | Comment |",
+            "|---|------|------|--------|----------|---------|",
+        ]
+        for i, fb in enumerate(items, 1):
+            date = fb.created_at.strftime("%Y-%m-%d %H:%M") if fb.created_at else ""
+            username = fb.user.username if fb.user else "unknown"
+            comment = fb.comment.replace("|", "\\|").replace("\n", " ")
+            lines.append(
+                f"| {i} | {date} | {username} | {fb.rating} | {fb.priority} | {comment} |"
+            )
+
+        out = args.output if hasattr(args, "output") and args.output else "feedback_report.md"
+        with open(out, "w") as f:
+            f.write("\n".join(lines) + "\n")
+        print(f"Report written to {out} ({len(items)} entries)")
+
+    asyncio.run(_run_user_cmd(_report))
+
+
 # ── Entry point ──────────────────────────────────────────────────────
 
 
@@ -242,6 +311,11 @@ def main():
     p_edit.add_argument("slug", help="Current user slug")
     p_edit.add_argument("new_name", help="New display name")
 
+    # Feedback (direct DB — no server needed)
+    sub.add_parser("feedback-stats", help="Show feedback summary")
+    p_report = sub.add_parser("feedback-report", help="Generate feedback report (.md)")
+    p_report.add_argument("-o", "--output", default="feedback_report.md", help="Output file")
+
     args = parser.parse_args()
 
     dispatch = {
@@ -257,6 +331,8 @@ def main():
         "user-add": cmd_user_add,
         "user-rm": cmd_user_rm,
         "user-edit": cmd_user_edit,
+        "feedback-stats": cmd_feedback_stats,
+        "feedback-report": cmd_feedback_report,
     }
 
     dispatch[args.command](args)
