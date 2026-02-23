@@ -25,7 +25,6 @@ class BlastInput(BaseModel):
         description="Query nucleotide sequence or sequence name to look up from DB",
     )
     evalue: float = Field(default=1e-5, description="E-value threshold")
-    max_hits: int = Field(default=20, ge=1, le=100)
 
 
 class BlastHit(BaseModel):
@@ -128,7 +127,6 @@ class BlastTool(Tool):
             "6 sseqid pident length mismatch gapopen "
             "qstart qend sstart send evalue bitscore",
             "-evalue", str(evalue),
-            "-max_target_seqs", str(inp.max_hits),
         ]
         if qlen < 30:
             cmd.extend(["-task", "blastn-short", "-word_size", "7", "-dust", "no"])

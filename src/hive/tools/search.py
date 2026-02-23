@@ -38,7 +38,6 @@ class SearchInput(BaseModel):
         default_factory=dict,
         description="Optional: topology, size_min, size_max, feature_type",
     )
-    limit: int = Field(default=20, ge=1, le=100)
 
 
 class SearchResultItem(BaseModel):
@@ -154,7 +153,7 @@ class SearchTool(Tool):
             else:
                 stmt = stmt.where(term_conditions[0])
 
-            stmt = stmt.order_by(combined.desc()).limit(inp.limit)
+            stmt = stmt.order_by(combined.desc())
 
             # Apply filters
             if topo := inp.filters.get("topology"):
