@@ -17,7 +17,6 @@ from hive.config import Settings
 from hive.llm.pool import ModelPool
 from hive.server.routes import router
 from hive.server.websocket import ws_router
-from hive.tools.blast import build_blast_index
 from hive.tools.factory import ToolFactory
 
 logger = logging.getLogger(__name__)
@@ -70,28 +69,22 @@ async def lifespan(app: FastAPI):
     if app.state.db_ready and config.watcher.rules:
         from hive.watcher.watcher import scan_and_ingest, watch_directory
 
-        try:
-            count = await scan_and_ingest(config.watcher, blast_db_path=config.blast_dir)
-            logger.info("Initial scan indexed %d files", count)
-        except Exception as e:
-            logger.warning("Initial scan failed: %s", e)
+        async def _scan_then_watch():
+            try:
+                count = await scan_and_ingest(config.watcher, blast_db_path=config.blast_dir)
+                logger.info("Initial scan indexed %d files", count)
+            except Exception as e:
+                logger.warning("Initial scan failed: %s", e)
 
-        stop_event = asyncio.Event()
-        app.state.watcher_stop = stop_event
-        app.state.watcher_task = asyncio.create_task(
-            watch_directory(
+            stop_event = asyncio.Event()
+            app.state.watcher_stop = stop_event
+            await watch_directory(
                 config.watcher,
                 stop_event=stop_event,
                 blast_db_path=config.blast_dir,
             )
-        )
 
-    # --- BLAST index ---
-    if app.state.db_ready:
-        try:
-            await build_blast_index(config.blast_dir)
-        except Exception as e:
-            logger.warning("BLAST index build failed: %s", e)
+        app.state.watcher_task = asyncio.create_task(_scan_then_watch())
 
     yield
 

@@ -14,7 +14,11 @@ from hive.watcher.rules import match_file
 logger = logging.getLogger(__name__)
 
 
-async def scan_and_ingest(config: WatcherConfig, blast_db_path: str | None = None) -> int:
+async def scan_and_ingest(
+    config: WatcherConfig,
+    blast_db_path: str | None = None,
+    batch_size: int = 100,
+) -> int:
     """Scan directory and ingest all parseable files. Returns count of newly indexed files."""
     root = Path(config.root)
     if not root.exists():
@@ -22,26 +26,61 @@ async def scan_and_ingest(config: WatcherConfig, blast_db_path: str | None = Non
         return 0
 
     pattern = "**/*" if config.recursive else "*"
-    indexed = 0
 
+    # Collect parseable files first
+    files = []
     for path in root.glob(pattern):
         if not path.is_file():
             continue
-
         match = match_file(path, config.rules)
-
         if match.action == "parse":
-            try:
-                async with async_session_factory() as session:
-                    result = await ingest_file(session, path, match)
-                    if result is not None:
-                        indexed += 1
-            except Exception as e:
-                logger.error("Failed to ingest %s: %s", path.name, e)
+            files.append((path, match))
         elif match.action == "log" and match.message:
             logger.debug(match.message)
 
-    logger.info("Scan complete: %d files indexed in %s", indexed, root)
+    total = len(files)
+    if total == 0:
+        logger.info("Scan complete: no parseable files in %s", root)
+        return 0
+
+    logger.info("Scan started: %d parseable files in %s", total, root)
+
+    indexed = 0
+    errors = 0
+    batch_count = 0
+    session = None
+
+    try:
+        for i, (path, match) in enumerate(files, 1):
+            if session is None:
+                session = async_session_factory()
+                session = await session.__aenter__()
+
+            try:
+                result = await ingest_file(session, path, match, commit=False)
+                if result is not None:
+                    indexed += 1
+            except Exception as e:
+                logger.error("Failed to ingest %s: %s", path.name, e)
+                errors += 1
+
+            batch_count += 1
+
+            if batch_count >= batch_size or i == total:
+                await session.commit()
+                await session.__aexit__(None, None, None)
+                session = None
+                batch_count = 0
+                logger.info(
+                    "Scan progress: %d/%d files (%d%%), %d indexed, %d errors",
+                    i, total, i * 100 // total, indexed, errors,
+                )
+                await asyncio.sleep(0)  # yield to event loop
+    finally:
+        if session is not None:
+            await session.__aexit__(None, None, None)
+
+    logger.info("Scan complete: %d indexed, %d errors out of %d files", indexed, errors, total)
 
     if indexed > 0 and blast_db_path:
         try:

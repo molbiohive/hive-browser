@@ -45,6 +45,7 @@ async def ingest_file(
     session: AsyncSession,
     file_path: Path,
     match: MatchResult,
+    commit: bool = True,
 ) -> IndexedFile | None:
     """Parse a file and upsert its data into the database.
 
@@ -148,7 +149,8 @@ async def ingest_file(
             strand=p.strand,
         ))
 
-    await session.commit()
+    if commit:
+        await session.commit()
     logger.info(
         "Indexed: %s (%d bp, %d features, %d primers)",
         result.name, result.size_bp, len(result.features), len(result.primers),
