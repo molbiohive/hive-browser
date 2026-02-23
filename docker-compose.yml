@@ -16,6 +16,8 @@ services:
 
   hive:
     build: .
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "${HIVE_PORT:-8080}:8080"
     environment:
