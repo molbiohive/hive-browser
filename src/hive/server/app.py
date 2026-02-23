@@ -58,8 +58,14 @@ async def lifespan(app: FastAPI):
         except Exception:
             logger.warning("Default LLM not available: %s", pool.default_id)
 
-    # --- Tool registry ---
-    app.state.tool_registry = ToolFactory.discover(config)
+    # --- Tool registry (with quarantine for external tools) ---
+    approved_files: set[str] = set()
+    if app.state.db_ready:
+        from hive.tools.quarantine import sync_quarantine
+        approved_files = await sync_quarantine(config.tools_dir)
+    app.state.tool_registry = ToolFactory.discover(
+        config, approved_files=approved_files
+    )
     logger.info("Tool registry: %d tools", len(app.state.tool_registry.all()))
 
     # --- File watcher (only if DB is available) ---

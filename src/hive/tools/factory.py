@@ -28,10 +28,14 @@ class ToolFactory:
     """Discover and instantiate tools from internal modules and external scripts."""
 
     @staticmethod
-    def discover(config: Settings) -> ToolRegistry:
+    def discover(
+        config: Settings,
+        approved_files: set[str] | None = None,
+    ) -> ToolRegistry:
+        """Discover tools. Pass approved_files to enable quarantine gate."""
         registry = ToolRegistry()
         _load_internal(registry, config)
-        _load_external(registry, config)
+        _load_external(registry, config, approved_files=approved_files)
         return registry
 
 
@@ -68,8 +72,17 @@ def _load_internal(registry: ToolRegistry, config: Settings):
                     logger.warning("Failed to instantiate %s: %s", attr_name, e)
 
 
-def _load_external(registry: ToolRegistry, config: Settings):
-    """Load external tool scripts from the tools directory."""
+def _load_external(
+    registry: ToolRegistry,
+    config: Settings,
+    approved_files: set[str] | None = None,
+):
+    """Load external tool scripts from the tools directory.
+
+    When approved_files is provided (quarantine enabled), only files in that
+    set are loaded. Files not in the set are skipped silently (already logged
+    by quarantine.sync_quarantine).
+    """
     tools_dir = Path(config.tools_dir)
     if not tools_dir.is_dir():
         logger.debug("External tools directory not found: %s", tools_dir)
@@ -77,6 +90,10 @@ def _load_external(registry: ToolRegistry, config: Settings):
 
     for py_file in sorted(tools_dir.glob("*.py")):
         if py_file.name.startswith("_"):
+            continue
+
+        # Quarantine gate: skip unapproved tools
+        if approved_files is not None and py_file.name not in approved_files:
             continue
 
         source = py_file.read_text()
