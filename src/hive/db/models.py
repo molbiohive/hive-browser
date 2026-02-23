@@ -138,3 +138,19 @@ class Feedback(Base):
     __table_args__ = (
         Index("idx_feedback_user", "user_id"),
     )
+
+
+class ToolApproval(Base):
+    __tablename__ = "tool_approvals"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    filename: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
+    file_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    tool_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default="quarantined")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    reviewed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
