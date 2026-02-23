@@ -51,7 +51,7 @@ class PrimersTool(Tool):
         lines.append("[User sees full table — summarize, do not list.]")
         return "\n".join(lines)
 
-    async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
+    async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
         inp = PrimersInput(**params)
 
         if not db.async_session_factory:

@@ -42,7 +42,7 @@ class GCTool(Tool):
         length = result.get("length", 0)
         return f"GC: {gc:.1f}%, AT: {100-gc:.1f}%, length: {length} bp"
 
-    async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
+    async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
         inp = GCInput(**params)
         cleaned = inp.sequence.upper().replace(" ", "").replace("\n", "")
 

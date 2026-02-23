@@ -83,7 +83,7 @@ class SearchTool(Tool):
             "[User sees full table — summarize, do not list.]"
         )
 
-    async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
+    async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
         """Execute search with pg_trgm similarity + filters.
 
         Supports boolean queries: "KanR && circular" (AND), "GFP || RFP" (OR).

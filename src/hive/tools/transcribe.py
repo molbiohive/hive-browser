@@ -41,7 +41,7 @@ class TranscribeTool(Tool):
         preview = rna[:80] + "..." if len(rna) > 80 else rna
         return f"mRNA ({len(rna)} nt): {preview}"
 
-    async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
+    async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
         inp = TranscribeInput(**params)
         cleaned = inp.sequence.upper().replace(" ", "").replace("\n", "")
 

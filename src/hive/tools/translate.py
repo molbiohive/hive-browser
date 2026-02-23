@@ -52,7 +52,7 @@ class TranslateTool(Tool):
             f"Sequence: {preview}"
         )
 
-    async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
+    async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
         inp = TranslateInput(**params)
         cleaned = inp.sequence.upper().replace(" ", "").replace("\n", "")
 

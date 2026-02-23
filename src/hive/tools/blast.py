@@ -80,7 +80,7 @@ class BlastTool(Tool):
             "[User sees full table — summarize, do not list.]"
         )
 
-    async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
+    async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
         """Run BLAST+ against the local index."""
         if not params.get("sequence"):
             return {

@@ -51,7 +51,7 @@ class DigestTool(Tool):
         frags = result.get("fragments", [])
         return "; ".join(parts) + f". Fragments: {frags}"
 
-    async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
+    async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
         inp = DigestInput(**params)
         cleaned = inp.sequence.upper().replace(" ", "").replace("\n", "")
 

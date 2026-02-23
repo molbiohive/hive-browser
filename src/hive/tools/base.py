@@ -36,8 +36,11 @@ class Tool(ABC):
     db: Any = None
 
     @abstractmethod
-    async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Execute the tool with the given parameters and return results."""
+    async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
+        """Execute the tool with the given parameters and return results.
+
+        mode: "direct" (//cmd), "guided" (/cmd), "natural" (LLM), "rerun" (widget refresh)
+        """
         ...
 
     def input_schema(self) -> dict:

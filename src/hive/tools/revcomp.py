@@ -41,7 +41,7 @@ class RevCompTool(Tool):
         preview = seq[:80] + "..." if len(seq) > 80 else seq
         return f"RevComp ({len(seq)} bp): {preview}"
 
-    async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
+    async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
         inp = RevCompInput(**params)
         cleaned = inp.sequence.upper().replace(" ", "").replace("\n", "")
 

@@ -57,10 +57,10 @@ async def route_input(
 
         params = _parse_args(args_text)
         try:
-            result = await tool.execute(params)
+            result = await tool.execute(params, mode="direct")
         except Exception as e:
-            logger.error("Tool %s failed: %s", tool_name, e)
-            return _error(f"Tool error: {e}")
+            logger.error("Tool %s failed: %s", tool_name, e, exc_info=True)
+            return _error(f"Tool '{tool_name}' failed. Check server logs for details.")
 
         return _tool_response(tool_name, result, params, tool.format_result(result))
 
@@ -81,9 +81,10 @@ async def route_input(
 
             params = _parse_args(text)
             try:
-                result = await tool.execute(params)
+                result = await tool.execute(params, mode="guided")
             except Exception as e:
-                return _error(f"Tool error: {e}")
+                logger.error("Tool %s failed: %s", tool_name, e, exc_info=True)
+                return _error(f"Tool '{tool_name}' failed. Check server logs for details.")
             return _tool_response(tool_name, result, params, tool.format_result(result))
 
         # LLM-assisted: run through unified loop with tool hint
@@ -227,7 +228,7 @@ async def _unified_loop(
 
             await _emit("tool", tool_name)
             try:
-                result = await tool.execute(params)
+                result = await tool.execute(params, mode="natural")
             except Exception as e:
                 logger.error("Tool %s failed: %s", tool_name, e)
                 messages.append({

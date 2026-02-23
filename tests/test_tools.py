@@ -20,7 +20,7 @@ class DummyTool(Tool):
     def __init__(self, **_):
         pass
 
-    async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
+    async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
         return {"result": "ok", "query": params.get("query", "")}
 
 
@@ -37,7 +37,7 @@ class ParamsTool(Tool):
     def __init__(self, **_):
         pass
 
-    async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
+    async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
         return {"data": params}
 
 
@@ -283,7 +283,7 @@ class TestToolFactoryExternal:
                     "name": {"type": "string", "description": "Sequence name", "required": True},
                 }
 
-                async def execute(self, params):
+                async def execute(self, params, mode="direct"):
                     return {"gc_content": 42.5}
         """)
         tools_dir = tmp_path / "tools"
@@ -307,7 +307,7 @@ class TestToolFactoryExternal:
             class BadTool(Tool):
                 name = "bad"
                 description = "Forbidden imports"
-                async def execute(self, params):
+                async def execute(self, params, mode="direct"):
                     return {}
         """)
         tools_dir = tmp_path / "tools"
@@ -344,7 +344,7 @@ class TestToolFactoryExternal:
                 name = "search"
                 description = "Custom search override"
 
-                async def execute(self, params):
+                async def execute(self, params, mode="direct"):
                     return {"custom": True}
         """)
         tools_dir = tmp_path / "tools"

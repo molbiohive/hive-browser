@@ -34,7 +34,7 @@ class EchoTool(Tool):
     def __init__(self, **_):
         pass
 
-    async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
+    async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
         return {"echo": params}
 
 
@@ -50,7 +50,7 @@ class RequiredTool(Tool):
     def __init__(self, **_):
         pass
 
-    async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
+    async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
         return {"result": params.get("query", "")}
 
 
@@ -65,7 +65,7 @@ class DirectOnlyTool(Tool):
     def __init__(self, **_):
         pass
 
-    async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
+    async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
         return {"ok": True}
 
 
@@ -356,7 +356,7 @@ class TestAgenticLoop:
             def __init__(self, **_):
                 pass
 
-            async def execute(self, params):
+            async def execute(self, params, mode="direct"):
                 return {"sequence": "A" * 300}  # > pipe_min_length
 
         class ConsumerTool(Tool):
@@ -369,7 +369,7 @@ class TestAgenticLoop:
             def __init__(self, **_):
                 pass
 
-            async def execute(self, params):
+            async def execute(self, params, mode="direct"):
                 return {"length": len(params.get("sequence", ""))}
 
         reg = ToolRegistry()
