@@ -224,7 +224,9 @@ export function connect() {
 			if (data.model) {
 				currentModel.set(data.model);
 			}
-		} else if (data.type === 'widget_data') {
+		} else if (data.type === 'feedback_saved') {
+		console.log('[ws] feedback saved');
+	} else if (data.type === 'widget_data') {
 			chatStore.update(s => {
 				const messages = [...s.messages];
 				const idx = data.messageIndex;
@@ -351,6 +353,11 @@ export function cancelForm(formIndex: number) {
 		}
 		return { ...s, messages, isWaiting: false, progress: null };
 	});
+}
+
+export function submitFeedback(rating: 'good' | 'bad', priority: number, comment: string) {
+	if (!ws || ws.readyState !== WebSocket.OPEN) return;
+	ws.send(JSON.stringify({ type: 'submit_feedback', rating, priority, comment }));
 }
 
 export function loadChat(chatId: string) {

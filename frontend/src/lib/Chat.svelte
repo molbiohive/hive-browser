@@ -7,6 +7,7 @@
 	import ModelSelector from '$lib/ModelSelector.svelte';
 	import WelcomeModal from '$lib/WelcomeModal.svelte';
 	import UserPicker from '$lib/UserPicker.svelte';
+	import FeedbackModal from '$lib/FeedbackModal.svelte';
 
 	let inputText = $state('');
 	let messagesDiv = $state(undefined);
@@ -15,6 +16,7 @@
 	let elapsed = $state(0);
 	let _timerRef = null; // plain var — must not be $state to avoid retriggering $effect
 	let dark = $state(false);
+	let showFeedback = $state(false);
 	let showAddUser = $state(false);
 	let previousUserSlug = $state(null);
 	const modalMode = $derived(showAddUser ? 'new' : 'return');
@@ -342,6 +344,8 @@
 						</span>
 						<span class="status-sep"></span>
 						<ModelSelector />
+						<span class="status-sep"></span>
+						<button class="feedback-btn" onclick={() => showFeedback = true} aria-label="Send feedback">Feedback</button>
 					</span>
 					<span>/ opens command palette</span>
 				</div>
@@ -349,6 +353,9 @@
 		</div>
 	</div>
 </div>
+{#if showFeedback}
+	<FeedbackModal onClose={() => showFeedback = false} />
+{/if}
 {/if}
 
 <style>
@@ -708,6 +715,20 @@
 
 	.indicator.err {
 		color: var(--color-err);
+	}
+
+	.feedback-btn {
+		background: none;
+		border: none;
+		cursor: pointer;
+		color: var(--text-hint);
+		font-size: 0.7rem;
+		padding: 0;
+		font-family: inherit;
+	}
+
+	.feedback-btn:hover {
+		color: var(--color-accent);
 	}
 
 	.progress-indicator {
