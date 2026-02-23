@@ -84,6 +84,8 @@ interface StatusBar {
 	indexed_files: number;
 	sequences: number;
 	features: number;
+	users: number;
+	tools: number;
 	db_connected: boolean;
 	llm_available: boolean;
 	last_updated: string | null;
@@ -97,6 +99,8 @@ export const statusBar = writable<StatusBar>({
 	indexed_files: 0,
 	sequences: 0,
 	features: 0,
+	users: 0,
+	tools: 0,
 	db_connected: false,
 	llm_available: false,
 	last_updated: null,

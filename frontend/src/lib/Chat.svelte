@@ -334,9 +334,13 @@
 						<span class="status-group">
 							<span>{$statusBar.indexed_files} files</span>
 							<span class="status-dot">&middot;</span>
-							<span>{$statusBar.sequences} sequences</span>
+							<span>{$statusBar.sequences} seq</span>
 							<span class="status-dot">&middot;</span>
-							<span>{$statusBar.features} features</span>
+							<span>{$statusBar.features} feat</span>
+							<span class="status-dot">&middot;</span>
+							<span>{$statusBar.tools} tools</span>
+							<span class="status-dot">&middot;</span>
+							<span>{$statusBar.users} users</span>
 						</span>
 						<span class="status-sep"></span>
 						<span class="status-group">
