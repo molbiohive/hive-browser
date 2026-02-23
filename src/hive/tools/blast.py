@@ -245,6 +245,14 @@ async def build_blast_index(db_path: str) -> bool:
     db_file = blast_dir / "hive_blast"
     lock_file = blast_dir / ".build.lock"
 
+    # Clean up stale lockfile (older than 10 minutes)
+    if lock_file.exists():
+        import time
+        age = time.time() - lock_file.stat().st_mtime
+        if age > 600:
+            logger.warning("Removing stale BLAST lock (%.0fs old)", age)
+            lock_file.unlink(missing_ok=True)
+
     # Skip if another worker is already building
     try:
         fd = lock_file.open("x")  # atomic create — fails if exists
@@ -296,7 +304,7 @@ async def _do_build_index(blast_dir: Path, fasta_file: Path, db_file: Path) -> b
         "-in", str(fasta_file),
         "-dbtype", "nucl",
         "-out", str(db_file),
-        "-blastdb_version", "4",
+        "-blastdb_version", "5",
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
