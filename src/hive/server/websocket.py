@@ -11,7 +11,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy import func, select
 
 from hive.db import session as db
-from hive.db.models import Feature, IndexedFile, Sequence
+from hive.db.models import Feature, IndexedFile, Sequence, User
 from hive.tools.router import route_input
 from hive.users.service import create_feedback, get_user_by_token, update_preferences
 
@@ -108,7 +108,8 @@ async def websocket_endpoint(websocket: WebSocket):
             _resolve_model(model_pool, current_model_id, config)
             if model_pool and current_model_id else None
         )
-        init_status = await _quick_status(current_client)
+        tool_count = len(registry.all()) if registry else 0
+        init_status = await _quick_status(current_client, tool_count=tool_count)
         await manager.send_json(conn_id, {
             "type": "init",
             "config": {
@@ -241,7 +242,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 tool = registry.get(tool_name) if tool_name else None
                 if tool:
                     try:
-                        result = await tool.execute(params)
+                        result = await tool.execute(params, mode="rerun")
                         await manager.send_json(conn_id, {
                             "type": "widget_data",
                             "messageIndex": message_index,
@@ -253,11 +254,11 @@ async def websocket_endpoint(websocket: WebSocket):
                                 w["data"] = result
                                 w.pop("stale", None)
                     except Exception as e:
-                        logger.error("Re-run %s failed: %s", tool_name, e)
+                        logger.error("Re-run %s failed: %s", tool_name, e, exc_info=True)
                         await manager.send_json(conn_id, {
                             "type": "widget_data",
                             "messageIndex": message_index,
-                            "data": {"error": str(e)},
+                            "data": {"error": "Tool execution failed. Check server logs."},
                         })
                 continue
 
@@ -374,7 +375,9 @@ async def _handle_message(
 
         # Send status update after tool results (counts may have changed)
         if result.get("type") == "tool_result":
-            updated_status = await _quick_status(llm_client)
+            updated_status = await _quick_status(
+                llm_client, tool_count=len(registry.all()) if registry else 0,
+            )
             await manager.send_json(conn_id, {"type": "status_update", "status": updated_status})
 
         # Auto-save chat after threshold
@@ -402,8 +405,11 @@ async def _handle_message(
     except asyncio.CancelledError:
         await manager.send_json(conn_id, {"type": "message", "content": "Cancelled."})
     except Exception as e:
-        logger.error("Message processing failed: %s", e)
-        await manager.send_json(conn_id, {"type": "message", "content": f"Error: {e}"})
+        logger.error("Message processing failed: %s", e, exc_info=True)
+        await manager.send_json(conn_id, {
+            "type": "message",
+            "content": "Something went wrong. Check server logs for details.",
+        })
     finally:
         manager.tasks.pop(conn_id, None)
 
@@ -435,15 +441,19 @@ async def _generate_chat_title(llm_client, messages: list[dict]) -> str | None:
     try:
         summary_input = "\n".join(f"{m['role']}: {m['content'][:200]}" for m in messages)
         title_prompt = (
-            "Generate a very short title (3-6 words) for this "
-            "chat. Reply with ONLY the title, no quotes."
+            "Generate a 2-word title for this chat. "
+            "Reply with ONLY the title, no quotes, no punctuation."
         )
         resp = await llm_client.chat([
             {"role": "system", "content": title_prompt},
             {"role": "user", "content": summary_input},
         ])
         title = resp["choices"][0]["message"].get("content", "").strip().strip('"\'')
-        return title[:60] if title else None
+        if not title:
+            return None
+        # Enforce max 2 words
+        words = title.split()
+        return " ".join(words[:2])
     except Exception as e:
         logger.warning("Failed to generate chat title: %s", e)
         return None
@@ -480,10 +490,11 @@ def _widget_type(tool_name: str, registry=None) -> str:
     return "text"
 
 
-async def _quick_status(llm_client=None) -> dict:
+async def _quick_status(llm_client=None, tool_count: int = 0) -> dict:
     """Lightweight status for the status bar (no full tool execution)."""
     status = {
-        "indexed_files": 0, "sequences": 0, "features": 0,
+        "indexed_files": 0, "sequences": 0, "features": 0, "users": 0,
+        "tools": tool_count,
         "db_connected": False, "llm_available": False, "last_updated": None,
     }
     if db.async_session_factory:
@@ -499,6 +510,9 @@ async def _quick_status(llm_client=None) -> dict:
                 )).scalar()
                 status["features"] = (await s.execute(
                     select(func.count()).select_from(Feature)
+                )).scalar()
+                status["users"] = (await s.execute(
+                    select(func.count()).select_from(User)
                 )).scalar()
                 last = (await s.execute(
                     select(func.max(IndexedFile.indexed_at))
