@@ -61,7 +61,11 @@ class LLMClient:
             kwargs["api_key"] = self._config.api_key
 
         response = await litellm.acompletion(**kwargs)
-        return response.model_dump()
+        try:
+            return response.model_dump()
+        except Exception:
+            # litellm Pydantic may reject unknown finish_reason (e.g. "refusal")
+            return _extract_response(response)
 
     async def health(self) -> bool:
         """Check if the LLM service is reachable."""
@@ -80,3 +84,35 @@ class LLMClient:
 
     async def close(self):
         pass  # litellm manages connections internally
+
+
+def _extract_response(response) -> dict:
+    """Manual extraction when model_dump() fails on unknown fields."""
+    choice = response.choices[0] if response.choices else None
+    msg = getattr(choice, "message", None)
+    content = getattr(msg, "content", None) or ""
+    tool_calls_raw = getattr(msg, "tool_calls", None)
+    finish = getattr(choice, "finish_reason", "stop") or "stop"
+    usage = getattr(response, "usage", None)
+
+    message: dict = {"role": "assistant", "content": content}
+    if tool_calls_raw:
+        message["tool_calls"] = [
+            {
+                "id": getattr(tc, "id", ""),
+                "type": "function",
+                "function": {
+                    "name": getattr(tc.function, "name", ""),
+                    "arguments": getattr(tc.function, "arguments", "{}"),
+                },
+            }
+            for tc in tool_calls_raw
+        ]
+
+    return {
+        "choices": [{"message": message, "finish_reason": finish}],
+        "usage": {
+            "prompt_tokens": getattr(usage, "prompt_tokens", 0) if usage else 0,
+            "completion_tokens": getattr(usage, "completion_tokens", 0) if usage else 0,
+        },
+    }

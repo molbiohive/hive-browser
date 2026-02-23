@@ -172,6 +172,12 @@ async def _unified_loop(
         tokens["out"] += usage.get("completion_tokens", 0)
 
         msg = response["choices"][0]["message"]
+        finish = response["choices"][0].get("finish_reason", "")
+
+        # Handle model refusal gracefully
+        if finish == "refusal":
+            content = msg.get("content", "")
+            return {"type": "message", "content": content or "Request declined by the model."}
 
         # LLM responded with text — done
         if not msg.get("tool_calls"):
