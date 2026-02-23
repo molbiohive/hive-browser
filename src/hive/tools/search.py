@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import selectinload
 
+from hive.config import resolve_host_path
 from hive.db import session as db
 from hive.db.models import Feature, IndexedFile, Sequence
 from hive.tools.base import Tool
@@ -184,7 +185,7 @@ class SearchTool(Tool):
                         size_bp=seq.size_bp,
                         topology=seq.topology,
                         features=feat_names,
-                        file_path=file_path,
+                        file_path=resolve_host_path(file_path),
                         score=round(float(score), 3),
                     ).model_dump()
                 )

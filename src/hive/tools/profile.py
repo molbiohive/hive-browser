@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
+from hive.config import resolve_host_path
 from hive.db import session as db
 from hive.db.models import IndexedFile, Sequence
 from hive.tools.base import Tool
@@ -121,7 +122,7 @@ class ProfileTool(Tool):
                     for p in seq.primers
                 ],
                 "file": {
-                    "path": seq.file.file_path,
+                    "path": resolve_host_path(seq.file.file_path),
                     "format": seq.file.format,
                     "size": seq.file.file_size,
                     "indexed_at": seq.file.indexed_at.isoformat() if seq.file.indexed_at else None,

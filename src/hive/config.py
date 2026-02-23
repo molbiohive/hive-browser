@@ -63,6 +63,7 @@ class WatcherConfig(BaseSettings):
     root: str = "~/sequences"
     recursive: bool = True
     poll_interval: int = 5
+    file_url_prefix: str | None = None  # e.g. "smb://labserver/sequences"
     rules: list[WatcherRule] = Field(default_factory=list)
 
 
@@ -94,6 +95,40 @@ class Settings(BaseSettings):
     @property
     def tools_dir(self) -> str:
         return str(Path(self.data_root).expanduser() / "tools")
+
+
+def resolve_host_path(path: str) -> str:
+    """Translate container path to host path for display in Docker.
+
+    When HIVE_HOST_WATCHER_ROOT is set, replaces the container watcher root
+    prefix with the original host path.  Outside Docker this is a no-op.
+    """
+    host_root = os.environ.get("HIVE_HOST_WATCHER_ROOT")
+    if not host_root or not path:
+        return path
+    container_root = os.environ.get("HIVE_WATCHER_ROOT", "/watcher")
+    if path.startswith(container_root):
+        return host_root.rstrip("/") + path[len(container_root.rstrip("/")):]
+    return path
+
+
+def resolve_container_path(path: str) -> str:
+    """Reverse-translate host path back to container path for file operations."""
+    host_root = os.environ.get("HIVE_HOST_WATCHER_ROOT")
+    if not host_root or not path:
+        return path
+    container_root = os.environ.get("HIVE_WATCHER_ROOT", "/watcher")
+    host_root_stripped = host_root.rstrip("/")
+    if path.startswith(host_root_stripped):
+        return container_root.rstrip("/") + path[len(host_root_stripped):]
+    return path
+
+
+def file_open_mode() -> str:
+    """Determine file-open strategy: 'local', 'link', or 'copy'."""
+    if not os.environ.get("HIVE_HOST_WATCHER_ROOT"):
+        return "local"
+    return "link"  # fallback to 'copy' handled at runtime if no prefix
 
 
 def load_config(config_path: str | None = None) -> Settings:

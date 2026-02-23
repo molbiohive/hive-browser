@@ -1,6 +1,7 @@
 """REST API endpoints."""
 
 import logging
+import os
 import platform
 import subprocess
 from pathlib import Path
@@ -136,13 +137,45 @@ async def delete_chat(chat_id: str, request: Request):
 
 @router.post("/open-file")
 async def open_file(request: Request):
-    """Open a file's parent directory in the OS file manager."""
+    """Open a file — local file manager, SMB link, or clipboard path.
+
+    Three modes determined by environment:
+      local:  subprocess opens Finder/Explorer (no Docker)
+      link:   returns SMB/NFS URL for browser to open (Docker + file_url_prefix)
+      copy:   returns host path for clipboard (Docker, no prefix)
+    """
     body = await request.json()
     file_path = body.get("path", "")
 
     if not file_path:
         return {"error": "No file path provided"}
 
+    host_root = os.environ.get("HIVE_HOST_WATCHER_ROOT")
+
+    if host_root:
+        # Docker mode — file_path is already the host path (translated by tools).
+        # Reverse-translate to container path to verify file exists.
+        from hive.config import resolve_container_path
+
+        container_path = resolve_container_path(file_path)
+        if not Path(container_path).exists():
+            return {"error": f"File not found: {file_path}"}
+
+        config = getattr(request.app.state, "config", None)
+        prefix = config.watcher.file_url_prefix if config else None
+        if prefix:
+            # Build SMB/NFS URL from prefix + relative path
+            host_stripped = host_root.rstrip("/")
+            if file_path.startswith(host_stripped):
+                relative = file_path[len(host_stripped):]
+            else:
+                relative = "/" + Path(file_path).name
+            url = prefix.rstrip("/") + relative
+            return {"status": "link", "url": url}
+        else:
+            return {"status": "copy", "path": file_path}
+
+    # Local mode — open in OS file manager
     path = Path(file_path)
     if not path.exists():
         return {"error": f"File not found: {file_path}"}

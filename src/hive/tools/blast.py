@@ -11,6 +11,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
+from hive.config import resolve_host_path
 from hive.db import session as db
 from hive.db.models import IndexedFile, Sequence
 from hive.tools.base import Tool
@@ -210,7 +211,7 @@ async def _resolve_file_paths(names: set[str]) -> dict[str, str]:
     for seq_name, file_path in rows:
         safe_name = seq_name.replace(" ", "_")
         if safe_name in names:
-            result[safe_name] = file_path
+            result[safe_name] = resolve_host_path(file_path)
     return result
 
 

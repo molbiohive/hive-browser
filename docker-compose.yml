@@ -25,6 +25,7 @@ services:
       - HIVE_CONFIG=/app/config/config.docker.yaml
       - HIVE_DATA_ROOT=/data
       - HIVE_WATCHER_ROOT=/watcher
+      - HIVE_HOST_WATCHER_ROOT=${HIVE_WATCHER_ROOT}
       - LLM_BASE_URL=http://host.docker.internal:11434/v1
     volumes:
       - ${HIVE_DATA_ROOT}:/data

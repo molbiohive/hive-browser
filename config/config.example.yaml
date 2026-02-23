@@ -36,6 +36,7 @@ watcher:
   root: ~/sequences          # directory to watch for sequence files
   recursive: true
   poll_interval: 5
+  # file_url_prefix: "smb://labserver/sequences"  # enables Open button in Docker
 
   rules:
     - match: "*.dna"

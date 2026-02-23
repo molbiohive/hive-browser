@@ -16,13 +16,23 @@
 		sendMessage(`//profile ${JSON.stringify({ name: name.replace(/_/g, ' ') })}`);
 	}
 
-	async function openInFinder(filePath) {
+	async function openFile(filePath) {
 		try {
-			await fetch('/api/open-file', {
+			const res = await fetch('/api/open-file', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ path: filePath }),
 			});
+			const result = await res.json();
+			if (result.error) {
+				console.error('Open file:', result.error);
+				return;
+			}
+			if (result.status === 'link') {
+				window.open(result.url, '_blank');
+			} else if (result.status === 'copy') {
+				await navigator.clipboard.writeText(result.path);
+			}
 		} catch (e) {
 			console.error('Failed to open file:', e);
 		}
@@ -31,7 +41,7 @@
 	const tableActions = [
 		{
 			label: 'Open',
-			onClick: (row) => openInFinder(row.file_path),
+			onClick: (row) => openFile(row.file_path),
 			show: (row) => !!row.file_path,
 			title: (row) => row.file_path,
 		},
