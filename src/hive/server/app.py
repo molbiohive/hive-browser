@@ -76,6 +76,13 @@ async def lifespan(app: FastAPI):
             except Exception as e:
                 logger.warning("Initial scan failed: %s", e)
 
+            # Always rebuild BLAST index after scan (covers restart with no new files)
+            try:
+                from hive.tools.blast import build_blast_index
+                await build_blast_index(config.blast_dir)
+            except Exception as e:
+                logger.warning("BLAST index build failed: %s", e)
+
             stop_event = asyncio.Event()
             app.state.watcher_stop = stop_event
             await watch_directory(
