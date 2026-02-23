@@ -13,7 +13,7 @@ from sqlalchemy import func, select
 from hive.db import session as db
 from hive.db.models import Feature, IndexedFile, Sequence
 from hive.tools.router import route_input
-from hive.users.service import get_user_by_token, update_preferences
+from hive.users.service import create_feedback, get_user_by_token, update_preferences
 
 logger = logging.getLogger(__name__)
 
@@ -183,6 +183,25 @@ async def websocket_endpoint(websocket: WebSocket):
                         })
                     except Exception as e:
                         logger.warning("Preference update failed: %s", e)
+                continue
+
+            # Handle feedback submission
+            if data.get("type") == "submit_feedback" and db.async_session_factory:
+                rating = data.get("rating", "")
+                if rating in ("good", "bad"):
+                    try:
+                        async with db.async_session_factory() as s:
+                            await create_feedback(
+                                s,
+                                user_id=user.id,
+                                rating=rating,
+                                priority=int(data.get("priority", 3)),
+                                comment=data.get("comment", ""),
+                                chat_id=chat.get("id"),
+                            )
+                        await manager.send_json(conn_id, {"type": "feedback_saved"})
+                    except Exception as e:
+                        logger.warning("Feedback save failed: %s", e)
                 continue
 
             # Handle chat resume
