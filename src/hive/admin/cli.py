@@ -4,6 +4,7 @@ import argparse
 import asyncio
 import json
 import sys
+from pathlib import Path
 
 import httpx
 
@@ -269,6 +270,95 @@ def cmd_feedback_report(args):
     asyncio.run(_run_user_cmd(_report))
 
 
+# ── Tool quarantine commands (direct DB, no server needed) ───────────
+
+
+def cmd_tool_list(args):
+    """List external tools and their approval status."""
+    async def _list(s):
+        from sqlalchemy import select as sel
+
+        from hive.db.models import ToolApproval
+
+        rows = (await s.execute(
+            sel(ToolApproval).order_by(ToolApproval.created_at)
+        )).scalars().all()
+        if not rows:
+            print("No external tools registered.")
+            return
+        for t in rows:
+            name = t.tool_name or "?"
+            short_hash = t.file_hash[:8]
+            date = t.created_at.strftime("%Y-%m-%d") if t.created_at else ""
+            print(f"  {t.status:<13s} {t.filename:<30s} {name:<20s} {short_hash}  {date}")
+
+    asyncio.run(_run_user_cmd(_list))
+
+
+def cmd_tool_approve(args):
+    """Approve a quarantined tool."""
+    async def _approve(s):
+        from sqlalchemy import select as sel
+
+        from hive.db.models import ToolApproval
+
+        record = (await s.execute(
+            sel(ToolApproval).where(ToolApproval.filename == args.filename)
+        )).scalar_one_or_none()
+        if not record:
+            print(f"Tool not found: {args.filename}", file=sys.stderr)
+            sys.exit(1)
+        if record.status == "approved":
+            print(f"Already approved: {args.filename}")
+            return
+
+        from datetime import UTC, datetime
+
+        record.status = "approved"
+        record.reviewed_at = datetime.now(UTC)
+        await s.commit()
+        print(f"Approved: {args.filename}")
+        print("Restart the server to load this tool.")
+
+    asyncio.run(_run_user_cmd(_approve))
+
+
+def cmd_tool_reject(args):
+    """Reject a quarantined tool."""
+    async def _reject(s):
+        from sqlalchemy import select as sel
+
+        from hive.db.models import ToolApproval
+
+        record = (await s.execute(
+            sel(ToolApproval).where(ToolApproval.filename == args.filename)
+        )).scalar_one_or_none()
+        if not record:
+            print(f"Tool not found: {args.filename}", file=sys.stderr)
+            sys.exit(1)
+
+        from datetime import UTC, datetime
+
+        record.status = "rejected"
+        record.reviewed_at = datetime.now(UTC)
+        await s.commit()
+        print(f"Rejected: {args.filename}")
+
+    asyncio.run(_run_user_cmd(_reject))
+
+
+def cmd_tool_show(args):
+    """Show source code of an external tool for review."""
+    from hive.config import load_config
+
+    tools_dir = Path(load_config().tools_dir)
+    tool_file = tools_dir / args.filename
+    if not tool_file.is_file():
+        print(f"File not found: {tool_file}", file=sys.stderr)
+        sys.exit(1)
+    print(tool_file.read_text())
+
+
 # ── Entry point ──────────────────────────────────────────────────────
 
 
@@ -316,6 +406,15 @@ def main():
     p_report = sub.add_parser("feedback-report", help="Generate feedback report (.md)")
     p_report.add_argument("-o", "--output", default="feedback_report.md", help="Output file")
 
+    # Tool quarantine (direct DB — no server needed)
+    sub.add_parser("tool-list", help="List external tools and approval status")
+    p_tapprove = sub.add_parser("tool-approve", help="Approve a quarantined tool")
+    p_tapprove.add_argument("filename", help="Tool filename (e.g. my_tool.py)")
+    p_treject = sub.add_parser("tool-reject", help="Reject a quarantined tool")
+    p_treject.add_argument("filename", help="Tool filename (e.g. my_tool.py)")
+    p_tshow = sub.add_parser("tool-show", help="Show tool source code for review")
+    p_tshow.add_argument("filename", help="Tool filename (e.g. my_tool.py)")
+
     args = parser.parse_args()
 
     dispatch = {
@@ -333,6 +432,10 @@ def main():
         "user-edit": cmd_user_edit,
         "feedback-stats": cmd_feedback_stats,
         "feedback-report": cmd_feedback_report,
+        "tool-list": cmd_tool_list,
+        "tool-approve": cmd_tool_approve,
+        "tool-reject": cmd_tool_reject,
+        "tool-show": cmd_tool_show,
     }
 
     dispatch[args.command](args)
