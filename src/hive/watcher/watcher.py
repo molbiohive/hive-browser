@@ -43,6 +43,7 @@ async def scan_and_ingest(
         logger.info("Scan complete: no parseable files in %s", root)
         return 0
 
+    watcher_root = str(root)
     logger.info("Scan started: %d parseable files in %s", total, root)
 
     indexed = 0
@@ -57,7 +58,7 @@ async def scan_and_ingest(
                 session = await session.__aenter__()
 
             try:
-                result = await ingest_file(session, path, match, commit=False)
+                result = await ingest_file(session, path, match, commit=False, watcher_root=watcher_root)
                 if result is not None:
                     indexed += 1
             except Exception as e:
@@ -106,6 +107,7 @@ async def watch_directory(
         logger.warning("Watch directory does not exist: %s", root)
         return
 
+    watcher_root = str(root)
     logger.info("Starting file watcher on %s", root)
 
     async for changes in awatch(root, recursive=config.recursive, stop_event=stop_event):
@@ -125,7 +127,7 @@ async def watch_directory(
             if match.action == "parse":
                 try:
                     async with async_session_factory() as session:
-                        await ingest_file(session, path, match)
+                        await ingest_file(session, path, match, watcher_root=watcher_root)
                     if blast_db_path:
                         from hive.tools.blast import build_blast_index
                         await build_blast_index(blast_db_path)

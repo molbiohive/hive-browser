@@ -14,6 +14,15 @@ from hive.parsers.base import ParseResult
 from hive.watcher.rules import MatchResult
 
 
+def extract_tags(file_path: Path, watcher_root: str) -> list[str]:
+    """Extract parent directory names relative to watcher root as tags."""
+    try:
+        rel = file_path.relative_to(Path(watcher_root).expanduser())
+    except ValueError:
+        return []
+    return list(rel.parts[:-1])  # exclude filename
+
+
 def hash_file(path: Path) -> str:
     """SHA256 hash of file contents."""
     h = hashlib.sha256()
@@ -46,6 +55,7 @@ async def ingest_file(
     file_path: Path,
     match: MatchResult,
     commit: bool = True,
+    watcher_root: str | None = None,
 ) -> IndexedFile | None:
     """Parse a file and upsert its data into the database.
 
@@ -112,6 +122,13 @@ async def ingest_file(
         session.add(indexed)
         await session.flush()  # Get indexed.id
 
+    # Merge directory tags into meta
+    meta = dict(result.meta) if result.meta else {}
+    if watcher_root:
+        tags = extract_tags(file_path, watcher_root)
+        if tags:
+            meta["tags"] = tags
+
     # Insert Sequence
     seq = Sequence(
         file_id=indexed.id,
@@ -120,7 +137,7 @@ async def ingest_file(
         topology=result.topology,
         sequence=result.sequence,
         description=result.description,
-        meta=result.meta or None,
+        meta=meta or None,
     )
     session.add(seq)
     await session.flush()  # Get seq.id

@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from hive.db.models import Base, Feature, IndexedFile, Sequence
-from hive.watcher.ingest import ingest_file, remove_file
+from hive.watcher.ingest import extract_tags, ingest_file, remove_file
 from hive.watcher.rules import MatchResult
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -127,6 +127,44 @@ class TestRemoveFile:
 
         seqs = (await db_session.execute(select(Sequence))).scalars().all()
         assert len(seqs) == 0
+
+
+class TestExtractTags:
+    def test_basic_tags(self):
+        tags = extract_tags(Path("/watcher/proj/sub/file.dna"), "/watcher")
+        assert tags == ["proj", "sub"]
+
+    def test_root_level_file(self):
+        tags = extract_tags(Path("/watcher/file.dna"), "/watcher")
+        assert tags == []
+
+    def test_path_outside_root(self):
+        tags = extract_tags(Path("/other/path/file.dna"), "/watcher")
+        assert tags == []
+
+    def test_deeply_nested(self):
+        tags = extract_tags(Path("/watcher/lab/2024/q1/vectors/test.dna"), "/watcher")
+        assert tags == ["lab", "2024", "q1", "vectors"]
+
+
+class TestIngestWithTags:
+    async def test_tags_populated(self, db_session):
+        match = MatchResult(action="parse", parser="biopython", extract=None)
+        await ingest_file(
+            db_session, FIXTURES / "test_plasmid.gb", match,
+            watcher_root=str(FIXTURES.parent),
+        )
+        seq = (await db_session.execute(select(Sequence))).scalar_one()
+        meta = seq.meta or {}
+        assert "tags" in meta
+        assert "fixtures" in meta["tags"]
+
+    async def test_no_tags_without_root(self, db_session):
+        match = MatchResult(action="parse", parser="biopython", extract=None)
+        await ingest_file(db_session, FIXTURES / "test_plasmid.gb", match)
+        seq = (await db_session.execute(select(Sequence))).scalar_one()
+        meta = seq.meta or {}
+        assert "tags" not in meta
 
 
 class TestMultipleFiles:
