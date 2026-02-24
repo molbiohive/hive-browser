@@ -1,7 +1,7 @@
 # Hive Browser — Development & Deployment
 
 .PHONY: setup-dev \
-        back-dev front-dev static \
+        dev back-dev front-dev static \
         docker-init docker-build docker-up docker-down docker-update docker-logs \
         test lint check-deps check-backend check-frontend check-all clean
 
@@ -31,6 +31,13 @@ setup-dev:
 	HIVE_CONFIG=config/config.local.yaml uv run alembic upgrade head
 
 # ── Dev ───────────────────────────────────────────────────
+
+dev:
+	@trap 'kill 0' EXIT; \
+	HIVE_CONFIG=config/config.local.yaml uv run uvicorn hive.main:app \
+		--reload --host 127.0.0.1 --port 8080 & \
+	cd frontend && bun run dev & \
+	wait
 
 back-dev:
 	HIVE_CONFIG=config/config.local.yaml uv run uvicorn hive.main:app \
