@@ -9,7 +9,7 @@ import re
 from typing import Any
 
 from pydantic import BaseModel, Field
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import Text, and_, cast, func, or_, select
 from sqlalchemy.orm import selectinload
 
 from hive.config import display_file_path
@@ -101,7 +101,7 @@ class SearchTool(Tool):
                 seq_sim = func.similarity(Sequence.name, term)
                 desc_sim = func.coalesce(func.similarity(Sequence.description, term), 0)
                 tags_sim = func.coalesce(
-                    func.similarity(Sequence.meta["tags"].astext, term), 0
+                    func.similarity(cast(Sequence.meta["tags"], Text), term), 0
                 )
 
                 fsub = (
@@ -160,7 +160,7 @@ class SearchTool(Tool):
             # Tags filter (directory/project context from LLM)
             if inp.tags:
                 stmt = stmt.where(
-                    func.similarity(Sequence.meta["tags"].astext, inp.tags) > 0.1
+                    func.similarity(cast(Sequence.meta["tags"], Text), inp.tags) > 0.1
                 )
 
             # Apply filters
