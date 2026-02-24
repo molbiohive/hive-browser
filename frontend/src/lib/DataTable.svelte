@@ -86,6 +86,7 @@
 	</div>
 </div>
 {/if}
+<div class="table-scroll">
 <table>
 	<thead>
 		<tr>
@@ -119,13 +120,15 @@
 		{/each}
 	</tbody>
 </table>
+</div>
 {:else}
 <p class="empty">No data</p>
 {/if}
 
 <style>
-	table { width: 100%; border-collapse: collapse; font-size: 0.82rem; table-layout: fixed; }
-	th, td { padding: 0.4rem 0.6rem; text-align: left; border-bottom: 1px solid var(--border-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.table-scroll { overflow-x: auto; }
+	table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+	th, td { padding: 0.4rem 0.6rem; text-align: left; border-bottom: 1px solid var(--border-muted); white-space: nowrap; }
 	th { font-weight: 600; color: var(--text-faint); font-size: 0.75rem; text-transform: uppercase; }
 	.actions { white-space: nowrap; }
 	.action-btn {

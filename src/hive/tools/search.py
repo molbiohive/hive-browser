@@ -34,6 +34,7 @@ def _parse_bool_query(query: str) -> tuple[list[str], str]:
 
 class SearchInput(BaseModel):
     query: str = Field(..., description="Keyword (name, feature, or description). Use && for AND, || for OR.")
+    tags: str | None = Field(default=None, description="Directory or project context (e.g. folder name, project name)")
     filters: dict[str, Any] = Field(
         default_factory=dict,
         description="Optional: topology, size_min, size_max, feature_type",
@@ -46,16 +47,20 @@ class SearchResultItem(BaseModel):
     size_bp: int
     topology: str
     features: list[str]
+    tags: list[str] = []
     file_path: str
     score: float
 
 
 class SearchTool(Tool):
     name = "search"
-    description = "Search sequences by name, features, resistance markers, and metadata."
+    description = "Search sequences by name, features, tags (directory context), and metadata."
     widget = "table"
     tags = {"llm", "search"}
-    guidelines = "Fuzzy keyword search. Returns matching sequence names."
+    guidelines = (
+        "Fuzzy keyword search across name, features, description, and directory tags. "
+        "If the user mentions a project, folder, or directory context, put it in the tags parameter."
+    )
 
     def __init__(self, **_):
         pass
@@ -104,6 +109,9 @@ class SearchTool(Tool):
             for i, term in enumerate(terms):
                 seq_sim = func.similarity(Sequence.name, term)
                 desc_sim = func.coalesce(func.similarity(Sequence.description, term), 0)
+                tags_sim = func.coalesce(
+                    func.similarity(Sequence.meta["tags"].astext, term), 0
+                )
 
                 fsub = (
                     select(
@@ -118,8 +126,11 @@ class SearchTool(Tool):
                 # Exact match on topology (circular/linear)
                 topo_match = func.lower(Sequence.topology) == func.lower(term)
 
-                score = func.greatest(seq_sim, desc_sim, feat_score)
-                condition = or_(seq_sim > 0.1, desc_sim > 0.1, feat_score > 0.1, topo_match)
+                score = func.greatest(seq_sim, desc_sim, feat_score, tags_sim)
+                condition = or_(
+                    seq_sim > 0.1, desc_sim > 0.1, feat_score > 0.1,
+                    tags_sim > 0.1, topo_match,
+                )
 
                 term_scores.append(score)
                 term_conditions.append(condition)
@@ -155,6 +166,12 @@ class SearchTool(Tool):
 
             stmt = stmt.order_by(combined.desc())
 
+            # Tags filter (directory/project context from LLM)
+            if inp.tags:
+                stmt = stmt.where(
+                    func.similarity(Sequence.meta["tags"].astext, inp.tags) > 0.1
+                )
+
             # Apply filters
             if topo := inp.filters.get("topology"):
                 stmt = stmt.where(Sequence.topology == topo)
@@ -177,6 +194,7 @@ class SearchTool(Tool):
             results = []
             for seq, score, file_path in rows:
                 feat_names = [f.name for f in seq.features]
+                meta = seq.meta or {}
                 results.append(
                     SearchResultItem(
                         id=seq.id,
@@ -184,6 +202,7 @@ class SearchTool(Tool):
                         size_bp=seq.size_bp,
                         topology=seq.topology,
                         features=feat_names,
+                        tags=meta.get("tags", []),
                         file_path=resolve_host_path(file_path),
                         score=round(float(score), 3),
                     ).model_dump()

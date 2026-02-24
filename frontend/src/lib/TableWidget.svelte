@@ -1,5 +1,4 @@
 <script>
-	import { appConfig } from '$lib/stores/chat.ts';
 	import { sendMessage } from '$lib/stores/chat.ts';
 	import DataTable from '$lib/DataTable.svelte';
 
@@ -10,11 +9,20 @@
 		size_bp: { key: 'size_bp', label: 'Size', format: (row) => row.size_bp ? `${(row.size_bp / 1000).toFixed(1)}kb` : '' },
 		topology: { key: 'topology', label: 'Topology' },
 		features: { key: 'features', label: 'Features', format: (row) => Array.isArray(row.features) ? row.features.join(', ') : '' },
+		tags: { key: 'tags', label: 'Tags', format: (row) => Array.isArray(row.tags) ? row.tags.join(', ') : '' },
 		score: { key: 'score', label: 'Score', format: (row) => row.score != null ? row.score.toFixed(2) : '' },
 		file_path: { key: 'file_path', label: 'File', format: (row) => row.file_path ? row.file_path.split('/').pop() : '' },
 	};
 
-	const columns = $derived($appConfig.search_columns.map(col => columnDefs[col] || { key: col, label: col }));
+	const HIDDEN_KEYS = new Set(['id']);
+
+	// Auto-discover columns from data — show everything
+	const columns = $derived.by(() => {
+		const results = data?.results;
+		if (!results?.length) return [];
+		const keys = Object.keys(results[0]).filter(k => !HIDDEN_KEYS.has(k));
+		return keys.map(k => columnDefs[k] || { key: k, label: k.replace(/_/g, ' ') });
+	});
 
 	function viewProfile(name) {
 		sendMessage(`//profile ${JSON.stringify({ name })}`);
