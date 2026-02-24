@@ -160,6 +160,33 @@ async def watcher_rescan(request: Request):
     return {"status": "ok", "indexed": count}
 
 
+@admin_router.post("/watcher/reindex", dependencies=[Depends(verify_token)])
+async def watcher_reindex(request: Request):
+    """Force full re-parse of all files by resetting file hashes."""
+    if not getattr(request.app.state, "db_ready", False):
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    from sqlalchemy import update
+
+    from hive.watcher.watcher import scan_and_ingest
+
+    # Reset all file hashes so ingest_file treats them as changed
+    async with db.async_session_factory() as s:
+        result = await s.execute(
+            update(IndexedFile)
+            .where(IndexedFile.status == "active")
+            .values(file_hash="")
+        )
+        await s.commit()
+        reset_count = result.rowcount
+
+    logger.info("Reset %d file hashes for reindex", reset_count)
+
+    config = request.app.state.config
+    count = await scan_and_ingest(config.watcher, blast_db_path=config.blast_dir)
+    return {"status": "ok", "reset": reset_count, "reindexed": count}
+
+
 # ── Database ─────────────────────────────────────────────────────────
 
 

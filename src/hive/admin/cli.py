@@ -78,6 +78,10 @@ def cmd_watcher_rescan(args):
     _pp(_post(args, "/admin/watcher/rescan"))
 
 
+def cmd_watcher_reindex(args):
+    _pp(_post(args, "/admin/watcher/reindex"))
+
+
 def cmd_files(args):
     data = _get(args, "/admin/db/files")
     files = data.get("files", [])
@@ -386,6 +390,7 @@ def main():
     sub.add_parser("watcher-start", help="Start the file watcher")
     sub.add_parser("watcher-stop", help="Stop the file watcher")
     sub.add_parser("watcher-rescan", help="Force full directory rescan")
+    sub.add_parser("watcher-reindex", help="Re-parse all files (reset hashes and rescan)")
 
     # Database
     sub.add_parser("files", help="List indexed files")
@@ -424,6 +429,7 @@ def main():
         "watcher-start": cmd_watcher_start,
         "watcher-stop": cmd_watcher_stop,
         "watcher-rescan": cmd_watcher_rescan,
+        "watcher-reindex": cmd_watcher_reindex,
         "files": cmd_files,
         "errors": cmd_errors,
         "users": cmd_users,
