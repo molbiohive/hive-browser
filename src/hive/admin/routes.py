@@ -149,26 +149,32 @@ async def watcher_stop(request: Request):
 
 @admin_router.post("/watcher/rescan", dependencies=[Depends(verify_token)])
 async def watcher_rescan(request: Request):
-    """Force a full directory rescan without restarting the watcher."""
+    """Force a full directory rescan (runs in background)."""
     if not getattr(request.app.state, "db_ready", False):
         raise HTTPException(status_code=503, detail="Database not available")
 
     from hive.watcher.watcher import scan_and_ingest
 
-    config = request.app.state.config.watcher
-    count = await scan_and_ingest(config)
-    return {"status": "ok", "indexed": count}
+    config = request.app.state.config
+
+    async def _run():
+        try:
+            count = await scan_and_ingest(config.watcher, blast_db_path=config.blast_dir)
+            logger.info("Rescan complete: %d files indexed", count)
+        except Exception as e:
+            logger.error("Rescan failed: %s", e)
+
+    asyncio.create_task(_run())
+    return {"status": "started"}
 
 
 @admin_router.post("/watcher/reindex", dependencies=[Depends(verify_token)])
 async def watcher_reindex(request: Request):
-    """Force full re-parse of all files by resetting file hashes."""
+    """Force full re-parse of all files (runs in background)."""
     if not getattr(request.app.state, "db_ready", False):
         raise HTTPException(status_code=503, detail="Database not available")
 
     from sqlalchemy import update
-
-    from hive.watcher.watcher import scan_and_ingest
 
     # Reset all file hashes so ingest_file treats them as changed
     async with db.async_session_factory() as s:
@@ -182,9 +188,19 @@ async def watcher_reindex(request: Request):
 
     logger.info("Reset %d file hashes for reindex", reset_count)
 
+    from hive.watcher.watcher import scan_and_ingest
+
     config = request.app.state.config
-    count = await scan_and_ingest(config.watcher, blast_db_path=config.blast_dir)
-    return {"status": "ok", "reset": reset_count, "reindexed": count}
+
+    async def _run():
+        try:
+            count = await scan_and_ingest(config.watcher, blast_db_path=config.blast_dir)
+            logger.info("Reindex complete: %d files re-parsed", count)
+        except Exception as e:
+            logger.error("Reindex failed: %s", e)
+
+    asyncio.create_task(_run())
+    return {"status": "started", "reset": reset_count}
 
 
 # ── Database ─────────────────────────────────────────────────────────
