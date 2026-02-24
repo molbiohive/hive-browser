@@ -11,8 +11,12 @@
 		return cmd.length > 120 ? cmd.slice(0, 117) + '...' : cmd;
 	}
 
-	function copyCommand(step) {
-		navigator.clipboard.writeText(fullCommand(step));
+	async function copyCommand(step) {
+		try {
+			await navigator.clipboard.writeText(fullCommand(step));
+		} catch (e) {
+			console.error('Clipboard copy failed:', e);
+		}
 	}
 </script>
 

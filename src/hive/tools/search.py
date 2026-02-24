@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import selectinload
 
-from hive.config import resolve_host_path
+from hive.config import display_file_path
 from hive.db import session as db
 from hive.db.models import Feature, IndexedFile, Sequence
 from hive.tools.base import Tool
@@ -42,7 +42,7 @@ class SearchInput(BaseModel):
 
 
 class SearchResultItem(BaseModel):
-    id: int
+    sid: int
     name: str
     size_bp: int
     topology: str
@@ -59,6 +59,8 @@ class SearchTool(Tool):
     tags = {"llm", "search"}
     guidelines = (
         "Fuzzy keyword search across name, features, description, and directory tags. "
+        "IMPORTANT: When user says 'X and Y' or 'X with Y' or 'X that have Y', "
+        "ALWAYS use && in query: 'X && Y'. Without && terms are single-term fuzzy. "
         "If the user mentions a project, folder, or directory context, put it in the tags parameter."
     )
 
@@ -76,17 +78,6 @@ class SearchTool(Tool):
         total = result.get("total", 0)
         query = result.get("query", "")
         return f"Found {total} result(s) for '{query}'." if total else f"No results for '{query}'."
-
-    def summary_for_llm(self, result: dict) -> str:
-        total = result.get("total", 0)
-        query = result.get("query", "")
-        if not total:
-            return f"No results for '{query}'."
-        names = [r["name"] for r in result.get("results", [])]
-        return (
-            f"Found {total} result(s) for '{query}': {', '.join(names)}. "
-            "[User sees full table — summarize, do not list.]"
-        )
 
     async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
         """Execute search with pg_trgm similarity + filters.
@@ -197,13 +188,13 @@ class SearchTool(Tool):
                 meta = seq.meta or {}
                 results.append(
                     SearchResultItem(
-                        id=seq.id,
+                        sid=seq.id,
                         name=seq.name,
                         size_bp=seq.size_bp,
                         topology=seq.topology,
                         features=feat_names,
                         tags=meta.get("tags", []),
-                        file_path=resolve_host_path(file_path),
+                        file_path=display_file_path(file_path),
                         score=round(float(score), 3),
                     ).model_dump()
                 )

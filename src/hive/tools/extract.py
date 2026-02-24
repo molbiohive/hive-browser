@@ -11,10 +11,12 @@ from sqlalchemy import case, select
 from hive.db import session as db
 from hive.db.models import Feature, IndexedFile, Primer, Sequence
 from hive.tools.base import Tool
+from hive.tools.resolve import resolve_sequence
 
 
 class ExtractInput(BaseModel):
-    sequence_name: str = Field(..., description="Name of the sequence/plasmid")
+    sid: int | None = Field(default=None, description="Sequence ID (preferred)")
+    sequence_name: str | None = Field(default=None, description="Sequence name (fallback)")
     feature_name: str | None = Field(default=None, description="Feature name to extract")
     primer_name: str | None = Field(default=None, description="Primer name to extract")
     region: str | None = Field(default=None, description="Region as start:end (1-based, inclusive)")
@@ -43,29 +45,19 @@ class ExtractTool(Tool):
         source = result.get("source", "")
         return f"Extracted {name} from {source}: {length} bp"
 
-    def summary_for_llm(self, result: dict) -> str:
-        if error := result.get("error"):
-            return f"Error: {error}"
-        name = result.get("name", "")
-        length = result.get("length", 0)
-        source = result.get("source", "")
-        return f"Extracted {name} from {source}: {length} bp."
-
     async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
         inp = ExtractInput(**params)
+
+        if inp.sid is None and not inp.sequence_name:
+            return {"error": "Provide either sid or sequence_name"}
 
         if not db.async_session_factory:
             return {"error": "Database unavailable"}
 
         async with db.async_session_factory() as session:
-            # Look up the parent sequence
-            seq_row = (await session.execute(
-                select(Sequence)
-                .join(IndexedFile, Sequence.file_id == IndexedFile.id)
-                .where(IndexedFile.status == "active")
-                .where(Sequence.name.ilike(f"%{inp.sequence_name}%"))
-                .limit(1)
-            )).scalar_one_or_none()
+            seq_row = await resolve_sequence(
+                session, sid=inp.sid, name=inp.sequence_name,
+            )
 
             if not seq_row:
                 return {"error": f"Sequence not found: {inp.sequence_name}"}

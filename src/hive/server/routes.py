@@ -139,46 +139,43 @@ async def delete_chat(chat_id: str, request: Request):
 async def open_file(request: Request):
     """Open a file — local file manager, SMB link, or clipboard path.
 
-    Three modes determined by environment:
-      local:  subprocess opens Finder/Explorer (no Docker)
-      link:   returns SMB/NFS URL for browser to open (Docker + file_url_prefix)
-      copy:   returns host path for clipboard (Docker, no prefix)
+    Receives a display path (e.g. ``sequences/project/file.dna``) and
+    resolves it back to a full filesystem path for file operations.
     """
     body = await request.json()
-    file_path = body.get("path", "")
+    display_path = body.get("path", "")
 
-    if not file_path:
+    if not display_path:
         return {"error": "No file path provided"}
+
+    from hive.config import resolve_display_path
+
+    full_path = resolve_display_path(display_path)
 
     host_root = os.environ.get("HIVE_HOST_WATCHER_ROOT")
 
     if host_root:
-        # Docker mode — file_path is already the host path (translated by tools).
-        # Reverse-translate to container path to verify file exists.
-        from hive.config import resolve_container_path
-
-        container_path = resolve_container_path(file_path)
-        if not Path(container_path).exists():
-            return {"error": f"File not found: {file_path}"}
+        if not Path(full_path).exists():
+            return {"error": f"File not found: {display_path}"}
 
         config = getattr(request.app.state, "config", None)
         prefix = config.watcher.file_url_prefix if config else None
         if prefix:
-            # Build SMB/NFS URL from prefix + relative path
-            host_stripped = host_root.rstrip("/")
-            if file_path.startswith(host_stripped):
-                relative = file_path[len(host_stripped):]
+            # Build SMB/NFS URL from prefix + relative path within root
+            root_name = Path(host_root.rstrip("/")).name
+            if display_path.startswith(root_name + "/"):
+                relative = display_path[len(root_name):]
             else:
-                relative = "/" + Path(file_path).name
+                relative = "/" + Path(display_path).name
             url = prefix.rstrip("/") + relative
             return {"status": "link", "url": url}
         else:
-            return {"status": "copy", "path": file_path}
+            return {"status": "copy", "path": display_path}
 
     # Local mode — open in OS file manager
-    path = Path(file_path)
+    path = Path(full_path)
     if not path.exists():
-        return {"error": f"File not found: {file_path}"}
+        return {"error": f"File not found: {display_path}"}
 
     system = platform.system()
     try:
@@ -191,7 +188,7 @@ async def open_file(request: Request):
     except Exception as e:
         return {"error": str(e)}
 
-    return {"status": "ok", "path": str(path)}
+    return {"status": "ok", "path": display_path}
 
 
 @router.get("/models")

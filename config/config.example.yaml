@@ -21,6 +21,7 @@ llm:
     #   model: "gpt-4o"
     #   api_key: "sk-..."
   auto_discover: false          # auto-discover Ollama models at runtime
+  summary_token_limit: 1000     # max tokens for tool result summaries sent to LLM
 
 blast:
   binary: "blastn"

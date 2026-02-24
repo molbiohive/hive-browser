@@ -59,12 +59,11 @@ class Tool(ABC):
             return f"Error: {error}"
         return ""
 
-    def summary_for_llm(self, result: dict) -> str:
-        """Compact representation of result for LLM summary generation.
-
-        Override for custom stats. Default: auto-generated descriptive stats.
-        """
-        return _auto_summarize(result)
+    def summary_for_llm(self, result: dict, token_limit: int = 1000) -> str:
+        """Compact result summary for LLM context. Do NOT override in subclasses."""
+        max_chars = token_limit * 4
+        max_items = max(5, token_limit // 50)
+        return _auto_summarize(result, max_chars=max_chars, max_items=max_items)
 
     def schema(self) -> dict:
         """Full tool schema for LLM function calling."""
@@ -152,10 +151,10 @@ def _params_to_schema(params: dict) -> dict:
     return schema
 
 
-def _auto_summarize(result: dict, max_chars: int = 4000) -> str:
+def _auto_summarize(result: dict, max_chars: int = 4000, max_items: int = 20) -> str:
     """Generate compact descriptive stats from a result dict.
 
-    - Lists → count + first 2 items as sample
+    - Lists → count + first max_items items as sample (default 20)
     - Numbers/booleans → include directly
     - Short strings (< 200 chars) → include
     - Long strings → truncate to 100 chars
@@ -167,9 +166,8 @@ def _auto_summarize(result: dict, max_chars: int = 4000) -> str:
         if isinstance(value, list):
             stats[f"{key}_count"] = len(value)
             if value and isinstance(value[0], dict):
-                # Sample first 2 items, keeping only scalar fields
                 sample = []
-                for item in value[:2]:
+                for item in value[:max_items]:
                     trimmed = {
                         k: v for k, v in item.items()
                         if isinstance(v, (str, int, float, bool, type(None)))
@@ -179,7 +177,7 @@ def _auto_summarize(result: dict, max_chars: int = 4000) -> str:
                 if sample:
                     stats[f"{key}_sample"] = sample
             elif value:
-                stats[f"{key}_sample"] = value[:3]
+                stats[f"{key}_sample"] = value[:max_items]
         elif isinstance(value, (int, float, bool)):
             stats[key] = value
         elif isinstance(value, str):

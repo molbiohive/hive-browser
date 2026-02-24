@@ -34,13 +34,6 @@ class RevCompTool(Tool):
             return f"Error: {error}"
         return f"Reverse complement: {result.get('length', 0)} bp"
 
-    def summary_for_llm(self, result: dict) -> str:
-        if error := result.get("error"):
-            return f"Error: {error}"
-        seq = result.get("sequence", "")
-        preview = seq[:80] + "..." if len(seq) > 80 else seq
-        return f"RevComp ({len(seq)} bp): {preview}"
-
     async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
         inp = RevCompInput(**params)
         cleaned = inp.sequence.upper().replace(" ", "").replace("\n", "")

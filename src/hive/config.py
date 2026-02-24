@@ -47,7 +47,7 @@ class SearchConfig(BaseSettings):
 
 class ChatConfig(BaseSettings):
     max_history_pairs: int = 20
-    auto_save_after: int = 2  # save chat after N user messages
+    auto_save_after: int = 1  # save chat after N user messages
     widget_data_threshold: int = 2048  # bytes — strip widget data above this size
 
 
@@ -97,6 +97,10 @@ class Settings(BaseSettings):
         return str(Path(self.data_root).expanduser() / "tools")
 
 
+# Set by load_config() — expanded watcher root for display path logic
+_watcher_root: str | None = None
+
+
 def resolve_host_path(path: str) -> str:
     """Translate container path to host path for display in Docker.
 
@@ -131,6 +135,44 @@ def file_open_mode() -> str:
     return "link"  # fallback to 'copy' handled at runtime if no prefix
 
 
+def display_file_path(path: str) -> str:
+    """Convert absolute file path to display path relative to watcher root.
+
+    Returns ``root_name/relative/path/file.ext`` — e.g. ``sequences/project/file.dna``.
+    In Docker, host path translation is applied first.
+    """
+    path = resolve_host_path(path)
+    if not _watcher_root or not path:
+        return path
+    expanded = str(Path(_watcher_root).expanduser().resolve())
+    stripped = expanded.rstrip("/")
+    if path.startswith(stripped):
+        root_name = Path(stripped).name
+        return root_name + path[len(stripped):]
+    return path
+
+
+def resolve_display_path(display_path: str) -> str:
+    """Reconstruct full filesystem path from a display path.
+
+    Inverse of ``display_file_path`` — used by the open-file endpoint
+    to locate the actual file on disk (local or container).
+    """
+    if not _watcher_root or not display_path:
+        return display_path
+    expanded = str(Path(_watcher_root).expanduser().resolve())
+    root_name = Path(expanded).name
+    prefix = root_name + "/"
+    if display_path.startswith(prefix):
+        relative = display_path[len(prefix):]
+        # Docker: use container root for file access
+        container_root = os.environ.get("HIVE_WATCHER_ROOT")
+        if os.environ.get("HIVE_HOST_WATCHER_ROOT") and container_root:
+            return container_root.rstrip("/") + "/" + relative
+        return expanded.rstrip("/") + "/" + relative
+    return display_path
+
+
 def load_config(config_path: str | None = None) -> Settings:
     """Load settings from YAML config file, with env var overrides.
 
@@ -157,4 +199,7 @@ def load_config(config_path: str | None = None) -> Settings:
         settings.data_root = data_root
     if watcher_root := os.environ.get("HIVE_WATCHER_ROOT"):
         settings.watcher.root = watcher_root
+
+    global _watcher_root
+    _watcher_root = settings.watcher.root
     return settings

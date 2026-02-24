@@ -5,16 +5,17 @@
 	let { data } = $props();
 
 	const columnDefs = {
+		sid: { key: 'sid', label: 'SID' },
 		name: { key: 'name', label: 'Name', class: 'name' },
 		size_bp: { key: 'size_bp', label: 'Size', format: (row) => row.size_bp ? `${(row.size_bp / 1000).toFixed(1)}kb` : '' },
 		topology: { key: 'topology', label: 'Topology' },
 		features: { key: 'features', label: 'Features', format: (row) => Array.isArray(row.features) ? row.features.join(', ') : '' },
 		tags: { key: 'tags', label: 'Tags', format: (row) => Array.isArray(row.tags) ? row.tags.join(', ') : '' },
 		score: { key: 'score', label: 'Score', format: (row) => row.score != null ? row.score.toFixed(2) : '' },
-		file_path: { key: 'file_path', label: 'File', format: (row) => row.file_path ? row.file_path.split('/').pop() : '' },
+		file_path: { key: 'file_path', label: 'File' },
 	};
 
-	const HIDDEN_KEYS = new Set(['id']);
+	const HIDDEN_KEYS = new Set([]);
 
 	// Auto-discover columns from data — show everything
 	const columns = $derived.by(() => {
@@ -24,8 +25,8 @@
 		return keys.map(k => columnDefs[k] || { key: k, label: k.replace(/_/g, ' ') });
 	});
 
-	function viewProfile(name) {
-		sendMessage(`//profile ${JSON.stringify({ name })}`);
+	function viewProfile(row) {
+		sendMessage(`//profile ${JSON.stringify({ sid: row.sid })}`);
 	}
 
 	async function openFile(filePath) {
@@ -59,7 +60,7 @@
 		},
 		{
 			label: 'Profile',
-			onClick: (row) => viewProfile(row.name),
+			onClick: (row) => viewProfile(row),
 			title: () => 'View sequence details',
 		},
 	];

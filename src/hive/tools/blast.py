@@ -11,7 +11,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from hive.config import resolve_host_path
+from hive.config import display_file_path
 from hive.db import session as db
 from hive.db.models import IndexedFile, Sequence
 from hive.tools.base import Tool
@@ -67,18 +67,6 @@ class BlastTool(Tool):
             return f"Error: {error}"
         total = len(result.get("hits", []))
         return f"Found {total} BLAST hit(s)." if total else "No BLAST hits found."
-
-    def summary_for_llm(self, result: dict) -> str:
-        if error := result.get("error"):
-            return f"Error: {error}"
-        hits = result.get("hits", [])
-        if not hits:
-            return "No BLAST hits found."
-        parts = [f"{h['subject']} ({h['identity']:.1f}%)" for h in hits]
-        return (
-            f"Found {len(hits)} BLAST hit(s): {', '.join(parts)}. "
-            "[User sees full table — summarize, do not list.]"
-        )
 
     async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
         """Run BLAST+ against the local index."""
@@ -209,23 +197,19 @@ async def _resolve_file_paths(names: set[str]) -> dict[str, str]:
     for seq_name, file_path in rows:
         safe_name = seq_name.replace(" ", "_")
         if safe_name in names:
-            result[safe_name] = resolve_host_path(file_path)
+            result[safe_name] = display_file_path(file_path)
     return result
 
 
 async def _resolve_sequence(name: str) -> str | None:
-    """Look up a sequence by name in the database."""
+    """Look up a sequence by exact name in the database."""
     if not db.async_session_factory:
         return None
+    from hive.tools.resolve import resolve_sequence as _resolve
+
     async with db.async_session_factory() as session:
-        row = (await session.execute(
-            select(Sequence.sequence)
-            .join(IndexedFile, Sequence.file_id == IndexedFile.id)
-            .where(IndexedFile.status == "active")
-            .where(Sequence.name.ilike(f"%{name}%"))
-            .limit(1)
-        )).scalar_one_or_none()
-        return row
+        seq = await _resolve(session, name=name)
+        return seq.sequence if seq else None
 
 
 async def build_blast_index(db_path: str) -> bool:

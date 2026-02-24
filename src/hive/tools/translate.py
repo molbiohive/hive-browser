@@ -38,20 +38,6 @@ class TranslateTool(Tool):
         tag = " (complete ORF)" if complete else ""
         return f"Translated to {plen} amino acids{tag}"
 
-    def summary_for_llm(self, result: dict) -> str:
-        if error := result.get("error"):
-            return f"Error: {error}"
-        protein = result.get("protein", "")
-        plen = result.get("protein_length", 0)
-        stops = result.get("stop_codons", 0)
-        complete = result.get("complete", False)
-        preview = protein[:50] + "..." if len(protein) > 50 else protein
-        return (
-            f"Protein: {plen} aa, {stops} stop codon(s), "
-            f"{'complete ORF' if complete else 'partial'}. "
-            f"Sequence: {preview}"
-        )
-
     async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
         inp = TranslateInput(**params)
         cleaned = inp.sequence.upper().replace(" ", "").replace("\n", "")

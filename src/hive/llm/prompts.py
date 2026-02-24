@@ -40,6 +40,8 @@ tool without providing the sequence parameter.
 - NEVER fabricate sequences, IDs, or data.
 - NEVER put nucleotide sequences in search query — use blast instead.
 - Only add search filters (topology, size, feature_type) when user asks.
+- Search results include SID (Sequence ID). ALWAYS use sid for follow-up \
+tools (profile, extract, features, primers). Never use name when sid is available.
 - After a tool returns results, the user sees a rich table/widget with full \
 data. NEVER list, enumerate, or restate individual items from the results. \
 Instead write 1-2 sentences of interpretation or context. Bad: "Here are \

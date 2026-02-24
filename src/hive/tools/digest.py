@@ -41,16 +41,6 @@ class DigestTool(Tool):
         frags = result.get("fragments", [])
         return f"{cuts} cut(s), {len(frags)} fragment(s): {frags}"
 
-    def summary_for_llm(self, result: dict) -> str:
-        if error := result.get("error"):
-            return f"Error: {error}"
-        enzymes = result.get("enzymes", [])
-        parts = []
-        for e in enzymes:
-            parts.append(f"{e['name']}: {e['num_cuts']} cut(s) at {e['sites']}")
-        frags = result.get("fragments", [])
-        return "; ".join(parts) + f". Fragments: {frags}"
-
     async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
         inp = DigestInput(**params)
         cleaned = inp.sequence.upper().replace(" ", "").replace("\n", "")

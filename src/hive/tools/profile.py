@@ -5,18 +5,16 @@ from __future__ import annotations
 from typing import Any
 
 from pydantic import BaseModel, Field
-from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 
-from hive.config import resolve_host_path
+from hive.config import display_file_path
 from hive.db import session as db
-from hive.db.models import IndexedFile, Sequence
 from hive.tools.base import Tool
+from hive.tools.resolve import resolve_sequence
 
 
 class ProfileInput(BaseModel):
-    sequence_id: int | None = Field(default=None, description="Sequence ID from database")
-    name: str | None = Field(default=None, description="Sequence name to look up")
+    sid: int | None = Field(default=None, description="Sequence ID (preferred)")
+    name: str | None = Field(default=None, description="Sequence name (fallback)")
 
 
 class ProfileTool(Tool):
@@ -27,7 +25,7 @@ class ProfileTool(Tool):
     )
     widget = "profile"
     tags = {"llm", "info"}
-    guidelines = "Full sequence details: metadata, features, primers, file info."
+    guidelines = "Full sequence details. Use sid (from search results) or name."
 
     def __init__(self, **_):
         pass
@@ -45,54 +43,32 @@ class ProfileTool(Tool):
             return "Sequence not found."
         return f"{seq['name']} — {seq['size_bp']} bp, {seq['topology']}"
 
-    def summary_for_llm(self, result: dict) -> str:
-        if error := result.get("error"):
-            return f"Error: {error}"
-        seq = result.get("sequence")
-        if not seq:
-            return "Sequence not found."
-        n_feat = len(result.get("features", []))
-        n_prim = len(result.get("primers", []))
-        return (
-            f"{seq['name']} — {seq['size_bp']} bp, {seq['topology']}. "
-            f"{n_feat} features, {n_prim} primers."
-        )
-
     async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
         """Fetch complete sequence profile from the database."""
         inp = ProfileInput(**params)
 
-        if not inp.sequence_id and not inp.name:
-            return {"error": "Provide either sequence_id or name"}
+        if inp.sid is None and not inp.name:
+            return {"error": "Provide either sid or name"}
 
         if not db.async_session_factory:
             return {"error": "Database unavailable"}
 
         async with db.async_session_factory() as session:
-            stmt = (
-                select(Sequence)
-                .join(IndexedFile, Sequence.file_id == IndexedFile.id)
-                .options(
-                    selectinload(Sequence.features),
-                    selectinload(Sequence.primers),
-                    selectinload(Sequence.file),
-                )
-                .where(IndexedFile.status == "active")
+            seq = await resolve_sequence(
+                session,
+                sid=inp.sid,
+                name=inp.name,
+                load_features=True,
+                load_primers=True,
+                load_file=True,
             )
 
-            if inp.sequence_id:
-                stmt = stmt.where(Sequence.id == inp.sequence_id)
-            else:
-                stmt = stmt.where(Sequence.name.ilike(f"%{inp.name}%"))
-
-            seq = (await session.execute(stmt.limit(1))).scalar_one_or_none()
-
             if not seq:
-                return {"error": f"Sequence not found: {inp.sequence_id or inp.name}"}
+                return {"error": f"Sequence not found: {inp.sid or inp.name}"}
 
             return {
                 "sequence": {
-                    "id": seq.id,
+                    "sid": seq.id,
                     "name": seq.name,
                     "size_bp": seq.size_bp,
                     "topology": seq.topology,
@@ -122,7 +98,7 @@ class ProfileTool(Tool):
                     for p in seq.primers
                 ],
                 "file": {
-                    "path": resolve_host_path(seq.file.file_path),
+                    "path": display_file_path(seq.file.file_path),
                     "format": seq.file.format,
                     "size": seq.file.file_size,
                     "indexed_at": seq.file.indexed_at.isoformat() if seq.file.indexed_at else None,

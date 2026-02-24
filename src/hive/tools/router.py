@@ -26,6 +26,7 @@ async def route_input(
     history: list[dict] | None = None,
     max_turns: int = 5,
     pipe_min_length: int = 200,
+    summary_token_limit: int = 1000,
     on_progress: Callable[[dict], Awaitable[None]] | None = None,
 ) -> dict[str, Any]:
     """
@@ -96,6 +97,7 @@ async def route_input(
             history=history,
             max_turns=max_turns,
             pipe_min_length=pipe_min_length,
+            summary_token_limit=summary_token_limit,
             on_progress=on_progress,
         )
 
@@ -110,6 +112,7 @@ async def route_input(
         history=history,
         max_turns=max_turns,
         pipe_min_length=pipe_min_length,
+        summary_token_limit=summary_token_limit,
         on_progress=on_progress,
     )
 
@@ -124,6 +127,7 @@ async def _unified_loop(
     history: list[dict] | None = None,
     max_turns: int = 5,
     pipe_min_length: int = 200,
+    summary_token_limit: int = 1000,
     on_progress: Callable[[dict], Awaitable[None]] | None = None,
 ) -> dict[str, Any]:
     """Unified agentic loop — LLM converses and chains tools as needed.
@@ -250,7 +254,7 @@ async def _unified_loop(
                 if isinstance(val, str) and len(val) >= pipe_min_length:
                     cache[key] = val
 
-            compact = tool.summary_for_llm(result)
+            compact = tool.summary_for_llm(result, token_limit=summary_token_limit)
             messages.append({
                 "role": "tool",
                 "tool_call_id": tc["id"],

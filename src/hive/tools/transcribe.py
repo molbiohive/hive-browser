@@ -34,13 +34,6 @@ class TranscribeTool(Tool):
             return f"Error: {error}"
         return f"Transcribed to {result.get('length', 0)} nt mRNA"
 
-    def summary_for_llm(self, result: dict) -> str:
-        if error := result.get("error"):
-            return f"Error: {error}"
-        rna = result.get("rna", "")
-        preview = rna[:80] + "..." if len(rna) > 80 else rna
-        return f"mRNA ({len(rna)} nt): {preview}"
-
     async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
         inp = TranscribeInput(**params)
         cleaned = inp.sequence.upper().replace(" ", "").replace("\n", "")
