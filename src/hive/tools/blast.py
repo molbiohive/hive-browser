@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
-import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +12,7 @@ from sqlalchemy import select
 from hive.config import display_file_path
 from hive.db import session as db
 from hive.db.models import IndexedFile, Sequence
+from hive.deps.blast import run_search
 from hive.tools.base import Tool
 
 logger = logging.getLogger(__name__)
@@ -55,7 +54,9 @@ class BlastTool(Tool):
         if not config:
             raise ValueError("BlastTool requires config")
         self._db_path = Path(config.blast_dir)
-        self._binary = config.blast.binary
+        self._bin_dir = config.blast.bin_dir
+        self._default_evalue = config.blast.default_evalue
+        self._default_max_hits = config.blast.default_max_hits
 
     def input_schema(self) -> dict:
         schema = BlastInput.model_json_schema()
@@ -89,76 +90,32 @@ class BlastTool(Tool):
                 return {"error": f"Sequence not found: {query_seq}", "hits": []}
             query_seq = resolved
 
-        db_file = self._db_path / "hive_blast"
-        if not (self._db_path / "hive_blast.ndb").exists():
-            return {"error": "BLAST index not built yet", "hits": []}
-
-        # Write query to temp FASTA
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".fasta", delete=False) as f:
-            f.write(f">query\n{query_seq}\n")
-            query_file = f.name
-
-        # Dynamic sensitivity for short queries
-        qlen = len(query_seq)
+        # Dynamic sensitivity for short queries (blastn only)
         evalue = inp.evalue
-        if evalue == 1e-5:  # user didn't override default
+        qlen = len(query_seq)
+        search_params: dict[str, Any] = {"evalue": evalue}
+
+        if evalue == 1e-5:
             if qlen < 20:
-                evalue = 1000
+                search_params["evalue"] = 1000
             elif qlen < 50:
-                evalue = 10
+                search_params["evalue"] = 10
 
-        cmd = [
-            self._binary,
-            "-query", query_file,
-            "-db", str(db_file),
-            "-outfmt",
-            "6 sseqid pident length mismatch gapopen "
-            "qstart qend sstart send evalue bitscore",
-            "-evalue", str(evalue),
-        ]
         if qlen < 30:
-            cmd.extend(["-task", "blastn-short", "-word_size", "7", "-dust", "no"])
+            search_params.update(task="blastn-short", word_size=7, dust="no")
 
-        try:
-            proc = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            stdout, stderr = await proc.communicate()
-        finally:
-            Path(query_file).unlink(missing_ok=True)
+        search_params["max_target_seqs"] = self._default_max_hits
 
-        if proc.returncode != 0:
-            err = stderr.decode().strip()
-            logger.error("BLAST failed: %s", err)
-            return {"error": f"BLAST error: {err}", "hits": []}
+        result = await run_search(
+            "blastn", query_seq, self._db_path, bin_dir=self._bin_dir,
+            **search_params,
+        )
 
-        hits = []
-        subject_names = set()
-        for line in stdout.decode().strip().split("\n"):
-            if not line:
-                continue
-            parts = line.split("\t")
-            if len(parts) < 11:
-                continue
-            subject_name = parts[0]
-            subject_names.add(subject_name)
-            hits.append(
-                BlastHit(
-                    subject=subject_name,
-                    identity=float(parts[1]),
-                    alignment_length=int(parts[2]),
-                    mismatches=int(parts[3]),
-                    gaps=int(parts[4]),
-                    q_start=int(parts[5]),
-                    q_end=int(parts[6]),
-                    s_start=int(parts[7]),
-                    s_end=int(parts[8]),
-                    evalue=float(parts[9]),
-                    bitscore=float(parts[10]),
-                ).model_dump()
-            )
+        if result.get("error"):
+            return {"error": result["error"], "hits": []}
+
+        hits = result["hits"]
+        subject_names = result.get("subject_names", set())
 
         # Resolve file paths for hit subjects
         if hits:
@@ -169,7 +126,7 @@ class BlastTool(Tool):
         return {
             "hits": hits,
             "total": len(hits),
-            "query_length": len(query_seq),
+            "query_length": result.get("query_length", qlen),
         }
 
 
@@ -210,92 +167,3 @@ async def _resolve_sequence(name: str) -> str | None:
     async with db.async_session_factory() as session:
         seq = await _resolve(session, name=name)
         return seq.sequence if seq else None
-
-
-async def build_blast_index(db_path: str) -> bool:
-    """Build BLAST database from all active sequences in the DB.
-
-    Called on startup and after watcher changes.  Uses a lockfile
-    to prevent races when multiple workers start simultaneously.
-    """
-    if not db.async_session_factory:
-        logger.warning("Cannot build BLAST index: database unavailable")
-        return False
-
-    blast_dir = Path(db_path).expanduser()
-    blast_dir.mkdir(parents=True, exist_ok=True)
-    fasta_file = blast_dir / "all_sequences.fasta"
-    db_file = blast_dir / "hive_blast"
-    lock_file = blast_dir / ".build.lock"
-
-    # Clean up stale lockfile (older than 10 minutes)
-    if lock_file.exists():
-        import time
-        age = time.time() - lock_file.stat().st_mtime
-        if age > 600:
-            logger.warning("Removing stale BLAST lock (%.0fs old)", age)
-            lock_file.unlink(missing_ok=True)
-
-    # Skip if another worker is already building
-    try:
-        fd = lock_file.open("x")  # atomic create — fails if exists
-    except FileExistsError:
-        logger.info("BLAST index build already in progress, skipping")
-        return True
-    try:
-        return await _do_build_index(blast_dir, fasta_file, db_file)
-    finally:
-        fd.close()
-        lock_file.unlink(missing_ok=True)
-
-
-async def _do_build_index(blast_dir: Path, fasta_file: Path, db_file: Path) -> bool:
-    # Remove stale index files before rebuilding
-    for old in blast_dir.glob("hive_blast.*"):
-        old.unlink()
-
-    async with db.async_session_factory() as session:
-        rows = (await session.execute(
-            select(Sequence.name, Sequence.sequence, Sequence.meta)
-            .join(IndexedFile, Sequence.file_id == IndexedFile.id)
-            .where(IndexedFile.status == "active")
-        )).all()
-
-    if not rows:
-        logger.info("No sequences to index for BLAST")
-        return False
-
-    # Write combined FASTA — skip protein, convert RNA (U→T) for nucleotide DB
-    written = 0
-    with open(fasta_file, "w") as f:
-        for name, seq, meta in rows:
-            mol = (meta or {}).get("molecule_type", "DNA")
-            if mol == "protein":
-                continue
-            safe_name = name.replace(" ", "_")
-            nucl_seq = seq.replace("U", "T").replace("u", "t") if mol == "RNA" else seq
-            f.write(f">{safe_name}\n{nucl_seq}\n")
-            written += 1
-
-    if not written:
-        logger.info("No nucleotide sequences to index for BLAST")
-        return False
-
-    # Run makeblastdb
-    proc = await asyncio.create_subprocess_exec(
-        "makeblastdb",
-        "-in", str(fasta_file),
-        "-dbtype", "nucl",
-        "-out", str(db_file),
-        "-blastdb_version", "5",
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-    )
-    _, stderr = await proc.communicate()
-
-    if proc.returncode != 0:
-        logger.error("makeblastdb failed: %s", stderr.decode())
-        return False
-
-    logger.info("BLAST index built: %d sequences (%d skipped)", written, len(rows) - written)
-    return True

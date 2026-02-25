@@ -38,7 +38,9 @@ class LLMConfig(BaseSettings):
 
 
 class BlastConfig(BaseSettings):
-    binary: str = "blastn"
+    bin_dir: str = ""  # empty = use PATH
+    default_evalue: float = 1e-5
+    default_max_hits: int = 50
 
 
 class SearchConfig(BaseSettings):

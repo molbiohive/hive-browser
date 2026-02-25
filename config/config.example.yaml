@@ -24,7 +24,9 @@ llm:
   summary_token_limit: 1000     # max tokens for tool result summaries sent to LLM
 
 blast:
-  binary: "blastn"
+  bin_dir: ""                # empty = use PATH; or set to /usr/local/bin etc.
+  default_evalue: 1e-5
+  default_max_hits: 50
 
 chat:
   max_history_pairs: 20        # LLM conversation memory depth

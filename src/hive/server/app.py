@@ -84,8 +84,8 @@ async def lifespan(app: FastAPI):
 
             # Always rebuild BLAST index after scan (covers restart with no new files)
             try:
-                from hive.tools.blast import build_blast_index
-                await build_blast_index(config.blast_dir)
+                from hive.deps.blast import build_index
+                await build_index(config.blast_dir, config.blast.bin_dir)
             except Exception as e:
                 logger.warning("BLAST index build failed: %s", e)
 

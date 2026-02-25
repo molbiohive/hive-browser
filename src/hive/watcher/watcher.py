@@ -58,7 +58,9 @@ async def scan_and_ingest(
                 session = await session.__aenter__()
 
             try:
-                result = await ingest_file(session, path, match, commit=False, watcher_root=watcher_root)
+                result = await ingest_file(
+                    session, path, match, commit=False, watcher_root=watcher_root,
+                )
                 if result is not None:
                     indexed += 1
             except Exception as e:
@@ -85,7 +87,7 @@ async def scan_and_ingest(
 
     if indexed > 0 and blast_db_path:
         try:
-            from hive.tools.blast import build_blast_index
+            from hive.deps.blast import build_index as build_blast_index
             await build_blast_index(blast_db_path)
         except Exception as e:
             logger.warning("BLAST index rebuild failed after scan: %s", e)
@@ -129,7 +131,7 @@ async def watch_directory(
                     async with async_session_factory() as session:
                         await ingest_file(session, path, match, watcher_root=watcher_root)
                     if blast_db_path:
-                        from hive.tools.blast import build_blast_index
+                        from hive.deps.blast import build_index as build_blast_index
                         await build_blast_index(blast_db_path)
                 except Exception as e:
                     logger.error("Failed to ingest %s: %s", path.name, e)
