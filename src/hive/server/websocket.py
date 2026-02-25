@@ -136,7 +136,10 @@ async def websocket_endpoint(websocket: WebSocket):
         })
 
         while True:
-            data = await websocket.receive_json()
+            raw = await websocket.receive_text()
+            if len(raw) > 512_000:  # 512 KB max
+                continue
+            data = json.loads(raw)
 
             # Handle cancel — abort any running processing task
             if data.get("type") == "cancel":
@@ -191,13 +194,17 @@ async def websocket_endpoint(websocket: WebSocket):
                 rating = data.get("rating", "")
                 if rating in ("good", "bad"):
                     try:
+                        try:
+                            priority = int(data.get("priority", 3))
+                        except (ValueError, TypeError):
+                            priority = 3
                         async with db.async_session_factory() as s:
                             await create_feedback(
                                 s,
                                 user_id=user.id,
                                 rating=rating,
-                                priority=int(data.get("priority", 3)),
-                                comment=data.get("comment", ""),
+                                priority=priority,
+                                comment=str(data.get("comment", ""))[:5000],
                                 chat_id=chat.get("id"),
                             )
                         await manager.send_json(conn_id, {"type": "feedback_saved"})
