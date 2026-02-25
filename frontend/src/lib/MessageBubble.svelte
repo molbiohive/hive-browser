@@ -1,5 +1,6 @@
 <script>
 	import { marked } from 'marked';
+	import DOMPurify from 'dompurify';
 	import Widget from '$lib/Widget.svelte';
 	import ChainSteps from '$lib/ChainSteps.svelte';
 
@@ -9,7 +10,7 @@
 	marked.setOptions({ breaks: true, gfm: true });
 
 	const rendered = $derived(
-		message.role === 'assistant' ? marked.parse(message.content || '') : ''
+		message.role === 'assistant' ? DOMPurify.sanitize(marked.parse(message.content || '')) : ''
 	);
 </script>
 
