@@ -207,9 +207,11 @@ class BlastTool(Tool):
         subject_names = result.get("subject_names", set())
 
         if hits:
-            path_map = await _resolve_file_paths(subject_names)
+            meta_map = await _resolve_hit_metadata(subject_names)
             for hit in hits:
-                hit["file_path"] = path_map.get(hit["subject"])
+                meta = meta_map.get(hit["subject"], {})
+                hit["sid"] = meta.get("sid")
+                hit["file_path"] = meta.get("file_path")
 
         return {
             "hits": hits,
@@ -259,19 +261,22 @@ async def _resolve_by_name(name: str) -> str | None:
         return seq.sequence if seq else None
 
 
-async def _resolve_file_paths(names: set[str]) -> dict[str, str]:
-    """Look up file paths for hit subject names."""
+async def _resolve_hit_metadata(names: set[str]) -> dict[str, dict]:
+    """Look up SID and file path for hit subject names."""
     if not db.async_session_factory or not names:
         return {}
     async with db.async_session_factory() as session:
         rows = (await session.execute(
-            select(Sequence.name, IndexedFile.file_path)
+            select(Sequence.id, Sequence.name, IndexedFile.file_path)
             .join(IndexedFile, Sequence.file_id == IndexedFile.id)
             .where(IndexedFile.status == "active")
         )).all()
     result = {}
-    for seq_name, file_path in rows:
+    for sid, seq_name, file_path in rows:
         safe_name = seq_name.replace(" ", "_")
         if safe_name in names:
-            result[safe_name] = display_file_path(file_path)
+            result[safe_name] = {
+                "sid": sid,
+                "file_path": display_file_path(file_path),
+            }
     return result

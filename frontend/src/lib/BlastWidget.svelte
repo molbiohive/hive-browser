@@ -5,6 +5,7 @@
 	let { data } = $props();
 
 	const columns = [
+		{ key: 'sid', label: 'SID' },
 		{ key: 'subject', label: 'Hit', class: 'name' },
 		{ key: 'identity', label: 'Identity', format: (row) => `${row.identity}%` },
 		{ key: 'alignment_length', label: 'Length' },
@@ -12,8 +13,8 @@
 		{ key: 'bitscore', label: 'Bitscore' },
 	];
 
-	function viewProfile(name) {
-		sendMessage(`//profile ${JSON.stringify({ name: name.replace(/_/g, ' ') })}`);
+	function viewProfile(row) {
+		sendMessage(`//profile ${JSON.stringify({ sid: row.sid })}`);
 	}
 
 	async function openFile(filePath) {
@@ -47,7 +48,8 @@
 		},
 		{
 			label: 'Profile',
-			onClick: (row) => viewProfile(row.subject),
+			onClick: (row) => viewProfile(row),
+			show: (row) => row.sid != null,
 			title: () => 'View sequence details',
 		},
 	];
