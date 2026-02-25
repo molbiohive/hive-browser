@@ -33,7 +33,7 @@ async def lifespan(app: FastAPI):
     token = generate_token()
     app.state.admin_token = token
     save_token(token)
-    logger.info("Admin token: %s", token)
+    logger.debug("Admin token: %s", token)
 
     # --- Chat storage ---
     app.state.chat_storage = ChatStorage(config.chats_dir)
