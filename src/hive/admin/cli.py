@@ -243,7 +243,7 @@ def cmd_feedback_report(args):
             return
 
         st = await feedback_stats(s)
-        from datetime import datetime, UTC
+        from datetime import UTC, datetime
 
         lines = [
             "# Hive Browser Feedback Report",

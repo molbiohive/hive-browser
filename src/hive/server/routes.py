@@ -13,7 +13,11 @@ from sqlalchemy import func, select
 from hive.db import session as db
 from hive.db.models import Feature, IndexedFile, Primer, Sequence
 from hive.users.service import (
-    create_user, get_user_by_slug, get_user_by_token, list_users, validate_username,
+    create_user,
+    get_user_by_slug,
+    get_user_by_token,
+    list_users,
+    validate_username,
 )
 
 logger = logging.getLogger(__name__)

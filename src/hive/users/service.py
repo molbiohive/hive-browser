@@ -19,13 +19,20 @@ def make_slug(username: str) -> str:
 
 def validate_username(username: str) -> bool:
     """Check username matches allowed chars and length."""
-    return bool(username) and len(username) <= _MAX_USERNAME_LEN and bool(_USERNAME_RE.match(username))
+    return (
+        bool(username)
+        and len(username) <= _MAX_USERNAME_LEN
+        and bool(_USERNAME_RE.match(username))
+    )
 
 
 async def create_user(session: AsyncSession, username: str) -> User:
     """Create a new user. Raises ValueError on invalid/duplicate username."""
     if not validate_username(username):
-        raise ValueError("Invalid username: ASCII letters, digits, hyphens, underscores, and spaces only (1-50 chars)")
+        raise ValueError(
+            "Invalid username: ASCII letters, digits, hyphens,"
+            " underscores, and spaces only (1-50 chars)"
+        )
 
     slug = make_slug(username)
     if not slug:

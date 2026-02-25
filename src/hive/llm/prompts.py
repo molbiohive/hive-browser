@@ -34,7 +34,8 @@ tool without providing the sequence parameter.
 - Use features or primers to list what's on a sequence before extracting.
 - Use profile for full sequence details (metadata, features, primers).
 - Use search for keyword lookup (names, features, descriptions, directory tags).
-- If the user mentions a project, folder, or directory context, pass it in the search tags parameter.
+- If the user mentions a project, folder, or directory context,
+  pass it in the search tags parameter.
 
 ## Rules
 - NEVER fabricate sequences, IDs, or data.

@@ -5,7 +5,6 @@ from __future__ import annotations
 import ast
 import hashlib
 import logging
-from datetime import UTC, datetime
 from pathlib import Path
 
 from sqlalchemy import select

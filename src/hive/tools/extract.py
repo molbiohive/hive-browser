@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import case, select
 
 from hive.db import session as db
-from hive.db.models import Feature, IndexedFile, Primer, Sequence
+from hive.db.models import Feature, Primer
 from hive.tools.base import Tool
 from hive.tools.resolve import resolve_sequence
 

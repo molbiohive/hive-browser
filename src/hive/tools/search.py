@@ -33,8 +33,14 @@ def _parse_bool_query(query: str) -> tuple[list[str], str]:
 
 
 class SearchInput(BaseModel):
-    query: str = Field(..., description="Keyword (name, feature, or description). Use && for AND, || for OR.")
-    tags: str | None = Field(default=None, description="Directory or project context (e.g. folder name, project name)")
+    query: str = Field(
+        ...,
+        description="Keyword (name, feature, or description). Use && for AND, || for OR.",
+    )
+    tags: str | None = Field(
+        default=None,
+        description="Directory or project context (e.g. folder name, project name)",
+    )
     filters: dict[str, Any] = Field(
         default_factory=dict,
         description="Optional: topology, size_min, size_max, feature_type",
@@ -61,7 +67,8 @@ class SearchTool(Tool):
         "Fuzzy keyword search across name, features, description, and directory tags. "
         "IMPORTANT: When user says 'X and Y' or 'X with Y' or 'X that have Y', "
         "ALWAYS use && in query: 'X && Y'. Without && terms are single-term fuzzy. "
-        "If the user mentions a project, folder, or directory context, put it in the tags parameter."
+        "If the user mentions a project, folder, or directory context, "
+        "put it in the tags parameter."
     )
 
     def __init__(self, **_):
