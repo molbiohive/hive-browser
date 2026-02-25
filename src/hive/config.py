@@ -31,7 +31,7 @@ class LLMConfig(BaseSettings):
     models: list[ModelEntry] = Field(default_factory=lambda: [ModelEntry()])
     auto_discover: bool = False  # auto-discover Ollama models at runtime
     summary_token_limit: int = 500  # max tokens for auto-summarize sent to LLM
-    agent_max_turns: int = 5  # max tool-call turns in agentic loop
+    agent_max_turns: int = 10  # max tool-call turns in agentic loop
     pipe_min_length: int = 200  # auto-pipe strings longer than this between tools
 
     model_config = {"env_prefix": "LLM_"}

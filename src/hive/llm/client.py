@@ -40,7 +40,12 @@ class LLMClient:
     def base_url(self) -> str:
         return self._config.base_url
 
-    async def chat(self, messages: list[dict], tools: list[dict] | None = None) -> dict:
+    async def chat(
+        self,
+        messages: list[dict],
+        tools: list[dict] | None = None,
+        tool_choice: str | None = None,
+    ) -> dict:
         """Send a chat completion request via litellm."""
         kwargs: dict = {
             "model": self._model,
@@ -48,6 +53,8 @@ class LLMClient:
         }
         if tools:
             kwargs["tools"] = tools
+            if tool_choice:
+                kwargs["tool_choice"] = tool_choice
 
         # Provider-specific config
         if self._config.provider == "ollama":

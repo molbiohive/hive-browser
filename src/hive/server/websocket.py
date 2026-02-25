@@ -329,7 +329,7 @@ async def _handle_message(
             user_input=content,
             registry=registry,
             llm_client=llm_client,
-            history=manager.get_history(conn_id),
+            history=manager.get_history(conn_id)[-4:],  # last 2 pairs
             max_turns=config.llm.agent_max_turns if config else 5,
             pipe_min_length=config.llm.pipe_min_length if config else 200,
             summary_token_limit=config.llm.summary_token_limit if config else 1000,

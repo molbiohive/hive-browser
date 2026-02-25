@@ -315,7 +315,6 @@ class TestAgenticLoop:
 
     async def test_max_turns_exceeded(self, registry):
         """Loop hits max turns → returns last result with warning."""
-        # 2 turns of tool calls, max_turns=2 → exhausted without text response
         llm = self._mock_llm([
             self._tool_call_response("echo", {"query": "t1"}, call_id="c1"),
             self._tool_call_response("echo", {"query": "t2"}, call_id="c2"),

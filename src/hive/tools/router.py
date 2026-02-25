@@ -12,6 +12,13 @@ from hive.tools.base import Tool, ToolRegistry
 
 logger = logging.getLogger(__name__)
 
+# Minimal tool schema to satisfy Anthropic's requirement that tools= is present
+# when tool messages exist in conversation. Used with tool_choice="none".
+_NOOP_TOOL = [{"type": "function", "function": {
+    "name": "_noop", "description": "n/a",
+    "parameters": {"type": "object", "properties": {}},
+}}]
+
 # After a tool runs, only offer these tools on the next turn.
 # Empty set = force text response (no tools).
 _NEXT_TOOLS: dict[str, set[str]] = {
@@ -161,6 +168,7 @@ async def _unified_loop(
     tokens = {"in": 0, "out": 0}
     exceeded = False
     schemas = all_schemas  # narrows after each tool call
+    force_text = False  # when True, pass noop tool + tool_choice="none"
 
     async def _emit(phase: str, tool: str | None = None):
         if on_progress:
@@ -172,21 +180,23 @@ async def _unified_loop(
     await _emit("thinking")
 
     for turn in range(max_turns):
-        # Hard cap: force text on last possible turn
-        if turn == max_turns - 1:
-            schemas = None
+        # Pick tools/tool_choice for this turn
+        turn_tools = _NOOP_TOOL if force_text else schemas
+        turn_choice = "none" if force_text else None
 
         # Log payload sizes for token debugging
         msg_chars = sum(len(str(m.get("content", ""))) for m in messages)
         schema_chars = sum(
-            len(json.dumps(s)) for s in schemas
-        ) if schemas else 0
+            len(json.dumps(s)) for s in turn_tools
+        ) if turn_tools else 0
         logger.warning(
             "PAYLOAD turn %d: %d msgs (%d chars) + %d tool schemas (%d chars)",
-            turn, len(messages), msg_chars, len(schemas) if schemas else 0, schema_chars,
+            turn, len(messages), msg_chars, len(turn_tools) if turn_tools else 0, schema_chars,
         )
         try:
-            response = await llm_client.chat(messages, tools=schemas)
+            response = await llm_client.chat(
+                messages, tools=turn_tools, tool_choice=turn_choice,
+            )
         except Exception as e:
             logger.error("Unified loop LLM call failed (turn %d): %s", turn, e)
             exceeded = True
@@ -201,7 +211,7 @@ async def _unified_loop(
         logger.warning(
             "TOKENS turn %d: in=%d out=%d (cum: in=%d out=%d) | msgs=%d tools=%d",
             turn, turn_in, turn_out, tokens["in"], tokens["out"],
-            len(messages), len(schemas) if schemas else 0,
+            len(messages), len(turn_tools) if turn_tools else 0,
         )
 
         msg = response["choices"][0]["message"]
@@ -217,7 +227,8 @@ async def _unified_loop(
             }
 
         # LLM responded with text — done
-        if not msg.get("tool_calls"):
+        # When force_text, ignore any phantom tool_calls
+        if not msg.get("tool_calls") or force_text:
             content = msg.get("content", "")
             logger.info(
                 "Unified loop done after %d turn(s): %s",
@@ -315,11 +326,12 @@ async def _unified_loop(
         if last_tool and last_tool in _NEXT_TOOLS:
             allowed = _NEXT_TOOLS[last_tool]
             if not allowed:
-                schemas = None  # terminal tool — force text
+                force_text = True  # terminal tool — force text summary
             else:
                 narrowed = [t for t in all_tools if t.name in allowed]
                 schemas = build_multi_tool_schema(narrowed) if narrowed else None
-        # If tool not in map, keep current schemas (shouldn't happen for known tools)
+                if not schemas:
+                    force_text = True
 
     else:
         # for-loop exhausted without break → max turns exceeded
