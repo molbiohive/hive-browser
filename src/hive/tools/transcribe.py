@@ -41,10 +41,7 @@ class TranscribeTool(Tool):
         if len(cleaned) < 1:
             return {"error": "Empty sequence"}
 
-        try:
-            rna = str(Seq(cleaned).transcribe())
-        except Exception as e:
-            return {"error": f"Transcription failed: {e}"}
+        rna = str(Seq(cleaned).transcribe())
 
         return {
             "rna": rna,

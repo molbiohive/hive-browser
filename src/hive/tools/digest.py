@@ -57,8 +57,8 @@ class DigestTool(Tool):
         # Validate enzyme names
         try:
             rb = RestrictionBatch(inp.enzymes)
-        except (ValueError, KeyError) as e:
-            return {"error": f"Invalid enzyme name: {e}"}
+        except (ValueError, KeyError):
+            return {"error": f"Unknown enzyme(s): {', '.join(inp.enzymes)}"}
 
         seq_obj = Seq(cleaned)
         results = rb.search(seq_obj, linear=not inp.circular)

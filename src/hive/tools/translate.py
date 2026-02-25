@@ -49,10 +49,7 @@ class TranslateTool(Tool):
         if len(cleaned) < 3:
             return {"error": "Sequence too short to translate (need at least 3 nucleotides)"}
 
-        try:
-            protein = str(Seq(cleaned).translate(table=inp.table))
-        except Exception as e:
-            return {"error": f"Translation failed: {e}"}
+        protein = str(Seq(cleaned).translate(table=inp.table))
 
         stops = protein.count("*")
         return {

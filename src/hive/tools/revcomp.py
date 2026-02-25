@@ -41,10 +41,7 @@ class RevCompTool(Tool):
         if len(cleaned) < 1:
             return {"error": "Empty sequence"}
 
-        try:
-            rc = str(Seq(cleaned).reverse_complement())
-        except Exception as e:
-            return {"error": f"Reverse complement failed: {e}"}
+        rc = str(Seq(cleaned).reverse_complement())
 
         return {
             "sequence": rc,

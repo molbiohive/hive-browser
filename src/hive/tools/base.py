@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import inspect
 import json
 import logging
 from abc import ABC, abstractmethod
+from functools import wraps
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -35,11 +37,36 @@ class Tool(ABC):
     # Injected by factory for external tools
     db: Any = None
 
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        if "execute" not in cls.__dict__:
+            return
+        original = cls.__dict__["execute"]
+        # Pre-compute accepted params at class definition time
+        sig = inspect.signature(original)
+        accepted = set(sig.parameters.keys()) - {"self", "params"}
+
+        @wraps(original)
+        async def _safe_execute(self, params, **kw):
+            try:
+                filtered = {k: v for k, v in kw.items() if k in accepted}
+                return await original(self, params, **filtered)
+            except Exception as e:
+                logger.error("Tool %s failed: %s", self.name, e, exc_info=True)
+                return {"error": f"Tool '{self.name}' failed. Check server logs."}
+
+        cls.execute = _safe_execute
+
     @abstractmethod
-    async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
+    async def execute(self, params: dict[str, Any], **kwargs: Any) -> dict[str, Any]:
         """Execute the tool with the given parameters and return results.
 
-        mode: "direct" (//cmd), "guided" (/cmd), "natural" (LLM), "rerun" (widget refresh)
+        Standard kwargs passed by the router:
+            mode: "direct" (//cmd), "guided" (/cmd), "natural" (LLM), "rerun" (widget refresh)
+
+        Subclasses declare only the kwargs they need, e.g.:
+            async def execute(self, params, mode="direct"):       # simple tool
+            async def execute(self, params, mode="direct", user=None):  # user-aware
         """
         ...
 

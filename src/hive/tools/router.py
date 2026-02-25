@@ -57,12 +57,7 @@ async def route_input(
                 return _form_response(tool_name, tool.description, schema)
 
         params = _parse_args(args_text)
-        try:
-            result = await tool.execute(params, mode="direct")
-        except Exception as e:
-            logger.error("Tool %s failed: %s", tool_name, e, exc_info=True)
-            return _error(f"Tool '{tool_name}' failed. Check server logs for details.")
-
+        result = await tool.execute(params, mode="direct")
         return _tool_response(tool_name, result, params, tool.format_result(result))
 
     # ── Mode 2: Guided — /command ──
@@ -81,11 +76,7 @@ async def route_input(
                     return _form_response(tool_name, tool.description, schema)
 
             params = _parse_args(text)
-            try:
-                result = await tool.execute(params, mode="guided")
-            except Exception as e:
-                logger.error("Tool %s failed: %s", tool_name, e, exc_info=True)
-                return _error(f"Tool '{tool_name}' failed. Check server logs for details.")
+            result = await tool.execute(params, mode="guided")
             return _tool_response(tool_name, result, params, tool.format_result(result))
 
         # LLM-assisted: run through unified loop with tool hint
@@ -237,17 +228,7 @@ async def _unified_loop(
                     logger.info("Cache inject: %s (%d chars)", key, len(str(cache[key])))
 
             await _emit("tool", tool_name)
-            try:
-                result = await tool.execute(params, mode="natural")
-            except Exception as e:
-                logger.error("Tool %s failed: %s", tool_name, e, exc_info=True)
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": tc["id"],
-                    "content": f"Tool '{tool_name}' failed. Check server logs.",
-                })
-                await _emit("thinking")
-                continue
+            result = await tool.execute(params, mode="natural")
 
             # Hybrid auto-pipe: stash large string values for subsequent tools
             for key, val in result.items():
