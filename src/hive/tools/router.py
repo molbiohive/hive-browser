@@ -189,7 +189,7 @@ async def _unified_loop(
         schema_chars = sum(
             len(json.dumps(s)) for s in turn_tools
         ) if turn_tools else 0
-        logger.warning(
+        logger.debug(
             "PAYLOAD turn %d: %d msgs (%d chars) + %d tool schemas (%d chars)",
             turn, len(messages), msg_chars, len(turn_tools) if turn_tools else 0, schema_chars,
         )
@@ -208,7 +208,7 @@ async def _unified_loop(
         turn_out = usage.get("completion_tokens", 0)
         tokens["in"] += turn_in
         tokens["out"] += turn_out
-        logger.warning(
+        logger.debug(
             "TOKENS turn %d: in=%d out=%d (cum: in=%d out=%d) | msgs=%d tools=%d",
             turn, turn_in, turn_out, tokens["in"], tokens["out"],
             len(messages), len(turn_tools) if turn_tools else 0,
@@ -261,7 +261,7 @@ async def _unified_loop(
 
             args_raw = tc["function"].get("arguments", "{}")
             args_len = len(args_raw) if isinstance(args_raw, str) else len(json.dumps(args_raw))
-            logger.warning(
+            logger.debug(
                 "TOOL_CALL %s: args=%d chars",
                 tool_name, args_len,
             )
@@ -297,7 +297,7 @@ async def _unified_loop(
                     cache[key] = val
 
             compact = tool.summary_for_llm(result, token_limit=summary_token_limit)
-            logger.warning(
+            logger.debug(
                 "SUMMARY %s: %d chars | result keys: %s",
                 tool_name, len(compact),
                 {k: type(v).__name__ + f"({len(v) if isinstance(v, (str, list)) else v})"
