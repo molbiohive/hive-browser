@@ -4,7 +4,7 @@
 	import Widget from '$lib/Widget.svelte';
 	import ChainSteps from '$lib/ChainSteps.svelte';
 
-	let { message, faded = false, messageIndex = -1 } = $props();
+	let { message, messageIndex = -1 } = $props();
 
 	// Configure marked for inline rendering (no wrapping <p> for short responses)
 	marked.setOptions({ breaks: true, gfm: true });
@@ -26,7 +26,7 @@
 	}
 </script>
 
-<div class="row {message.role}" class:faded>
+<div class="row {message.role}">
 	<div class="msg-wrapper">
 		<div class="bubble {message.role}">
 			{#if message.role === 'assistant'}
@@ -66,10 +66,6 @@
 	.row {
 		margin-bottom: 1rem;
 		display: flex;
-	}
-
-	.row.faded {
-		opacity: 0.35;
 	}
 
 	.row.user {

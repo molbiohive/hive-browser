@@ -10,6 +10,8 @@
 	import FeedbackModal from '$lib/FeedbackModal.svelte';
 
 	let inputText = $state('');
+	let pasteSlots = $state([]); // [{text, lines, chars}, ...] for inline paste tokens
+	let textareaEl = $state(undefined);
 	let messagesDiv = $state(undefined);
 	let showPalette = $state(false);
 	let prevMsgCount = $state(0);
@@ -142,9 +144,17 @@
 
 	function handleSubmit() {
 		if (!inputText.trim() || $chatStore.isWaiting) return;
-		const text = inputText.trim();
+		let text = inputText.trim();
+		// Expand inline paste tokens: [Paste #N, Xl, Yc]
+		if (pasteSlots.length > 0) {
+			text = text.replace(/\[Paste #(\d+), \d+l, \d+c\]/g, (_, n) => {
+				const slot = pasteSlots[parseInt(n) - 1];
+				return slot ? slot.text : _;
+			});
+		}
 		sendMessage(text);
 		inputText = '';
+		pasteSlots = [];
 		showPalette = false;
 	}
 
@@ -152,9 +162,84 @@
 		if (e.key === 'Enter' && !e.shiftKey) {
 			e.preventDefault();
 			handleSubmit();
+			return;
 		}
 		if (e.key === 'Escape') {
 			showPalette = false;
+			return;
+		}
+		// Atomic paste token deletion: any edit inside a token removes it entirely
+		if (pasteSlots.length > 0 && (e.key === 'Backspace' || e.key === 'Delete')) {
+			const pos = textareaEl?.selectionStart ?? 0;
+			const tokenRe = /\[Paste #(\d+), \d+l, \d+c\]/g;
+			let m;
+			while ((m = tokenRe.exec(inputText)) !== null) {
+				const start = m.index;
+				const end = start + m[0].length;
+				// Backspace at end or Delete at start, or cursor inside token
+				const inside = (e.key === 'Backspace' && pos > start && pos <= end)
+					|| (e.key === 'Delete' && pos >= start && pos < end);
+				if (inside) {
+					e.preventDefault();
+					inputText = inputText.slice(0, start) + inputText.slice(end);
+					requestAnimationFrame(() => {
+						if (textareaEl) {
+							textareaEl.selectionStart = start;
+							textareaEl.selectionEnd = start;
+						}
+					});
+					// Trigger slot cleanup via handleInput path
+					pruneSlots(inputText);
+					return;
+				}
+			}
+		}
+	}
+
+	function pruneSlots(val) {
+		const remaining = new Set();
+		val.replace(/\[Paste #(\d+), \d+l, \d+c\]/g, (_, n) => { remaining.add(parseInt(n)); return ''; });
+		if (remaining.size < pasteSlots.length) {
+			const kept = pasteSlots.filter((_, i) => remaining.has(i + 1));
+			let newIdx = 0;
+			const renumber = {};
+			pasteSlots.forEach((_, i) => {
+				if (remaining.has(i + 1)) {
+					newIdx++;
+					renumber[i + 1] = newIdx;
+				}
+			});
+			let newText = val.replace(/\[Paste #(\d+), (\d+l, \d+c)\]/g, (m, n, rest) => {
+				const newN = renumber[parseInt(n)];
+				return newN ? `[Paste #${newN}, ${rest}]` : m;
+			});
+			pasteSlots = kept;
+			if (newText !== val) inputText = newText;
+		}
+	}
+
+	function handlePaste(e) {
+		const text = e.clipboardData?.getData('text/plain') || '';
+		const lines = text.split('\n').length;
+		if (text.length > 200 || lines > 3) {
+			e.preventDefault();
+			const idx = pasteSlots.length + 1;
+			pasteSlots = [...pasteSlots, { text, lines, chars: text.length }];
+			const token = `[Paste #${idx}, ${lines}l, ${text.length}c]`;
+			// Insert at cursor position
+			if (textareaEl) {
+				const start = textareaEl.selectionStart;
+				const end = textareaEl.selectionEnd;
+				inputText = inputText.slice(0, start) + token + inputText.slice(end);
+				// Move cursor after token
+				const newPos = start + token.length;
+				requestAnimationFrame(() => {
+					textareaEl.selectionStart = newPos;
+					textareaEl.selectionEnd = newPos;
+				});
+			} else {
+				inputText += token;
+			}
 		}
 	}
 
@@ -162,6 +247,8 @@
 
 	function handleInput(e) {
 		const val = e.target.value;
+		// Prune paste slots whose tokens were deleted from input
+		if (pasteSlots.length > 0) pruneSlots(val);
 		if (val.startsWith('//')) {
 			showPalette = true;
 			paletteFilter = val.slice(2).split(' ')[0];
@@ -288,8 +375,7 @@
 				</div>
 			{:else}
 				{#each $chatStore.messages as message, i}
-					{@const contextStart = Math.max(0, $chatStore.messages.length - $appConfig.max_history_pairs * 2)}
-					<MessageBubble {message} faded={i < contextStart} messageIndex={i} />
+					<MessageBubble {message} messageIndex={i} />
 				{/each}
 				{#if $chatStore.isWaiting && $chatStore.messages.at(-1)?.widget?.type !== 'form'}
 					<div class="progress-indicator">
@@ -305,9 +391,11 @@
 				<div class="input-wrapper">
 					<CommandPalette visible={showPalette} filter={paletteFilter} onSelect={handlePaletteSelect} />
 					<textarea
+						bind:this={textareaEl}
 						bind:value={inputText}
 						onkeydown={handleKeydown}
 						oninput={handleInput}
+						onpaste={handlePaste}
 						placeholder="Type message or /command..."
 						rows="2"
 					></textarea>
