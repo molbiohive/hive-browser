@@ -60,6 +60,8 @@ class LLMClient:
         if self._config.api_key:
             kwargs["api_key"] = self._config.api_key
 
+        kwargs["timeout"] = 120  # seconds — prevent indefinite hangs
+
         response = await litellm.acompletion(**kwargs)
         try:
             return response.model_dump()
