@@ -79,6 +79,16 @@ class SearchTool(Tool):
         schema.pop("title", None)
         return schema
 
+    def llm_schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Keyword. Use && for AND, || for OR."},
+                "tags": {"type": "string", "description": "Directory/project context"},
+            },
+            "required": ["query"],
+        }
+
     def format_result(self, result: dict) -> str:
         if error := result.get("error"):
             return f"Error: {error}"

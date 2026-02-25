@@ -37,6 +37,17 @@ class ExtractTool(Tool):
         schema.pop("title", None)
         return schema
 
+    def llm_schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "sid": {"type": "integer", "description": "Sequence ID"},
+                "feature_name": {"type": "string", "description": "Feature name to extract"},
+                "region": {"type": "string", "description": "Region as start:end (1-based)"},
+            },
+            "required": ["sid"],
+        }
+
     def format_result(self, result: dict) -> str:
         if error := result.get("error"):
             return f"Error: {error}"

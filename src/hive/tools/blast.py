@@ -108,6 +108,15 @@ class BlastTool(Tool):
         schema.pop("title", None)
         return schema
 
+    def llm_schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "sequence": {"type": "string", "description": "Query sequence or SID (integer)"},
+            },
+            "required": ["sequence"],
+        }
+
     def format_result(self, result: dict) -> str:
         if error := result.get("error"):
             return f"Error: {error}"

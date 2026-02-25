@@ -30,6 +30,15 @@ class TranslateTool(Tool):
         schema.pop("title", None)
         return schema
 
+    def llm_schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "sequence": {"type": "string", "description": "Nucleotide sequence to translate"},
+            },
+            "required": ["sequence"],
+        }
+
     def format_result(self, result: dict) -> str:
         if error := result.get("error"):
             return f"Error: {error}"

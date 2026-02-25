@@ -34,6 +34,20 @@ class DigestTool(Tool):
         schema.pop("title", None)
         return schema
 
+    def llm_schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "sequence": {"type": "string", "description": "Nucleotide sequence"},
+                "enzymes": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Enzyme names",
+                },
+            },
+            "required": ["sequence", "enzymes"],
+        }
+
     def format_result(self, result: dict) -> str:
         if error := result.get("error"):
             return f"Error: {error}"

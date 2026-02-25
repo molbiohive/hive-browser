@@ -37,6 +37,15 @@ class FeaturesTool(Tool):
         schema.pop("title", None)
         return schema
 
+    def llm_schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "sid": {"type": "integer", "description": "Sequence ID"},
+            },
+            "required": ["sid"],
+        }
+
     def format_result(self, result: dict) -> str:
         if error := result.get("error"):
             return f"Error: {error}"

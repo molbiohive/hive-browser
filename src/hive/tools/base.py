@@ -80,6 +80,14 @@ class Tool(ABC):
             return _params_to_schema(self.params)
         return {"type": "object", "properties": {}}
 
+    def llm_schema(self) -> dict:
+        """Minimal schema for LLM function calling.
+
+        Override to strip expert-only params. Default: input_schema().
+        Skills system will provide custom params when needed.
+        """
+        return self.input_schema()
+
     def format_result(self, result: dict) -> str:
         """Short summary for direct execution (no LLM). Override in subclasses."""
         if error := result.get("error"):

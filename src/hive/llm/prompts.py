@@ -61,6 +61,32 @@ def _tool_desc(tool: Tool) -> str:
     return tool.guidelines or tool.description
 
 
+def _slim_schema(schema: dict) -> dict:
+    """Strip Pydantic bloat from a JSON Schema for minimal token usage.
+
+    - Removes ``title`` keys (redundant with property names)
+    - Flattens ``anyOf: [{type: X}, {type: null}]`` → ``{type: X}``
+    - Removes ``default: null``
+    """
+    schema = {k: v for k, v in schema.items() if k != "title"}
+    if "properties" in schema:
+        slim_props = {}
+        for name, prop in schema["properties"].items():
+            prop = {k: v for k, v in prop.items() if k != "title"}
+            # Flatten anyOf with null
+            if "anyOf" in prop:
+                types = [t for t in prop["anyOf"] if t.get("type") != "null"]
+                if len(types) == 1:
+                    prop = {**prop, **types[0]}
+                    del prop["anyOf"]
+            # Remove default: null
+            if prop.get("default") is None and "default" in prop:
+                del prop["default"]
+            slim_props[name] = prop
+        schema["properties"] = slim_props
+    return schema
+
+
 def build_tool_schema(tool: Tool) -> list[dict]:
     """Single tool's function schema in OpenAI format."""
     return [{
@@ -74,14 +100,14 @@ def build_tool_schema(tool: Tool) -> list[dict]:
 
 
 def build_multi_tool_schema(tools: list[Tool]) -> list[dict]:
-    """Multiple tools' function schemas in OpenAI format."""
+    """Multiple tools' function schemas in OpenAI format (uses slim LLM schemas)."""
     return [
         {
             "type": "function",
             "function": {
                 "name": t.name,
                 "description": _tool_desc(t),
-                "parameters": t.input_schema(),
+                "parameters": _slim_schema(t.llm_schema()),
             },
         }
         for t in tools
