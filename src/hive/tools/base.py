@@ -94,7 +94,7 @@ class Tool(ABC):
             return f"Error: {error}"
         return ""
 
-    def summary_for_llm(self, result: dict, token_limit: int = 1000) -> str:
+    def summary_for_llm(self, result: dict, token_limit: int = 500) -> str:
         """Compact result summary for LLM context. Do NOT override in subclasses."""
         max_chars = token_limit * 4
         max_items = max(5, token_limit // 50)
