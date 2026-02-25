@@ -8,9 +8,26 @@ from typing import Any
 
 from hive.llm.client import LLMClient
 from hive.llm.prompts import build_multi_tool_schema, build_system_prompt
-from hive.tools.base import ToolRegistry
+from hive.tools.base import Tool, ToolRegistry
 
 logger = logging.getLogger(__name__)
+
+# After a tool runs, only offer these tools on the next turn.
+# Empty set = force text response (no tools).
+_NEXT_TOOLS: dict[str, set[str]] = {
+    "search": {"extract", "profile", "features", "primers", "blast"},
+    "profile": {"extract", "features", "primers", "blast"},
+    "features": {"extract", "blast"},
+    "primers": {"extract", "blast"},
+    "extract": {"blast", "translate", "transcribe", "revcomp", "digest", "gc"},
+    # Terminal tools — force text summary
+    "blast": set(),
+    "translate": set(),
+    "transcribe": set(),
+    "digest": set(),
+    "gc": set(),
+    "revcomp": set(),
+}
 
 # Pattern: //command args (direct tool, no LLM)
 DIRECT_PATTERN = re.compile(r"^//(\w+)\s*(.*)", re.DOTALL)
@@ -127,9 +144,9 @@ async def _unified_loop(
     and pure conversation. Large data (sequences, etc.) is cached locally
     and auto-injected into subsequent tools — never sent through LLM context.
     """
-    tools = registry.llm_tools()
-    schemas = build_multi_tool_schema(tools)
-    tool_map = {t.name: t for t in tools}
+    all_tools = registry.llm_tools()
+    tool_map = {t.name: t for t in all_tools}
+    all_schemas = build_multi_tool_schema(all_tools)
 
     messages = [{"role": "system", "content": build_system_prompt()}]
     if history:
@@ -143,6 +160,7 @@ async def _unified_loop(
     cache = {}  # hybrid auto-pipe: field_name → large string value
     tokens = {"in": 0, "out": 0}
     exceeded = False
+    schemas = all_schemas  # narrows after each tool call
 
     async def _emit(phase: str, tool: str | None = None):
         if on_progress:
@@ -154,6 +172,19 @@ async def _unified_loop(
     await _emit("thinking")
 
     for turn in range(max_turns):
+        # Hard cap: force text on last possible turn
+        if turn == max_turns - 1:
+            schemas = None
+
+        # Log payload sizes for token debugging
+        msg_chars = sum(len(str(m.get("content", ""))) for m in messages)
+        schema_chars = sum(
+            len(json.dumps(s)) for s in schemas
+        ) if schemas else 0
+        logger.warning(
+            "PAYLOAD turn %d: %d msgs (%d chars) + %d tool schemas (%d chars)",
+            turn, len(messages), msg_chars, len(schemas) if schemas else 0, schema_chars,
+        )
         try:
             response = await llm_client.chat(messages, tools=schemas)
         except Exception as e:
@@ -163,8 +194,15 @@ async def _unified_loop(
 
         # Accumulate token usage
         usage = response.get("usage") or {}
-        tokens["in"] += usage.get("prompt_tokens", 0)
-        tokens["out"] += usage.get("completion_tokens", 0)
+        turn_in = usage.get("prompt_tokens", 0)
+        turn_out = usage.get("completion_tokens", 0)
+        tokens["in"] += turn_in
+        tokens["out"] += turn_out
+        logger.warning(
+            "TOKENS turn %d: in=%d out=%d (cum: in=%d out=%d) | msgs=%d tools=%d",
+            turn, turn_in, turn_out, tokens["in"], tokens["out"],
+            len(messages), len(schemas) if schemas else 0,
+        )
 
         msg = response["choices"][0]["message"]
         finish = response["choices"][0].get("finish_reason", "")
@@ -210,6 +248,13 @@ async def _unified_loop(
             except (json.JSONDecodeError, AttributeError):
                 params = {}
 
+            args_raw = tc["function"].get("arguments", "{}")
+            args_len = len(args_raw) if isinstance(args_raw, str) else len(json.dumps(args_raw))
+            logger.warning(
+                "TOOL_CALL %s: args=%d chars",
+                tool_name, args_len,
+            )
+
             if not tool:
                 messages.append({
                     "role": "tool",
@@ -241,6 +286,12 @@ async def _unified_loop(
                     cache[key] = val
 
             compact = tool.summary_for_llm(result, token_limit=summary_token_limit)
+            logger.warning(
+                "SUMMARY %s: %d chars | result keys: %s",
+                tool_name, len(compact),
+                {k: type(v).__name__ + f"({len(v) if isinstance(v, (str, list)) else v})"
+                 for k, v in result.items()},
+            )
             messages.append({
                 "role": "tool",
                 "tool_call_id": tc["id"],
@@ -259,6 +310,17 @@ async def _unified_loop(
             last_tool = tool_name
             last_params = params
             await _emit("thinking")
+
+        # Narrow schemas for next turn based on last tool called
+        if last_tool and last_tool in _NEXT_TOOLS:
+            allowed = _NEXT_TOOLS[last_tool]
+            if not allowed:
+                schemas = None  # terminal tool — force text
+            else:
+                narrowed = [t for t in all_tools if t.name in allowed]
+                schemas = build_multi_tool_schema(narrowed) if narrowed else None
+        # If tool not in map, keep current schemas (shouldn't happen for known tools)
+
     else:
         # for-loop exhausted without break → max turns exceeded
         exceeded = True
