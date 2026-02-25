@@ -20,10 +20,17 @@ class ChatStorage:
         self.storage_dir = Path(storage_dir)
         self.storage_dir.mkdir(parents=True, exist_ok=True)
 
+    @staticmethod
+    def _safe_name(value: str) -> str:
+        """Strip path separators and parent-dir references."""
+        return value.replace("/", "").replace("\\", "").replace("..", "").replace("\0", "")
+
     def _filepath(self, chat_id: str, user_slug: str | None = None) -> Path:
+        safe_id = self._safe_name(chat_id)
         if user_slug:
-            return self.storage_dir / f"{user_slug}-{chat_id}.json"
-        return self.storage_dir / f"{chat_id}.json"
+            safe_slug = self._safe_name(user_slug)
+            return self.storage_dir / f"{safe_slug}-{safe_id}.json"
+        return self.storage_dir / f"{safe_id}.json"
 
     def new_chat_id(self) -> str:
         ts = datetime.now(UTC).isoformat()

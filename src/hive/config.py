@@ -170,8 +170,16 @@ def resolve_display_path(display_path: str) -> str:
         # Docker: use container root for file access
         container_root = os.environ.get("HIVE_WATCHER_ROOT")
         if os.environ.get("HIVE_HOST_WATCHER_ROOT") and container_root:
-            return container_root.rstrip("/") + "/" + relative
-        return expanded.rstrip("/") + "/" + relative
+            base = container_root.rstrip("/")
+            full = str(Path(base, relative).resolve())
+            if not full.startswith(base):
+                return ""
+            return full
+        base = expanded.rstrip("/")
+        full = str(Path(base, relative).resolve())
+        if not full.startswith(base):
+            return ""
+        return full
     return display_path
 
 
