@@ -58,8 +58,14 @@ async def list_users(session: AsyncSession) -> list[User]:
     return list(result.scalars().all())
 
 
+_ALLOWED_PREF_KEYS = {"theme", "model_id"}
+
+
 async def update_preferences(session: AsyncSession, user_id: int, key: str, value) -> dict:
     """Merge a key into the user's preferences JSON. Returns updated preferences."""
+    if key not in _ALLOWED_PREF_KEYS:
+        raise ValueError(f"Unknown preference key: {key}")
+
     user = (await session.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
     if not user:
         raise ValueError(f"User {user_id} not found")
