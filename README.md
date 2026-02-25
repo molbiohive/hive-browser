@@ -20,6 +20,10 @@ A bee hive is a model of organized collective work — thousands of workers buil
 - **BLAST integration** — paste a sequence to find similar constructs in your collection
 - **Agentic tool chaining** — complex queries like "blast the AmpR promoter from pUC19" are automatically broken into extract → blast steps
 - **Sequence analysis** — translate, transcribe, digest, GC content, reverse complement
+- **Click-to-copy sequences** — sequence areas are clickable, copies full sequence to clipboard (with fallback for non-HTTPS/RDP contexts)
+- **Inline paste tokens** — long pastes are collapsed into compact tokens in the input area, multiple pastes supported
+- **Multi-user sessions** — lightweight user system with token-based auth, per-user chat history, switchable accounts
+- **Message metadata** — timestamps, input/output token counts, and model name shown on hover
 - **File watching** — automatically indexes new and changed files
 - **Multiple formats** — SnapGene (.dna, .rna, .prot), GenBank (.gb), FASTA (.fasta)
 - **Fuzzy matching** — finds results even with approximate names (pg_trgm)
@@ -271,19 +275,29 @@ src/hive/
 │   ├── router.py        # Dispatch: direct / guided / agentic loop
 │   └── *.py             # Individual tools
 ├── sdk/                 # Public SDK for external tools
-├── llm/                 # LLM client + prompts
+├── llm/                 # LLM client + prompts (pool for multiple models)
+├── users/               # User system (token auth, preferences)
 ├── server/              # FastAPI app, routes, WebSocket
-└── chat/                # JSON file-based chat persistence
+└── chat/                # Per-user JSON chat persistence
 
 frontend/src/lib/
-├── stores/chat.ts       # Svelte stores (messages, config, toolList)
-├── Chat.svelte          # Main chat view
-├── MessageBubble.svelte # Message rendering with markdown
+├── stores/
+│   ├── chat.ts          # Chat state, WebSocket, message/model stores
+│   └── user.ts          # User auth, token vault, multi-user switching
+├── Chat.svelte          # Main chat view with inline paste tokens
+├── MessageBubble.svelte # Message rendering with markdown + hover metadata
 ├── Widget.svelte        # Widget dispatcher (auto-discovers *Widget.svelte)
 ├── ChainSteps.svelte    # Collapsible agentic chain steps
-├── *Widget.svelte       # Individual widgets (Table, Blast, Profile, etc.)
+├── *Widget.svelte       # Individual widgets (Table, Blast, Profile, Extract, etc.)
 ├── FormWidget.svelte    # Dynamic form for tool params
+├── CopyableSequence.svelte # Click-to-copy sequence display area
+├── CopyButton.svelte    # Reusable copy-to-clipboard button
+├── clipboard.ts         # Clipboard utility with fallback for non-HTTPS
 ├── CommandPalette.svelte # "/" command autocomplete
+├── ModelSelector.svelte # LLM model picker in status bar
+├── WelcomeModal.svelte  # New user / returning user auth modal
+├── UserPicker.svelte    # Multi-user account switcher
+├── FeedbackModal.svelte # User feedback submission
 └── Sidebar.svelte       # Chat history list
 ```
 
