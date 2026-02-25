@@ -1,5 +1,6 @@
 <script>
 	import DataTable from '$lib/DataTable.svelte';
+	import CopyableSequence from '$lib/CopyableSequence.svelte';
 
 	let { data } = $props();
 
@@ -15,16 +16,32 @@
 		{ key: 'sequence', label: 'Sequence', class: 'mono' },
 		{ key: 'tm', label: 'Tm', format: (row) => row.tm ? row.tm.toFixed(1) + '\u00B0C' : '\u2014' },
 	];
+
+	const seqPreview = $derived.by(() => {
+		const s = data?.sequence?.sequence_data;
+		if (!s) return '';
+		return s.length > 100 ? s.slice(0, 100) + '\u2026' : s;
+	});
 </script>
 
 {#if data?.sequence}
 <div class="profile">
+	<div class="field"><strong>SID:</strong> {data.sequence.sid}</div>
 	<div class="field"><strong>Name:</strong> {data.sequence.name}</div>
 	<div class="field"><strong>Size:</strong> {data.sequence.size_bp} bp</div>
 	<div class="field"><strong>Topology:</strong> {data.sequence.topology}</div>
 
 	{#if data.sequence.description}
 	<div class="field"><strong>Description:</strong> {data.sequence.description}</div>
+	{/if}
+
+	{#if data.sequence.sequence_data}
+	<h4>Sequence</h4>
+	<CopyableSequence
+		sequence={data.sequence.sequence_data}
+		display={seqPreview}
+		label="{data.sequence.size_bp} bp -- click to copy"
+	/>
 	{/if}
 
 	{#if data.features?.length}

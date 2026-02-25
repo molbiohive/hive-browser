@@ -74,6 +74,7 @@ class ProfileTool(Tool):
                     "topology": seq.topology,
                     "description": seq.description,
                     "meta": seq.meta,
+                    "sequence_data": seq.sequence,
                 },
                 "features": [
                     {
