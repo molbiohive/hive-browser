@@ -25,7 +25,7 @@ class ExtractInput(BaseModel):
 class ExtractTool(Tool):
     name = "extract"
     description = "Extract a subsequence by feature name, primer name, or region from a sequence."
-    widget = "text"
+    widget = "extract"
     tags = {"llm", "analysis"}
     guidelines = "Extract subsequence by feature, primer, or region from a sequence."
 
