@@ -12,6 +12,18 @@
 	const rendered = $derived(
 		message.role === 'assistant' ? DOMPurify.sanitize(marked.parse(message.content || '')) : ''
 	);
+
+	function formatTime(iso) {
+		if (!iso) return '';
+		const d = new Date(iso);
+		return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+	}
+
+	function compactNum(n) {
+		if (n == null) return '';
+		if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+		return String(n);
+	}
 </script>
 
 <div class="row {message.role}" class:faded>
@@ -28,6 +40,23 @@
 				<ChainSteps chain={message.widget.chain} />
 			{/if}
 		{/if}
+
+		<div class="meta-row">
+			{#if message.ts}
+				<span class="meta-item">{formatTime(message.ts)}</span>
+			{/if}
+			{#if message.role === 'assistant' && message.tokens}
+				<span class="meta-item tokens">
+					<svg class="arrow up" width="10" height="10" viewBox="0 0 10 10"><path d="M5 2 L8 6 H2Z" fill="currentColor"/></svg>{compactNum(message.tokens.in)}
+				</span>
+				<span class="meta-item tokens">
+					<svg class="arrow down" width="10" height="10" viewBox="0 0 10 10"><path d="M5 8 L8 4 H2Z" fill="currentColor"/></svg>{compactNum(message.tokens.out)}
+				</span>
+			{/if}
+			{#if message.role === 'assistant' && message.model}
+				<span class="meta-item model">{message.model}</span>
+			{/if}
+		</div>
 	</div>
 </div>
 
@@ -76,6 +105,42 @@
 	.content {
 		white-space: pre-wrap;
 		overflow-wrap: break-word;
+	}
+
+	/* Metadata row — visible on hover */
+	.meta-row {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		margin-top: 0.3rem;
+		font-size: 0.7rem;
+		color: var(--text-faint);
+		opacity: 0;
+		transition: opacity 0.15s;
+		height: 1rem;
+	}
+
+	.bubble:hover .meta-row {
+		opacity: 1;
+	}
+
+	.meta-item {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.15rem;
+	}
+
+	.tokens {
+		font-family: 'SF Mono', Monaco, monospace;
+		font-size: 0.65rem;
+	}
+
+	.arrow {
+		opacity: 0.7;
+	}
+
+	.model {
+		opacity: 0.6;
 	}
 
 	/* Markdown styles for assistant messages */

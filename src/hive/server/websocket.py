@@ -346,8 +346,11 @@ async def _handle_message(
         if assistant_content:
             manager.append_history(conn_id, "assistant", assistant_content, max_pairs)
 
-        # Build response — include model metadata
+        # Build response — include model metadata and token counts
+        result_tokens = result.get("tokens")
         response: dict = {"type": "message", "content": assistant_content, "model": model_id}
+        if result_tokens:
+            response["tokens"] = result_tokens
 
         if result.get("type") == "tool_result" and result.get("data"):
             tool_name = result["tool"]
@@ -375,6 +378,8 @@ async def _handle_message(
                 "ts": _now_iso(),
                 "model": model_id,
             }
+            if result_tokens:
+                assistant_msg["tokens"] = result_tokens
             if response.get("widget"):
                 assistant_msg["widget"] = response["widget"]
             chat["messages"].append(assistant_msg)

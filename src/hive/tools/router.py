@@ -172,7 +172,11 @@ async def _unified_loop(
         # Handle model refusal gracefully
         if finish == "refusal":
             content = msg.get("content", "")
-            return {"type": "message", "content": content or "Request declined by the model."}
+            return {
+                "type": "message",
+                "content": content or "Request declined by the model.",
+                "tokens": tokens,
+            }
 
         # LLM responded with text — done
         if not msg.get("tool_calls"):
@@ -184,11 +188,12 @@ async def _unified_loop(
 
             if last_result and last_tool:
                 resp = _tool_response(last_tool, last_result, last_params, content)
+                resp["tokens"] = tokens
                 if chain:
                     resp["chain"] = chain
                 return resp
 
-            return {"type": "message", "content": content}
+            return {"type": "message", "content": content, "tokens": tokens}
 
         # Append assistant message with tool_calls
         messages.append(msg)
@@ -272,10 +277,11 @@ async def _unified_loop(
 
     if last_result and last_tool:
         resp = _tool_response(last_tool, last_result, last_params, fallback)
+        resp["tokens"] = tokens
         resp["chain"] = chain
         return resp
 
-    return {"type": "message", "content": fallback, "chain": chain}
+    return {"type": "message", "content": fallback, "tokens": tokens, "chain": chain}
 
 
 # ── Helpers ──
