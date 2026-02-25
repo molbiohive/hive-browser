@@ -23,7 +23,7 @@ class PrimersTool(Tool):
     name = "primers"
     description = "List primers on a sequence."
     widget = "text"
-    tags = {"llm", "info"}
+    tags = {"llm", "hidden", "info"}
     guidelines = "List primers on a sequence."
 
     def __init__(self, **_):

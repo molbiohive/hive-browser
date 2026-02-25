@@ -26,7 +26,7 @@ class ExtractTool(Tool):
     name = "extract"
     description = "Extract a subsequence by feature name, primer name, or region from a sequence."
     widget = "extract"
-    tags = {"llm", "analysis"}
+    tags = {"llm", "hidden", "analysis"}
     guidelines = "Extract subsequence by feature, primer, or region from a sequence."
 
     def __init__(self, **_):

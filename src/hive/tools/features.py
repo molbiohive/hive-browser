@@ -26,7 +26,7 @@ class FeaturesTool(Tool):
     name = "features"
     description = "List features (genes, promoters, etc.) on a sequence."
     widget = "text"
-    tags = {"llm", "info"}
+    tags = {"llm", "hidden", "info"}
     guidelines = "List features (genes, promoters, etc.) on a sequence."
 
     def __init__(self, **_):

@@ -19,7 +19,7 @@ class TranslateTool(Tool):
     name = "translate"
     description = "Translate a DNA or RNA sequence to protein."
     widget = "text"
-    tags = {"llm", "analysis"}
+    tags = {"llm", "hidden", "analysis"}
     guidelines = "Translate DNA/RNA to protein. table=1 standard, table=11 bacterial."
 
     def __init__(self, **_):

@@ -18,7 +18,7 @@ class TranscribeTool(Tool):
     name = "transcribe"
     description = "Transcribe a DNA sequence to mRNA (T→U on coding strand)."
     widget = "text"
-    tags = {"llm", "analysis"}
+    tags = {"llm", "hidden", "analysis"}
     guidelines = "DNA to mRNA transcription (T to U)."
 
     def __init__(self, **_):

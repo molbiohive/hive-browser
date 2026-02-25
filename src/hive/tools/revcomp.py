@@ -18,7 +18,7 @@ class RevCompTool(Tool):
     name = "revcomp"
     description = "Get the reverse complement of a DNA sequence."
     widget = "text"
-    tags = {"llm", "analysis"}
+    tags = {"llm", "hidden", "analysis"}
     guidelines = "Reverse complement of a DNA sequence."
 
     def __init__(self, **_):

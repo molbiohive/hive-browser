@@ -259,11 +259,16 @@ class TestToolFactoryInternal:
             "gc", "revcomp", "features", "primers",
         }
 
-    def test_visible_tools_all_visible(self):
-        """No internal tools are hidden."""
+    def test_visible_vs_hidden_tools(self):
+        """Hidden tools excluded from visible, still available to LLM."""
         config = Settings()
         registry = ToolFactory.discover(config)
-        assert len(registry.visible_tools()) == 11
+        visible = registry.visible_tools()
+        llm = registry.llm_tools()
+        assert len(visible) == 5  # search, blast, profile, digest, gc
+        assert len(llm) == 11  # all tools available to LLM
+        hidden_names = {t.name for t in llm} - {t.name for t in visible}
+        assert hidden_names == {"extract", "features", "primers", "translate", "transcribe", "revcomp"}
 
 
 # ── ToolFactory — External Discovery ──
