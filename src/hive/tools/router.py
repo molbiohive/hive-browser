@@ -240,11 +240,11 @@ async def _unified_loop(
             try:
                 result = await tool.execute(params, mode="natural")
             except Exception as e:
-                logger.error("Tool %s failed: %s", tool_name, e)
+                logger.error("Tool %s failed: %s", tool_name, e, exc_info=True)
                 messages.append({
                     "role": "tool",
                     "tool_call_id": tc["id"],
-                    "content": f"Error: {e}",
+                    "content": f"Tool '{tool_name}' failed. Check server logs.",
                 })
                 await _emit("thinking")
                 continue
