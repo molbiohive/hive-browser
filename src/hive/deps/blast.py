@@ -177,9 +177,15 @@ async def run_search(
         "qstart qend sstart send evalue bitscore",
     ]
 
-    # Add all params as CLI flags (skip None values)
+    # Block params that override I/O, output format, or leak data externally
+    blocked = {
+        "outfmt", "out", "query", "db", "remote", "html",
+        "import_search_strategy", "export_search_strategy",
+        "gilist", "negative_gilist", "seqidlist", "negative_seqidlist",
+        "entrez_query", "blastdb_version",
+    }
     for key, value in params.items():
-        if value is None:
+        if value is None or key in blocked:
             continue
         flag = f"-{key}"
         if isinstance(value, bool):
