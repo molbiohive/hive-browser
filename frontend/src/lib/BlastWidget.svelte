@@ -56,6 +56,7 @@
 {#if data?.error}
 <p class="error">{data.error}</p>
 {:else if data?.hits?.length}
+	{#if data.program}<p class="program">{data.program} — {data.total} hit(s)</p>{/if}
 	<DataTable rows={data.hits} {columns} actions={tableActions} />
 {:else}
 <p class="empty">No BLAST hits found</p>
@@ -64,5 +65,6 @@
 <style>
 	.empty { color: var(--text-placeholder); font-size: 0.85rem; }
 	.error { color: var(--color-err); font-size: 0.85rem; }
+	.program { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.25rem; }
 	:global(.name) { font-weight: 500; }
 </style>

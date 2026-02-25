@@ -1,4 +1,4 @@
-"""BLAST tool — sequence similarity search using local BLAST+."""
+"""BLAST tool — sequence similarity search using all BLAST+ programs."""
 
 from __future__ import annotations
 
@@ -17,13 +17,52 @@ from hive.tools.base import Tool
 
 logger = logging.getLogger(__name__)
 
+VALID_PROGRAMS = {"blastn", "blastp", "blastx", "tblastn", "tblastx"}
+
+# Valid nucleotide characters (IUPAC)
+_NUCL_CHARS = set("ATGCNRYSWKMBDHV")
+# Amino acid chars that distinguish protein from nucleotide
+_PROT_ONLY = set("EFIJLOPQZX*")
+
 
 class BlastInput(BaseModel):
     sequence: str = Field(
         ...,
-        description="Query nucleotide sequence or sequence name to look up from DB",
+        description="Query sequence or SID (integer) to look up from DB",
     )
-    evalue: float = Field(default=1e-5, description="E-value threshold")
+    program: str = Field(
+        default="auto",
+        description=(
+            "BLAST program: auto, blastn, blastp, blastx, tblastn, tblastx"
+        ),
+    )
+    evalue: float | None = Field(
+        default=None, description="E-value threshold",
+    )
+    max_hits: int | None = Field(
+        default=None, description="Maximum number of hits to return",
+    )
+    word_size: int | None = Field(
+        default=None, description="Word size for initial matches",
+    )
+    matrix: str | None = Field(
+        default=None,
+        description="Scoring matrix (protein: BLOSUM62, BLOSUM45, PAM250)",
+    )
+    gap_open: int | None = Field(
+        default=None, description="Gap opening cost",
+    )
+    gap_extend: int | None = Field(
+        default=None, description="Gap extension cost",
+    )
+    task: str | None = Field(
+        default=None,
+        description="Program subtask (e.g. blastn-short, megablast)",
+    )
+    extra: dict[str, str] = Field(
+        default_factory=dict,
+        description="Additional BLAST+ CLI flags as key-value pairs",
+    )
 
 
 class BlastHit(BaseModel):
@@ -44,11 +83,17 @@ class BlastTool(Tool):
     name = "blast"
     description = (
         "Find similar sequences using BLAST+ alignment. "
-        "Accepts raw nucleotide sequence or a sequence name from the database."
+        "Supports blastn, blastp, blastx, tblastn, tblastx."
     )
     widget = "blast"
     tags = {"llm", "search"}
-    guidelines = "BLAST similarity search. Accepts nucleotide sequence or DB name."
+    guidelines = (
+        "Sequence similarity search using BLAST+. Supports blastn "
+        "(nucl vs nucl), blastp (prot vs prot), blastx (nucl query "
+        "vs prot db), tblastn, tblastx. Set program='auto' to detect "
+        "from sequence type. Use SID (integer from search results) to "
+        "search with a database sequence."
+    )
 
     def __init__(self, config=None, **_):
         if not config:
@@ -67,57 +112,100 @@ class BlastTool(Tool):
         if error := result.get("error"):
             return f"Error: {error}"
         total = len(result.get("hits", []))
-        return f"Found {total} BLAST hit(s)." if total else "No BLAST hits found."
+        prog = result.get("program", "blast")
+        return (
+            f"Found {total} {prog} hit(s)." if total
+            else f"No {prog} hits found."
+        )
 
-    async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
+    async def execute(
+        self, params: dict[str, Any], mode: str = "direct",
+    ) -> dict[str, Any]:
         """Run BLAST+ against the local index."""
         if not params.get("sequence"):
             return {
-                "error": "Missing required parameter: sequence "
-                "(nucleotide sequence or name)",
+                "error": "Missing required parameter: sequence",
                 "hits": [],
             }
 
-        # Strip None values so Pydantic defaults apply
         cleaned = {k: v for k, v in params.items() if v is not None}
         inp = BlastInput(**cleaned)
         query_seq = inp.sequence.strip()
 
-        # If it looks like a name (no ATGC-only), resolve from DB
-        if not _is_sequence(query_seq):
-            resolved = await _resolve_sequence(query_seq)
+        # Resolve SID (integer) from DB
+        if query_seq.isdigit():
+            resolved = await _resolve_by_sid(int(query_seq))
             if resolved is None:
-                return {"error": f"Sequence not found: {query_seq}", "hits": []}
+                return {
+                    "error": f"Sequence not found for SID {query_seq}",
+                    "hits": [],
+                }
+            query_seq = resolved
+        elif not _is_nucleotide(query_seq) and not _is_protein(query_seq):
+            # Legacy: try name-based lookup
+            resolved = await _resolve_by_name(query_seq)
+            if resolved is None:
+                return {
+                    "error": f"Sequence not found: {query_seq}",
+                    "hits": [],
+                }
             query_seq = resolved
 
-        # Dynamic sensitivity for short queries (blastn only)
-        evalue = inp.evalue
-        qlen = len(query_seq)
-        search_params: dict[str, Any] = {"evalue": evalue}
+        # Auto-detect program
+        program = inp.program.lower()
+        if program == "auto":
+            program = "blastp" if _is_protein(query_seq) else "blastn"
+        if program not in VALID_PROGRAMS:
+            return {
+                "error": f"Invalid program: {program}. "
+                f"Use: {', '.join(sorted(VALID_PROGRAMS))}",
+                "hits": [],
+            }
 
-        if evalue == 1e-5:
-            if qlen < 20:
-                search_params["evalue"] = 1000
-            elif qlen < 50:
-                search_params["evalue"] = 10
+        # Build params from explicit fields
+        search_params: dict[str, Any] = {}
+        search_params["evalue"] = inp.evalue or self._default_evalue
+        search_params["max_target_seqs"] = inp.max_hits or self._default_max_hits
 
-        if qlen < 30:
-            search_params.update(task="blastn-short", word_size=7, dust="no")
+        if inp.word_size is not None:
+            search_params["word_size"] = inp.word_size
+        if inp.matrix is not None:
+            search_params["matrix"] = inp.matrix
+        if inp.gap_open is not None:
+            search_params["gapopen"] = inp.gap_open
+        if inp.gap_extend is not None:
+            search_params["gapextend"] = inp.gap_extend
+        if inp.task is not None:
+            search_params["task"] = inp.task
 
-        search_params["max_target_seqs"] = self._default_max_hits
+        # Merge extra flags
+        search_params.update(inp.extra)
+
+        # Dynamic sensitivity for short blastn queries
+        if program == "blastn":
+            qlen = len(query_seq)
+            evalue = search_params["evalue"]
+            if evalue == self._default_evalue:
+                if qlen < 20:
+                    search_params["evalue"] = 1000
+                elif qlen < 50:
+                    search_params["evalue"] = 10
+            if qlen < 30 and "task" not in search_params:
+                search_params["task"] = "blastn-short"
+                search_params.setdefault("word_size", 7)
+                search_params.setdefault("dust", "no")
 
         result = await run_search(
-            "blastn", query_seq, self._db_path, bin_dir=self._bin_dir,
-            **search_params,
+            program, query_seq, self._db_path,
+            bin_dir=self._bin_dir, **search_params,
         )
 
         if result.get("error"):
-            return {"error": result["error"], "hits": []}
+            return {"error": result["error"], "hits": [], "program": program}
 
         hits = result["hits"]
         subject_names = result.get("subject_names", set())
 
-        # Resolve file paths for hit subjects
         if hits:
             path_map = await _resolve_file_paths(subject_names)
             for hit in hits:
@@ -126,24 +214,55 @@ class BlastTool(Tool):
         return {
             "hits": hits,
             "total": len(hits),
-            "query_length": result.get("query_length", qlen),
+            "query_length": result.get("query_length", len(query_seq)),
+            "program": program,
         }
 
 
-def _is_sequence(s: str) -> bool:
+def _is_nucleotide(s: str) -> bool:
     """Check if string looks like a nucleotide sequence (min 4 chars)."""
     clean = s.upper().replace(" ", "").replace("\n", "")
     if len(clean) < 4:
         return False
-    valid = set("ATGCNRYSWKMBDHV")
-    return all(c in valid for c in clean)
+    return all(c in _NUCL_CHARS for c in clean)
+
+
+def _is_protein(s: str) -> bool:
+    """Check if string looks like a protein sequence (min 4 chars)."""
+    clean = s.upper().replace(" ", "").replace("\n", "")
+    if len(clean) < 4:
+        return False
+    # If it contains any protein-only characters, it's protein
+    # Otherwise ambiguous (e.g. "ACGT" valid as both) — default to nucl
+    return any(c in _PROT_ONLY for c in clean)
+
+
+async def _resolve_by_sid(sid: int) -> str | None:
+    """Look up a sequence by SID."""
+    if not db.async_session_factory:
+        return None
+    from hive.tools.resolve import resolve_sequence
+
+    async with db.async_session_factory() as session:
+        seq = await resolve_sequence(session, sid=sid)
+        return seq.sequence if seq else None
+
+
+async def _resolve_by_name(name: str) -> str | None:
+    """Look up a sequence by exact name (legacy fallback)."""
+    if not db.async_session_factory:
+        return None
+    from hive.tools.resolve import resolve_sequence
+
+    async with db.async_session_factory() as session:
+        seq = await resolve_sequence(session, name=name)
+        return seq.sequence if seq else None
 
 
 async def _resolve_file_paths(names: set[str]) -> dict[str, str]:
-    """Look up file paths for sequence names (used to enable Open button on BLAST hits)."""
+    """Look up file paths for hit subject names."""
     if not db.async_session_factory or not names:
         return {}
-    # BLAST index replaces spaces with underscores, so match both forms
     async with db.async_session_factory() as session:
         rows = (await session.execute(
             select(Sequence.name, IndexedFile.file_path)
@@ -156,14 +275,3 @@ async def _resolve_file_paths(names: set[str]) -> dict[str, str]:
         if safe_name in names:
             result[safe_name] = display_file_path(file_path)
     return result
-
-
-async def _resolve_sequence(name: str) -> str | None:
-    """Look up a sequence by exact name in the database."""
-    if not db.async_session_factory:
-        return None
-    from hive.tools.resolve import resolve_sequence as _resolve
-
-    async with db.async_session_factory() as session:
-        seq = await _resolve(session, name=name)
-        return seq.sequence if seq else None
