@@ -65,7 +65,6 @@ class WatcherConfig(BaseSettings):
     root: str = "~/sequences"
     recursive: bool = True
     poll_interval: int = 5
-    file_url_prefix: str | None = None  # e.g. "smb://labserver/sequences"
     rules: list[WatcherRule] = Field(default_factory=list)
 
 
@@ -118,23 +117,6 @@ def resolve_host_path(path: str) -> str:
     return path
 
 
-def resolve_container_path(path: str) -> str:
-    """Reverse-translate host path back to container path for file operations."""
-    host_root = os.environ.get("HIVE_HOST_WATCHER_ROOT")
-    if not host_root or not path:
-        return path
-    container_root = os.environ.get("HIVE_WATCHER_ROOT", "/watcher")
-    host_root_stripped = host_root.rstrip("/")
-    if path.startswith(host_root_stripped):
-        return container_root.rstrip("/") + path[len(host_root_stripped):]
-    return path
-
-
-def file_open_mode() -> str:
-    """Determine file-open strategy: 'local', 'link', or 'copy'."""
-    if not os.environ.get("HIVE_HOST_WATCHER_ROOT"):
-        return "local"
-    return "link"  # fallback to 'copy' handled at runtime if no prefix
 
 
 def display_file_path(path: str) -> str:
@@ -153,34 +135,6 @@ def display_file_path(path: str) -> str:
         return root_name + path[len(stripped):]
     return path
 
-
-def resolve_display_path(display_path: str) -> str:
-    """Reconstruct full filesystem path from a display path.
-
-    Inverse of ``display_file_path`` — used by the open-file endpoint
-    to locate the actual file on disk (local or container).
-    """
-    if not _watcher_root or not display_path:
-        return display_path
-    expanded = str(Path(_watcher_root).expanduser().resolve())
-    root_name = Path(expanded).name
-    prefix = root_name + "/"
-    if display_path.startswith(prefix):
-        relative = display_path[len(prefix):]
-        # Docker: use container root for file access
-        container_root = os.environ.get("HIVE_WATCHER_ROOT")
-        if os.environ.get("HIVE_HOST_WATCHER_ROOT") and container_root:
-            base = container_root.rstrip("/")
-            full = str(Path(base, relative).resolve())
-            if not full.startswith(base):
-                return ""
-            return full
-        base = expanded.rstrip("/")
-        full = str(Path(base, relative).resolve())
-        if not full.startswith(base):
-            return ""
-        return full
-    return display_path
 
 
 def load_config(config_path: str | None = None) -> Settings:

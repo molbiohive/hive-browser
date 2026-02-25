@@ -1,5 +1,6 @@
 <script>
 	import { sendMessage } from '$lib/stores/chat.ts';
+	import { copyToClipboard } from '$lib/clipboard.ts';
 	import DataTable from '$lib/DataTable.svelte';
 
 	let { data } = $props();
@@ -17,32 +18,10 @@
 		sendMessage(`//profile ${JSON.stringify({ sid: row.sid })}`);
 	}
 
-	async function openFile(filePath) {
-		try {
-			const res = await fetch('/api/open-file', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ path: filePath }),
-			});
-			const result = await res.json();
-			if (result.error) {
-				console.error('Open file:', result.error);
-				return;
-			}
-			if (result.status === 'link') {
-				window.open(result.url, '_blank');
-			} else if (result.status === 'copy') {
-				await navigator.clipboard.writeText(result.path);
-			}
-		} catch (e) {
-			console.error('Failed to open file:', e);
-		}
-	}
-
 	const tableActions = [
 		{
-			label: 'Open',
-			onClick: (row) => openFile(row.file_path),
+			label: 'Copy path',
+			onClick: (row) => copyToClipboard(row.file_path),
 			show: (row) => !!row.file_path,
 			title: (row) => row.file_path,
 		},

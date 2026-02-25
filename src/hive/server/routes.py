@@ -1,10 +1,6 @@
 """REST API endpoints."""
 
 import logging
-import os
-import platform
-import subprocess
-from pathlib import Path
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
@@ -138,61 +134,6 @@ async def delete_chat(chat_id: str, request: Request):
     deleted = storage.delete(chat_id, slug)
     return {"deleted": deleted}
 
-
-@router.post("/open-file")
-async def open_file(request: Request):
-    """Open a file — local file manager, SMB link, or clipboard path.
-
-    Receives a display path (e.g. ``sequences/project/file.dna``) and
-    resolves it back to a full filesystem path for file operations.
-    """
-    body = await request.json()
-    display_path = body.get("path", "")
-
-    if not display_path:
-        return {"error": "No file path provided"}
-
-    from hive.config import resolve_display_path
-
-    full_path = resolve_display_path(display_path)
-
-    host_root = os.environ.get("HIVE_HOST_WATCHER_ROOT")
-
-    if host_root:
-        if not Path(full_path).exists():
-            return {"error": f"File not found: {display_path}"}
-
-        config = getattr(request.app.state, "config", None)
-        prefix = config.watcher.file_url_prefix if config else None
-        if prefix:
-            # Build SMB/NFS URL from prefix + relative path within root
-            root_name = Path(host_root.rstrip("/")).name
-            if display_path.startswith(root_name + "/"):
-                relative = display_path[len(root_name):]
-            else:
-                relative = "/" + Path(display_path).name
-            url = prefix.rstrip("/") + relative
-            return {"status": "link", "url": url}
-        else:
-            return {"status": "copy", "path": display_path}
-
-    # Local mode — open in OS file manager
-    path = Path(full_path)
-    if not path.exists():
-        return {"error": f"File not found: {display_path}"}
-
-    system = platform.system()
-    try:
-        if system == "Darwin":
-            subprocess.Popen(["open", "-R", str(path)])
-        elif system == "Linux":
-            subprocess.Popen(["xdg-open", str(path.parent)])
-        else:
-            return {"error": f"Unsupported platform: {system}"}
-    except Exception as e:
-        return {"error": str(e)}
-
-    return {"status": "ok", "path": display_path}
 
 
 @router.get("/models")
