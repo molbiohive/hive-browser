@@ -40,7 +40,7 @@ dependencies = [
 ]
 
 [project.scripts]
-hive-admin = "hive.admin.cli:main"
+admin = "hive.admin.cli:main"
 
 [dependency-groups]
 dev = [
