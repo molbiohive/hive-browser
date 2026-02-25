@@ -19,17 +19,17 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="seq-area" onclick={copy} title="Click to copy sequence">
 	<pre class="seq-text">{shown}</pre>
-	{#if copied}
-		<span class="flash">Copied!</span>
-	{/if}
-	{#if label}
-		<span class="label">{label}</span>
-	{/if}
+	<span class="label">
+		{#if copied}
+			<span class="flash">Copied!</span>
+		{:else if label}
+			{label}
+		{/if}
+	</span>
 </div>
 
 <style>
 	.seq-area {
-		position: relative;
 		background: var(--bg-code);
 		border: 1px solid var(--border-muted);
 		border-radius: 6px;
@@ -53,10 +53,6 @@
 		color: var(--text-primary);
 	}
 	.flash {
-		position: absolute;
-		top: 0.35rem;
-		right: 0.5rem;
-		font-size: 0.7rem;
 		color: var(--color-ok);
 		font-weight: 500;
 	}
@@ -65,5 +61,6 @@
 		margin-top: 0.3rem;
 		font-size: 0.7rem;
 		color: var(--text-faint);
+		min-height: 1rem;
 	}
 </style>

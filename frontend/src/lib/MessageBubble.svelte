@@ -27,19 +27,21 @@
 </script>
 
 <div class="row {message.role}" class:faded>
-	<div class="bubble {message.role}">
-		{#if message.role === 'assistant'}
-			<div class="content markdown">{@html rendered}</div>
-		{:else}
-			<div class="content">{message.content}</div>
-		{/if}
-
-		{#if message.widget}
-			<Widget widget={message.widget} {messageIndex} />
-			{#if message.widget.chain}
-				<ChainSteps chain={message.widget.chain} />
+	<div class="msg-wrapper">
+		<div class="bubble {message.role}">
+			{#if message.role === 'assistant'}
+				<div class="content markdown">{@html rendered}</div>
+			{:else}
+				<div class="content">{message.content}</div>
 			{/if}
-		{/if}
+
+			{#if message.widget}
+				<Widget widget={message.widget} {messageIndex} />
+				{#if message.widget.chain}
+					<ChainSteps chain={message.widget.chain} />
+				{/if}
+			{/if}
+		</div>
 
 		<div class="meta-row">
 			{#if message.ts}
@@ -52,9 +54,9 @@
 				<span class="meta-item tokens">
 					<svg class="arrow down" width="10" height="10" viewBox="0 0 10 10"><path d="M5 8 L8 4 H2Z" fill="currentColor"/></svg>{compactNum(message.tokens.out)}
 				</span>
-			{/if}
-			{#if message.role === 'assistant' && message.model}
-				<span class="meta-item model">{message.model}</span>
+				{#if message.model}
+					<span class="meta-item model">{message.model}</span>
+				{/if}
 			{/if}
 		</div>
 	</div>
@@ -77,6 +79,15 @@
 	.row.assistant {
 		justify-content: flex-start;
 	}
+
+	.msg-wrapper {
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
+	}
+
+	.row.user .msg-wrapper { align-items: flex-end; }
+	.row.assistant .msg-wrapper { align-items: flex-start; }
 
 	.bubble {
 		border-radius: 12px;
@@ -120,7 +131,7 @@
 		height: 1rem;
 	}
 
-	.bubble:hover .meta-row {
+	.msg-wrapper:hover .meta-row {
 		opacity: 1;
 	}
 
