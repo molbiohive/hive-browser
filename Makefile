@@ -2,7 +2,7 @@
 
 .PHONY: setup-dev \
         dev back-dev front-dev static \
-        docker-init docker-build docker-up docker-down docker-update docker-logs \
+        docker-init docker-build docker-up docker-down docker-update docker-all docker-logs \
         test lint check-deps check-backend check-frontend check-all clean
 
 SHELL := /bin/bash
@@ -79,6 +79,13 @@ docker-down:
 docker-update:
 	docker compose build
 	docker compose up -d
+
+docker-all:
+	git pull
+	docker compose down
+	docker compose build
+	docker compose up -d
+	docker compose logs -f hive
 
 docker-logs:
 	docker compose logs -f hive
