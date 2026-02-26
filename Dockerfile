@@ -29,6 +29,6 @@ COPY docker/entrypoint.sh /app/docker/entrypoint.sh
 RUN chmod +x /app/docker/entrypoint.sh
 ENV PATH="/app/.venv/bin:$PATH"
 EXPOSE 8080
-HEALTHCHECK --interval=10s --timeout=3s --retries=3 \
-    CMD curl -f http://localhost:8080/health || exit 1
+HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
+    CMD curl -f http://localhost:8080/api/health || exit 1
 ENTRYPOINT ["/app/docker/entrypoint.sh"]
