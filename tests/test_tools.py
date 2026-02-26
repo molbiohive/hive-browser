@@ -265,10 +265,10 @@ class TestToolFactoryInternal:
         registry = ToolFactory.discover(config)
         visible = registry.visible_tools()
         llm = registry.llm_tools()
-        assert len(visible) == 5  # search, blast, profile, digest, gc
+        assert len(visible) == 6  # search, blast, profile, digest, gc, align
         assert len(llm) == 12  # all tools available to LLM
         hidden_names = {t.name for t in llm} - {t.name for t in visible}
-        assert hidden_names == {"extract", "features", "primers", "translate", "transcribe", "revcomp", "align"}
+        assert hidden_names == {"extract", "features", "primers", "translate", "transcribe", "revcomp"}
 
 
 # ── ToolFactory — External Discovery ──

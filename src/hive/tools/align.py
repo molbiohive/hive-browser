@@ -25,8 +25,8 @@ class AlignInput(BaseModel):
 class AlignTool(Tool):
     name = "align"
     description = "Align multiple sequences using MAFFT."
-    widget = "text"
-    tags = {"llm", "hidden", "analysis"}
+    widget = "align"
+    tags = {"llm", "analysis"}
     guidelines = (
         "Multiple sequence alignment using MAFFT. Provide SIDs "
         "(integers from search results) for 2+ sequences to align."
