@@ -1,8 +1,11 @@
 """File system watcher — startup scan + live monitoring."""
 
+from __future__ import annotations
+
 import asyncio
 import logging
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from watchfiles import Change, awatch
 
@@ -11,12 +14,15 @@ from hive.db.session import async_session_factory
 from hive.watcher.ingest import ingest_file, remove_file
 from hive.watcher.rules import match_file
 
+if TYPE_CHECKING:
+    from hive.deps import DepRegistry
+
 logger = logging.getLogger(__name__)
 
 
 async def scan_and_ingest(
     config: WatcherConfig,
-    blast_db_path: str | None = None,
+    dep_registry: DepRegistry | None = None,
     batch_size: int = 100,
 ) -> int:
     """Scan directory and ingest all parseable files. Returns count of newly indexed files."""
@@ -85,12 +91,11 @@ async def scan_and_ingest(
 
     logger.info("Scan complete: %d indexed, %d errors out of %d files", indexed, errors, total)
 
-    if indexed > 0 and blast_db_path:
+    if indexed > 0 and dep_registry:
         try:
-            from hive.deps.blast import build_index as build_blast_index
-            await build_blast_index(blast_db_path)
+            await dep_registry.rebuild_all()
         except Exception as e:
-            logger.warning("BLAST index rebuild failed after scan: %s", e)
+            logger.warning("Dep rebuild failed after scan: %s", e)
 
     return indexed
 
@@ -98,7 +103,7 @@ async def scan_and_ingest(
 async def watch_directory(
     config: WatcherConfig,
     stop_event: asyncio.Event | None = None,
-    blast_db_path: str | None = None,
+    dep_registry: DepRegistry | None = None,
 ):
     """Watch directory for changes using watchfiles (inotify/fswatch).
 
@@ -130,9 +135,8 @@ async def watch_directory(
                 try:
                     async with async_session_factory() as session:
                         await ingest_file(session, path, match, watcher_root=watcher_root)
-                    if blast_db_path:
-                        from hive.deps.blast import build_index as build_blast_index
-                        await build_blast_index(blast_db_path)
+                    if dep_registry:
+                        await dep_registry.rebuild_all()
                 except Exception as e:
                     logger.error("Failed to ingest %s: %s", path.name, e)
             elif match.action == "log" and match.message:

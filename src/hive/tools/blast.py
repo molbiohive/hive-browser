@@ -12,7 +12,7 @@ from sqlalchemy import select
 from hive.config import display_file_path
 from hive.db import session as db
 from hive.db.models import IndexedFile, Sequence
-from hive.deps.blast import run_search
+from hive.deps.blast import BlastDep
 from hive.tools.base import Tool
 
 logger = logging.getLogger(__name__)
@@ -99,7 +99,7 @@ class BlastTool(Tool):
         if not config:
             raise ValueError("BlastTool requires config")
         self._db_path = Path(config.blast_dir)
-        self._bin_dir = config.blast.bin_dir
+        self._dep = BlastDep(config.blast_dir, config.blast.bin_dir)
         self._default_evalue = config.blast.default_evalue
         self._default_max_hits = config.blast.default_max_hits
 
@@ -204,9 +204,9 @@ class BlastTool(Tool):
                 search_params.setdefault("word_size", 7)
                 search_params.setdefault("dust", "no")
 
-        result = await run_search(
+        result = await self._dep.run_search(
             program, query_seq, self._db_path,
-            bin_dir=self._bin_dir, **search_params,
+            **search_params,
         )
 
         if result.get("error"):

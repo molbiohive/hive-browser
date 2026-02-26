@@ -14,6 +14,8 @@ from hive.admin.routes import admin_router
 from hive.admin.token import generate_token, save_token
 from hive.chat.storage import ChatStorage
 from hive.config import Settings
+from hive.deps import DepRegistry
+from hive.deps.blast import BlastDep
 from hive.llm.pool import ModelPool
 from hive.server.routes import router
 from hive.server.websocket import ws_router
@@ -58,6 +60,11 @@ async def lifespan(app: FastAPI):
         except Exception:
             logger.warning("Default LLM not available: %s", pool.default_id)
 
+    # --- Dep registry ---
+    dep_registry = DepRegistry()
+    dep_registry.register(BlastDep(config.blast_dir, config.blast.bin_dir))
+    app.state.dep_registry = dep_registry
+
     # --- Tool registry (with quarantine for external tools) ---
     approved_files: set[str] = set()
     if app.state.db_ready:
@@ -77,24 +84,23 @@ async def lifespan(app: FastAPI):
 
         async def _scan_then_watch():
             try:
-                count = await scan_and_ingest(config.watcher, blast_db_path=config.blast_dir)
+                count = await scan_and_ingest(config.watcher, dep_registry=dep_registry)
                 logger.info("Initial scan indexed %d files", count)
             except Exception as e:
                 logger.warning("Initial scan failed: %s", e)
 
-            # Always rebuild BLAST index after scan (covers restart with no new files)
+            # Always rebuild deps after scan (covers restart with no new files)
             try:
-                from hive.deps.blast import build_index
-                await build_index(config.blast_dir, config.blast.bin_dir)
+                await dep_registry.setup_all()
             except Exception as e:
-                logger.warning("BLAST index build failed: %s", e)
+                logger.warning("Dep setup failed: %s", e)
 
             stop_event = asyncio.Event()
             app.state.watcher_stop = stop_event
             await watch_directory(
                 config.watcher,
                 stop_event=stop_event,
-                blast_db_path=config.blast_dir,
+                dep_registry=dep_registry,
             )
 
         app.state.watcher_task = asyncio.create_task(_scan_then_watch())
