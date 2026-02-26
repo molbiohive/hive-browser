@@ -43,6 +43,10 @@ class BlastConfig(BaseSettings):
     default_max_hits: int = 50
 
 
+class MafftConfig(BaseSettings):
+    bin_dir: str = ""  # empty = use PATH
+
+
 class SearchConfig(BaseSettings):
     columns: list[str] = ["name", "size_bp", "topology", "features"]
 
@@ -79,6 +83,7 @@ class Settings(BaseSettings):
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
     blast: BlastConfig = Field(default_factory=BlastConfig)
+    mafft: MafftConfig = Field(default_factory=MafftConfig)
     chat: ChatConfig = Field(default_factory=ChatConfig)
     search: SearchConfig = Field(default_factory=SearchConfig)
     watcher: WatcherConfig = Field(default_factory=WatcherConfig)

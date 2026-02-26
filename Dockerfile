@@ -18,7 +18,7 @@ RUN uv sync --no-dev --frozen
 # Stage 3 — runtime
 FROM python:3.12-slim-bookworm
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ncbi-blast+ curl && rm -rf /var/lib/apt/lists/*
+    ncbi-blast+ mafft curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=deps /app/.venv /app/.venv
 COPY --from=frontend /app/build /app/static

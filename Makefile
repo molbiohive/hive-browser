@@ -110,6 +110,7 @@ check-deps:
 	$(call check_bin,bun,--version)
 	$(call check_bin,psql,--version)
 	$(call check_bin,blastn,-version)
+	$(call check_bin,mafft,--version)
 	$(call check_bin,ollama,--version)
 
 check-backend: lint test

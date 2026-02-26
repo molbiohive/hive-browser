@@ -26,8 +26,9 @@ _NEXT_TOOLS: dict[str, set[str]] = {
     "profile": {"extract", "features", "primers", "blast"},
     "features": {"extract", "blast"},
     "primers": {"extract", "blast"},
-    "extract": {"blast", "translate", "transcribe", "revcomp", "digest", "gc"},
+    "extract": {"blast", "translate", "transcribe", "revcomp", "digest", "gc", "align"},
     # Terminal tools — force text summary
+    "align": set(),
     "blast": set(),
     "translate": set(),
     "transcribe": set(),

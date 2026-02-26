@@ -28,6 +28,9 @@ blast:
   default_evalue: 1e-5
   default_max_hits: 50
 
+mafft:
+  bin_dir: ""                # empty = use PATH
+
 chat:
   max_history_pairs: 20        # LLM conversation memory depth
   auto_save_after: 2           # save chat after N user messages

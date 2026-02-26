@@ -16,6 +16,7 @@ from hive.chat.storage import ChatStorage
 from hive.config import Settings
 from hive.deps import DepRegistry
 from hive.deps.blast import BlastDep
+from hive.deps.mafft import MafftDep
 from hive.llm.pool import ModelPool
 from hive.server.routes import router
 from hive.server.websocket import ws_router
@@ -63,6 +64,7 @@ async def lifespan(app: FastAPI):
     # --- Dep registry ---
     dep_registry = DepRegistry()
     dep_registry.register(BlastDep(config.blast_dir, config.blast.bin_dir))
+    dep_registry.register(MafftDep(config.mafft.bin_dir))
     app.state.dep_registry = dep_registry
 
     # --- Tool registry (with quarantine for external tools) ---
