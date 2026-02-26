@@ -47,8 +47,17 @@ class MafftConfig(BaseSettings):
     bin_dir: str = ""  # empty = use PATH
 
 
+class DepsConfig(BaseSettings):
+    blast: BlastConfig = Field(default_factory=BlastConfig)
+    mafft: MafftConfig = Field(default_factory=MafftConfig)
+
+
 class SearchConfig(BaseSettings):
     columns: list[str] = ["name", "size_bp", "topology", "features"]
+
+
+class ToolsConfig(BaseSettings):
+    search: SearchConfig = Field(default_factory=SearchConfig)
 
 
 class ChatConfig(BaseSettings):
@@ -77,22 +86,25 @@ class ServerConfig(BaseSettings):
     port: int = 8080
 
 
+CURRENT_CONFIG_VERSION = 2
+
+
 class Settings(BaseSettings):
+    version: int = CURRENT_CONFIG_VERSION
     data_root: str = "./data"
     server: ServerConfig = Field(default_factory=ServerConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
-    blast: BlastConfig = Field(default_factory=BlastConfig)
-    mafft: MafftConfig = Field(default_factory=MafftConfig)
+    deps: DepsConfig = Field(default_factory=DepsConfig)
+    tools: ToolsConfig = Field(default_factory=ToolsConfig)
     chat: ChatConfig = Field(default_factory=ChatConfig)
-    search: SearchConfig = Field(default_factory=SearchConfig)
     watcher: WatcherConfig = Field(default_factory=WatcherConfig)
 
     model_config = {"env_prefix": "HIVE_"}
 
-    @property
-    def blast_dir(self) -> str:
-        return str(Path(self.data_root).expanduser() / "blast")
+    def dep_data_dir(self, name: str) -> str:
+        """Data directory for a dep: data_root/<name>."""
+        return str(Path(self.data_root).expanduser() / name)
 
     @property
     def chats_dir(self) -> str:

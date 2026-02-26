@@ -114,7 +114,7 @@ async def websocket_endpoint(websocket: WebSocket):
             "type": "init",
             "config": {
                 "search_columns": (
-                    config.search.columns
+                    config.tools.search.columns
                     if config
                     else ["name", "size_bp", "topology", "features"]
                 ),

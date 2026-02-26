@@ -2,6 +2,8 @@
 # Copy this file to config.local.yaml and adjust values.
 # Select config via: HIVE_CONFIG=config/config.local.yaml
 
+version: 2
+
 server:
   host: "0.0.0.0"
   port: 8080
@@ -23,20 +25,21 @@ llm:
   auto_discover: false          # auto-discover Ollama models at runtime
   summary_token_limit: 1000     # max tokens for tool result summaries sent to LLM
 
-blast:
-  bin_dir: ""                # empty = use PATH; or set to /usr/local/bin etc.
-  default_evalue: 1e-5
-  default_max_hits: 50
+deps:
+  blast:
+    bin_dir: ""                # empty = use PATH; or set to /usr/local/bin etc.
+    default_evalue: 1e-5
+    default_max_hits: 50
+  mafft:
+    bin_dir: ""                # empty = use PATH
 
-mafft:
-  bin_dir: ""                # empty = use PATH
+tools:
+  search:
+    columns: [name, size_bp, topology, features]  # fields shown in search results
 
 chat:
   max_history_pairs: 20        # LLM conversation memory depth
   auto_save_after: 2           # save chat after N user messages
-
-search:
-  columns: [name, size_bp, topology, features]  # fields shown in search results
 
 watcher:
   root: ~/sequences          # directory to watch for sequence files

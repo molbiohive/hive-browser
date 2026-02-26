@@ -98,10 +98,11 @@ class BlastTool(Tool):
     def __init__(self, config=None, **_):
         if not config:
             raise ValueError("BlastTool requires config")
-        self._db_path = Path(config.blast_dir)
-        self._dep = BlastDep(config.blast_dir, config.blast.bin_dir)
-        self._default_evalue = config.blast.default_evalue
-        self._default_max_hits = config.blast.default_max_hits
+        blast_dir = config.dep_data_dir("blast")
+        self._db_path = Path(blast_dir)
+        self._dep = BlastDep(blast_dir, config.deps.blast.bin_dir)
+        self._default_evalue = config.deps.blast.default_evalue
+        self._default_max_hits = config.deps.blast.default_max_hits
 
     def input_schema(self) -> dict:
         schema = BlastInput.model_json_schema()

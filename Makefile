@@ -53,16 +53,25 @@ static:
 # ── Docker ────────────────────────────────────────────────
 
 docker-init:
-	@if [ ! -f config/config.docker.yaml ]; then \
+	@EXAMPLE_VER=$$(grep -m1 '^version:' config/config.example.yaml | awk '{print $$2}'); \
+	if [ -f config/config.docker.yaml ]; then \
+		DOCKER_VER=$$(grep -m1 '^version:' config/config.docker.yaml | awk '{print $$2}'); \
+		if [ "$$EXAMPLE_VER" != "$$DOCKER_VER" ]; then \
+			cp config/config.docker.yaml config/config.docker.yaml.bak; \
+			cp config/config.example.yaml config/config.docker.yaml; \
+			echo "Config version changed ($$DOCKER_VER -> $$EXAMPLE_VER)"; \
+			echo "Old config saved to config/config.docker.yaml.bak"; \
+			echo "Review config/config.docker.yaml and re-run."; \
+			exit 1; \
+		fi; \
+	else \
 		cp config/config.example.yaml config/config.docker.yaml; \
 		echo "Created config/config.docker.yaml"; \
-	else \
-		echo "config/config.docker.yaml already exists, skipping"; \
 	fi
 	@if [ ! -f .env ]; then \
 		PG_PASS=$$(openssl rand -base64 24 | tr -d '/+=' | head -c 32) && \
 		printf 'POSTGRES_USER=hive\nPOSTGRES_PASSWORD=%s\nPOSTGRES_DB=hive\nHIVE_PORT=8080\nHIVE_DATA_ROOT=~/.hive\nHIVE_WATCHER_ROOT=~/sequences\n' "$$PG_PASS" > .env && \
-		echo ".env created — edit HIVE_DATA_ROOT and HIVE_WATCHER_ROOT before starting"; \
+		echo ".env created -- edit HIVE_DATA_ROOT and HIVE_WATCHER_ROOT before starting"; \
 	else \
 		echo ".env already exists, skipping"; \
 	fi

@@ -156,10 +156,11 @@ async def watcher_rescan(request: Request):
     from hive.watcher.watcher import scan_and_ingest
 
     config = request.app.state.config
+    dep_registry = request.app.state.dep_registry
 
     async def _run():
         try:
-            count = await scan_and_ingest(config.watcher, blast_db_path=config.blast_dir)
+            count = await scan_and_ingest(config.watcher, dep_registry=dep_registry)
             logger.info("Rescan complete: %d files indexed", count)
         except Exception as e:
             logger.error("Rescan failed: %s", e)
@@ -191,10 +192,11 @@ async def watcher_reindex(request: Request):
     from hive.watcher.watcher import scan_and_ingest
 
     config = request.app.state.config
+    dep_registry = request.app.state.dep_registry
 
     async def _run():
         try:
-            count = await scan_and_ingest(config.watcher, blast_db_path=config.blast_dir)
+            count = await scan_and_ingest(config.watcher, dep_registry=dep_registry)
             logger.info("Reindex complete: %d files re-parsed", count)
         except Exception as e:
             logger.error("Reindex failed: %s", e)

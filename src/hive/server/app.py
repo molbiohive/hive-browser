@@ -63,8 +63,8 @@ async def lifespan(app: FastAPI):
 
     # --- Dep registry ---
     dep_registry = DepRegistry()
-    dep_registry.register(BlastDep(config.blast_dir, config.blast.bin_dir))
-    dep_registry.register(MafftDep(config.mafft.bin_dir))
+    dep_registry.register(BlastDep(config.dep_data_dir("blast"), config.deps.blast.bin_dir))
+    dep_registry.register(MafftDep(config.deps.mafft.bin_dir))
     app.state.dep_registry = dep_registry
 
     # --- Tool registry (with quarantine for external tools) ---
