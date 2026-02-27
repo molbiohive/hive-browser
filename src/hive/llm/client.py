@@ -1,5 +1,6 @@
 """LLM client — unified provider support via litellm."""
 
+import json
 import logging
 
 import httpx
@@ -12,6 +13,7 @@ litellm.suppress_debug_info = True
 logging.getLogger("LiteLLM").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
+_dump = logging.getLogger("hive.llm.dump")
 
 
 class LLMClient:
@@ -69,12 +71,31 @@ class LLMClient:
 
         kwargs["timeout"] = 120  # seconds — prevent indefinite hangs
 
+        if _dump.isEnabledFor(logging.DEBUG):
+            _dump.debug(json.dumps({
+                "dir": "request",
+                "model": self._model,
+                "messages": messages,
+                "tools": [t["function"]["name"] for t in tools] if tools else None,
+                "tool_choice": tool_choice,
+            }, default=str))
+
         response = await litellm.acompletion(**kwargs)
         try:
-            return response.model_dump()
+            result = response.model_dump()
         except Exception:
             # litellm Pydantic may reject unknown finish_reason (e.g. "refusal")
-            return _extract_response(response)
+            result = _extract_response(response)
+
+        if _dump.isEnabledFor(logging.DEBUG):
+            _dump.debug(json.dumps({
+                "dir": "response",
+                "model": self._model,
+                "usage": result.get("usage"),
+                "choices": result.get("choices"),
+            }, default=str))
+
+        return result
 
     async def health(self) -> bool:
         """Check if the LLM service is reachable."""

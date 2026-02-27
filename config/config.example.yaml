@@ -2,7 +2,7 @@
 # Copy this file to config.local.yaml and adjust values.
 # Select config via: HIVE_CONFIG=config/config.local.yaml
 
-version: 2
+version: 3
 
 server:
   host: "0.0.0.0"
@@ -36,6 +36,10 @@ deps:
 tools:
   search:
     columns: [name, size_bp, topology, features]  # fields shown in search results
+
+logging:
+  level: "INFO"                # root log level (DEBUG, INFO, WARNING, ERROR)
+  llm_dump: false              # write full LLM payloads to llm.jsonl
 
 chat:
   max_history_pairs: 20        # LLM conversation memory depth

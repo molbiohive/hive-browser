@@ -60,6 +60,11 @@ class ToolsConfig(BaseSettings):
     search: SearchConfig = Field(default_factory=SearchConfig)
 
 
+class LogConfig(BaseSettings):
+    level: str = "INFO"  # root log level
+    llm_dump: bool = False  # write full LLM payloads to llm.jsonl
+
+
 class ChatConfig(BaseSettings):
     max_history_pairs: int = 20
     auto_save_after: int = 1  # save chat after N user messages
@@ -86,7 +91,7 @@ class ServerConfig(BaseSettings):
     port: int = 8080
 
 
-CURRENT_CONFIG_VERSION = 2
+CURRENT_CONFIG_VERSION = 3
 
 
 class Settings(BaseSettings):
@@ -98,6 +103,7 @@ class Settings(BaseSettings):
     deps: DepsConfig = Field(default_factory=DepsConfig)
     tools: ToolsConfig = Field(default_factory=ToolsConfig)
     chat: ChatConfig = Field(default_factory=ChatConfig)
+    logging: LogConfig = Field(default_factory=LogConfig)
     watcher: WatcherConfig = Field(default_factory=WatcherConfig)
 
     model_config = {"env_prefix": "HIVE_"}
@@ -113,6 +119,10 @@ class Settings(BaseSettings):
     @property
     def tools_dir(self) -> str:
         return str(Path(self.data_root).expanduser() / "tools")
+
+    @property
+    def logs_dir(self) -> str:
+        return str(Path(self.data_root).expanduser() / "logs")
 
 
 # Set by load_config() — expanded watcher root for display path logic

@@ -1,6 +1,6 @@
-"""Tests for config: grouped sections, version field, dep_data_dir."""
+"""Tests for config: grouped sections, version field, dep_data_dir, logging."""
 
-from hive.config import CURRENT_CONFIG_VERSION, Settings, load_config
+from hive.config import CURRENT_CONFIG_VERSION, LogConfig, Settings, load_config
 
 
 class TestGroupedConfig:
@@ -48,6 +48,27 @@ class TestDepDataDir:
         result = s.dep_data_dir("blast")
         assert "~" not in result
         assert result.endswith("/hive/blast")
+
+
+class TestLogConfig:
+    def test_defaults(self):
+        c = LogConfig()
+        assert c.level == "INFO"
+        assert c.llm_dump is False
+
+    def test_settings_logging_defaults(self):
+        s = Settings()
+        assert s.logging.level == "INFO"
+        assert s.logging.llm_dump is False
+
+    def test_logs_dir(self):
+        s = Settings(data_root="/data")
+        assert s.logs_dir == "/data/logs"
+
+    def test_logs_dir_tilde(self):
+        s = Settings(data_root="~/hive")
+        assert "~" not in s.logs_dir
+        assert s.logs_dir.endswith("/hive/logs")
 
 
 class TestLoadConfig:
