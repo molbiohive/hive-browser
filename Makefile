@@ -16,7 +16,7 @@ DB_PASS ?= hive
 setup-dev:
 	uv sync --group dev
 	cd frontend && bun install
-	@mkdir -p data/{blast,chats,tools,logs}
+	@mkdir -p data/{blast,chats,tools,logs,archive}
 	@if [ ! -f config/config.local.yaml ]; then \
 		cp config/config.example.yaml config/config.local.yaml; \
 		echo "Created config/config.local.yaml"; \

@@ -52,6 +52,24 @@ def _post(args, path: str):
     return _request(client, "post", path, headers)
 
 
+def _post_json(args, path: str, body: dict):
+    client, headers = _client(args)
+    try:
+        r = client.post(path, headers=headers, json=body)
+    except httpx.ConnectError:
+        print(f"Cannot connect to {client.base_url}", file=sys.stderr)
+        sys.exit(1)
+    if r.status_code == 401:
+        print("Invalid admin token", file=sys.stderr)
+        sys.exit(1)
+    if r.status_code == 503:
+        detail = r.json().get("detail", "Service unavailable")
+        print(f"Server: {detail}", file=sys.stderr)
+        sys.exit(1)
+    r.raise_for_status()
+    return r.json()
+
+
 def _pp(data):
     print(json.dumps(data, indent=2))
 
@@ -113,18 +131,6 @@ def cmd_watcher_reindex(args):
 # ── db ────────────────────────────────────────────────────────────────
 
 
-def cmd_db_files(args):
-    data = _get(args, "/admin/db/files")
-    files = data.get("files", [])
-    if not files:
-        print("No indexed files.")
-        return
-    for f in files:
-        status = f["status"]
-        marker = "+" if status == "active" else ("x" if status == "error" else "-")
-        size_kb = f["size"] / 1024 if f["size"] else 0
-        print(f"  [{marker}] {f['path']}  ({f['format']}, {size_kb:.1f} KB)")
-
 
 def cmd_db_errors(args):
     data = _get(args, "/admin/db/errors")
@@ -135,6 +141,51 @@ def cmd_db_errors(args):
     for e in errors:
         print(f"  {e['path']}")
         print(f"    {e['error']}")
+
+
+def cmd_db_audit(args):
+    data = _post_json(args, "/admin/db/audit", {"verbose": args.verbose})
+    t = data["totals"]
+    fi = t["indexed_files"]
+    print("Database audit:")
+    print(f"  Files:      {fi['active']} active, {fi['error']} errors, {fi['deleted']} deleted")
+    print(f"  Sequences:  {t['sequences']}")
+    print(f"  Features:   {t['features']}")
+    print(f"  Primers:    {t['primers']}")
+    hd = data["hash_duplicates"]
+    print(f"  Hash dupes: {hd['groups']} groups ({hd['files']} files)")
+    nd = data["inode_duplicates"]
+    print(f"  Inode dupes: {nd['groups']} groups ({nd['files']} files)")
+    print(f"  Orphans:    {data['orphans']}")
+    if args.verbose:
+        for group in data.get("hash_duplicate_details", []):
+            print(f"\n  Hash {group['hash']}... ({group['count']} copies):")
+            for f in group["files"]:
+                print(f"    [{f['id']}] {f['path']}")
+        for group in data.get("inode_duplicate_details", []):
+            print(f"\n  Inode group ({group['count']} copies):")
+            for f in group["files"]:
+                print(f"    [{f['id']}] {f['path']}")
+        for o in data.get("orphan_details", []):
+            print(f"\n  Orphan [{o['id']}] {o['path']}")
+
+
+def cmd_db_dedupe(args):
+    data = _post_json(args, "/admin/db/dedupe", {"dry_run": args.dry_run})
+    prefix = "Would remove" if data["dry_run"] else "Removed"
+    print(f"{prefix} {data['removed']} duplicate file(s)")
+    for d in data.get("details", []):
+        print(f"  [{d['id']}] {d['path']}  (hash: {d['hash']}...)")
+
+
+def cmd_db_prune(args):
+    data = _post_json(args, "/admin/db/prune", {
+        "dry_run": args.dry_run, "no_archive": args.no_archive,
+    })
+    prefix = "Would prune" if data.get("dry_run") else "Pruned"
+    print(f"{prefix} {data['pruned']} orphan file(s)")
+    for d in data.get("details", []):
+        print(f"  [{d['id']}] {d['path']}")
 
 
 # ── users ─────────────────────────────────────────────────────────────
@@ -366,10 +417,19 @@ def main():
         ("reindex", "Re-parse all files (reset hashes)", cmd_watcher_reindex, []),
     ])
 
-    # admin db <files|errors>
-    _add_group(sub, "db", "Database inspection", [
-        ("files", "List indexed files", cmd_db_files, []),
+    # admin db <errors|audit|dedupe|prune>
+    _add_group(sub, "db", "Database inspection and cleanup", [
         ("errors", "List parse errors", cmd_db_errors, []),
+        ("audit", "Audit database integrity", cmd_db_audit, [
+            (["-v", "--verbose"], {"action": "store_true", "help": "Show individual items"}),
+        ]),
+        ("dedupe", "Remove duplicate file records", cmd_db_dedupe, [
+            (["--dry-run"], {"action": "store_true", "help": "Preview only, don't delete"}),
+        ]),
+        ("prune", "Remove records for missing files", cmd_db_prune, [
+            (["--dry-run"], {"action": "store_true", "help": "Preview only, don't delete"}),
+            (["--no-archive"], {"action": "store_true", "help": "Skip JSONL archiving"}),
+        ]),
     ])
 
     # admin users <list|add|rm|edit>
