@@ -26,7 +26,7 @@ async def scan_and_ingest(
     batch_size: int = 100,
 ) -> int:
     """Scan directory and ingest all parseable files. Returns count of newly indexed files."""
-    root = Path(config.root)
+    root = Path(config.root).expanduser().resolve()
     if not root.exists():
         logger.warning("Watch directory does not exist: %s", root)
         return 0
@@ -109,7 +109,7 @@ async def watch_directory(
 
     Runs forever until stop_event is set or task is cancelled.
     """
-    root = Path(config.root)
+    root = Path(config.root).expanduser().resolve()
     if not root.exists():
         logger.warning("Watch directory does not exist: %s", root)
         return

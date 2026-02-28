@@ -61,6 +61,7 @@ async def ingest_file(
 
     Returns the IndexedFile record, or None if the file hasn't changed.
     """
+    file_path = file_path.resolve()
     file_hash = hash_file(file_path)
     stat = file_path.stat()
 
@@ -177,6 +178,7 @@ async def ingest_file(
 
 async def remove_file(session: AsyncSession, file_path: Path) -> bool:
     """Mark a file as deleted and remove its sequences."""
+    file_path = file_path.resolve()
     result = await session.execute(
         select(IndexedFile).where(IndexedFile.file_path == str(file_path))
     )
