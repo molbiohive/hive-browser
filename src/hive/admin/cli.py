@@ -109,23 +109,38 @@ def cmd_token(args):
         sys.exit(1)
 
 
-# ── watcher ───────────────────────────────────────────────────────────
+# ── ps ────────────────────────────────────────────────────────────────
 
 
-def cmd_watcher_start(args):
-    _pp(_post(args, "/admin/watcher/start"))
+def cmd_ps_list(args):
+    data = _get(args, "/admin/ps")
+    procs = data.get("processes", [])
+    if not procs:
+        print("No registered processes.")
+        return
+    for p in procs:
+        state = p["state"]
+        started = p.get("started_at", "")
+        if started:
+            started = started[:19].replace("T", " ")
+        info = p.get("result") or p.get("error") or ""
+        print(f"  {state:<10s} {p['name']:<12s} {p['description']:<25s} {started}  {info}")
 
 
-def cmd_watcher_stop(args):
-    _pp(_post(args, "/admin/watcher/stop"))
+def cmd_ps_start(args):
+    _pp(_post(args, f"/admin/ps/{args.name}/start"))
 
 
-def cmd_watcher_rescan(args):
-    _pp(_post(args, "/admin/watcher/rescan"))
+def cmd_ps_stop(args):
+    _pp(_post(args, f"/admin/ps/{args.name}/stop"))
 
 
-def cmd_watcher_reindex(args):
-    _pp(_post(args, "/admin/watcher/reindex"))
+def cmd_ps_pause(args):
+    _pp(_post(args, f"/admin/ps/{args.name}/pause"))
+
+
+def cmd_ps_resume(args):
+    _pp(_post(args, f"/admin/ps/{args.name}/resume"))
 
 
 # ── db ────────────────────────────────────────────────────────────────
@@ -409,12 +424,21 @@ def main():
         p = sub.add_parser(name, help=help_text)
         p.set_defaults(func=fn)
 
-    # admin watcher <start|stop|rescan|reindex>
-    _add_group(sub, "watcher", "File watcher management", [
-        ("start", "Start the file watcher", cmd_watcher_start, []),
-        ("stop", "Stop the file watcher", cmd_watcher_stop, []),
-        ("rescan", "Force full directory rescan", cmd_watcher_rescan, []),
-        ("reindex", "Re-parse all files (reset hashes)", cmd_watcher_reindex, []),
+    # admin ps <list|start|stop|pause|resume>
+    _add_group(sub, "ps", "Background process management", [
+        ("list", "List all processes", cmd_ps_list, []),
+        ("start", "Start a process", cmd_ps_start, [
+            (["name"], {"help": "Process name (scan, watcher, rescan, reindex)"}),
+        ]),
+        ("stop", "Stop a process", cmd_ps_stop, [
+            (["name"], {"help": "Process name"}),
+        ]),
+        ("pause", "Pause a process", cmd_ps_pause, [
+            (["name"], {"help": "Process name"}),
+        ]),
+        ("resume", "Resume a paused process", cmd_ps_resume, [
+            (["name"], {"help": "Process name"}),
+        ]),
     ])
 
     # admin db <errors|audit|dedupe|prune>

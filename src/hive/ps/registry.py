@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 from datetime import UTC, datetime
 
-from hive.ps.base import Process, ProcessContext, ProcessInfo, ProcessState, ProcessStopped
+from hive.ps.base import Process, ProcessContext, ProcessInfo, ProcessState, ProcessStoppedError
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +59,7 @@ class ProcessRegistry:
             result = await self._processes[name].run(ctx)
             info.state = ProcessState.completed
             info.result = result
-        except ProcessStopped:
+        except ProcessStoppedError:
             info.state = ProcessState.stopped
         except asyncio.CancelledError:
             info.state = ProcessState.stopped
@@ -81,10 +82,8 @@ class ProcessRegistry:
         task = self._tasks.get(name)
         if task and not task.done():
             task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await task
-            except asyncio.CancelledError:
-                pass
 
         info = self._info.get(name)
         if info and info.state in (ProcessState.running, ProcessState.paused):

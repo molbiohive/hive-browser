@@ -4,7 +4,7 @@ import asyncio
 
 import pytest
 
-from hive.ps import Process, ProcessContext, ProcessRegistry, ProcessState, ProcessStopped
+from hive.ps import Process, ProcessContext, ProcessRegistry, ProcessState, ProcessStoppedError
 
 
 class CountProcess(Process):
@@ -59,7 +59,7 @@ class TestProcessContext:
     async def test_check_raises_on_stop(self):
         ctx = ProcessContext()
         ctx.stop_event.set()
-        with pytest.raises(ProcessStopped):
+        with pytest.raises(ProcessStoppedError):
             await ctx.check()
 
     async def test_pause_blocks(self):
@@ -73,7 +73,7 @@ class TestProcessContext:
             ctx.stop_event.set()
 
         asyncio.create_task(_stop())
-        with pytest.raises(ProcessStopped):
+        with pytest.raises(ProcessStoppedError):
             await ctx.check()
 
     async def test_resume_unblocks(self):

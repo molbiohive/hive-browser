@@ -110,7 +110,9 @@ async def audit(
 
     result = {
         "totals": {
-            "indexed_files": {"active": active_files, "error": error_files, "deleted": deleted_files},
+            "indexed_files": {
+                "active": active_files, "error": error_files, "deleted": deleted_files,
+            },
             "sequences": sequences,
             "features": features,
             "primers": primers,

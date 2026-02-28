@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import asyncio
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from datetime import UTC, datetime
-from enum import Enum
+from dataclasses import dataclass
+from datetime import datetime
+from enum import StrEnum
 
 
-class ProcessState(str, Enum):
+class ProcessState(StrEnum):
     pending = "pending"
     running = "running"
     paused = "paused"
@@ -18,7 +18,7 @@ class ProcessState(str, Enum):
     error = "error"
 
 
-class ProcessStopped(Exception):
+class ProcessStoppedError(Exception):
     """Raised by ProcessContext.check() when stop is requested."""
 
 
@@ -27,7 +27,7 @@ class ProcessContext:
 
     Processes call ``await ctx.check()`` at safe points to:
     - Block while paused
-    - Raise ProcessStopped if stop was requested
+    - Raise ProcessStoppedError if stop was requested
     """
 
     def __init__(self):
@@ -37,10 +37,10 @@ class ProcessContext:
     async def check(self):
         """Check for stop/pause signals. Call between work units."""
         if self.stop_event.is_set():
-            raise ProcessStopped()
+            raise ProcessStoppedError()
         while self._pause_event.is_set():
             if self.stop_event.is_set():
-                raise ProcessStopped()
+                raise ProcessStoppedError()
             await asyncio.sleep(0.1)
 
     def pause(self):

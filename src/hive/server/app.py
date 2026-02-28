@@ -1,7 +1,5 @@
 """FastAPI application factory."""
 
-import asyncio
-import contextlib
 import logging
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
@@ -77,48 +75,39 @@ async def lifespan(app: FastAPI):
     )
     logger.info("Tool registry: %d tools", len(app.state.tool_registry.all()))
 
-    # --- File watcher (only if DB is available) ---
-    app.state.watcher_task = None
-    app.state.watcher_stop = None
+    # --- Process registry ---
+    from hive.ps import ProcessRegistry
+    from hive.ps.scan import ReindexProcess, RescanProcess, ScanProcess
+    from hive.ps.watcher import WatcherProcess
+
+    ps = ProcessRegistry()
+    ps.register(ScanProcess(config.watcher, dep_registry))
+    ps.register(WatcherProcess(config.watcher, dep_registry))
+    ps.register(RescanProcess(config.watcher, dep_registry))
+    ps.register(ReindexProcess(config.watcher, dep_registry))
+    app.state.ps = ps
 
     if app.state.db_ready and config.watcher.rules:
-        from hive.watcher.watcher import scan_and_ingest, watch_directory
+        try:
+            await ps.start("scan")
+            # Wait for scan to finish
+            task = ps._tasks.get("scan")
+            if task:
+                await task
+        except Exception as e:
+            logger.warning("Initial scan failed: %s", e)
 
-        async def _scan_then_watch():
-            try:
-                count = await scan_and_ingest(config.watcher, dep_registry=dep_registry)
-                logger.info("Initial scan indexed %d files", count)
-            except Exception as e:
-                logger.warning("Initial scan failed: %s", e)
+        try:
+            await dep_registry.setup_all()
+        except Exception as e:
+            logger.warning("Dep setup failed: %s", e)
 
-            # Always rebuild deps after scan (covers restart with no new files)
-            try:
-                await dep_registry.setup_all()
-            except Exception as e:
-                logger.warning("Dep setup failed: %s", e)
-
-            stop_event = asyncio.Event()
-            app.state.watcher_stop = stop_event
-            await watch_directory(
-                config.watcher,
-                stop_event=stop_event,
-                dep_registry=dep_registry,
-            )
-
-        app.state.watcher_task = asyncio.create_task(_scan_then_watch())
+        await ps.start("watcher")
 
     yield
 
     # --- Shutdown ---
-    task = app.state.watcher_task
-    if task and not task.done():
-        stop = app.state.watcher_stop
-        if stop:
-            stop.set()
-        task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await task
-        logger.info("File watcher stopped")
+    await ps.stop_all()
 
     # ModelPool clients are stateless (litellm manages connections)
 

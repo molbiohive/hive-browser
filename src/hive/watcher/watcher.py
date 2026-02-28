@@ -16,6 +16,7 @@ from hive.watcher.rules import match_file
 
 if TYPE_CHECKING:
     from hive.deps import DepRegistry
+    from hive.ps.base import ProcessContext
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,7 @@ async def scan_and_ingest(
     config: WatcherConfig,
     dep_registry: DepRegistry | None = None,
     batch_size: int = 100,
+    ctx: ProcessContext | None = None,
 ) -> int:
     """Scan directory and ingest all parseable files. Returns count of newly indexed files."""
     root = Path(config.root).expanduser().resolve()
@@ -84,7 +86,10 @@ async def scan_and_ingest(
                     "Scan progress: %d/%d files (%d%%), %d indexed, %d errors",
                     i, total, i * 100 // total, indexed, errors,
                 )
-                await asyncio.sleep(0)  # yield to event loop
+                if ctx:
+                    await ctx.check()
+                else:
+                    await asyncio.sleep(0)  # yield to event loop
     finally:
         if session is not None:
             await session.__aexit__(None, None, None)
@@ -104,6 +109,7 @@ async def watch_directory(
     config: WatcherConfig,
     stop_event: asyncio.Event | None = None,
     dep_registry: DepRegistry | None = None,
+    ctx: ProcessContext | None = None,
 ):
     """Watch directory for changes using watchfiles (inotify/fswatch).
 
@@ -118,6 +124,8 @@ async def watch_directory(
     logger.info("Starting file watcher on %s", root)
 
     async for changes in awatch(root, recursive=config.recursive, stop_event=stop_event):
+        if ctx:
+            await ctx.check()
         for change_type, path_str in changes:
             path = Path(path_str)
 

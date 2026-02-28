@@ -1,7 +1,5 @@
 """Admin API endpoints — protected by bearer token."""
 
-import asyncio
-import contextlib
 import logging
 from datetime import UTC, datetime
 from pathlib import Path
@@ -13,6 +11,7 @@ from sqlalchemy import func, select, text
 
 from hive.db import session as db
 from hive.db.models import Feature, IndexedFile, Primer, Sequence
+from hive.ps import ProcessState
 
 logger = logging.getLogger(__name__)
 
@@ -50,12 +49,16 @@ async def admin_health(request: Request):
         except Exception as e:
             logger.warning("DB health check failed: %s", e)
 
-    watcher_running = getattr(request.app.state, "watcher_task", None) is not None
+    ps = getattr(request.app.state, "ps", None)
+    watcher_state = ps.get_state("watcher") if ps else None
     watcher_dir = request.app.state.config.watcher.root
 
     return {
         "database": {"connected": db_ok, "latency_ms": db_latency},
-        "watcher": {"running": watcher_running, "directory": watcher_dir},
+        "watcher": {
+            "state": watcher_state.value if watcher_state else "unknown",
+            "directory": watcher_dir,
+        },
         "server": {"uptime_s": _uptime(request)},
     }
 
@@ -84,126 +87,86 @@ async def admin_status(request: Request):
         except Exception as e:
             logger.warning("Status query failed: %s", e)
 
-    watcher_task = getattr(request.app.state, "watcher_task", None)
+    ps = getattr(request.app.state, "ps", None)
+    watcher_state = ps.get_state("watcher") if ps else None
 
     return {
         "counts": counts,
         "database": getattr(request.app.state, "db_ready", False),
         "watcher": {
-            "running": watcher_task is not None and not watcher_task.done(),
+            "state": watcher_state.value if watcher_state else "unknown",
             "directory": request.app.state.config.watcher.root,
             "rules": len(request.app.state.config.watcher.rules),
         },
     }
 
 
-# ── Watcher Control ─────────────────────────────────────────────────
+# ── Process Control ─────────────────────────────────────────────────
 
 
-@admin_router.post("/watcher/start", dependencies=[Depends(verify_token)])
-async def watcher_start(request: Request):
-    """Start the file watcher (scan + background watch)."""
-    app = request.app
-
-    if not getattr(app.state, "db_ready", False):
-        raise HTTPException(status_code=503, detail="Database not available")
-
-    task = getattr(app.state, "watcher_task", None)
-    if task is not None and not task.done():
-        return {"status": "already_running"}
-
-    from hive.watcher.watcher import scan_and_ingest, watch_directory
-
-    config = app.state.config.watcher
-    count = await scan_and_ingest(config)
-
-    stop_event = asyncio.Event()
-    app.state.watcher_stop = stop_event
-    app.state.watcher_task = asyncio.create_task(
-        watch_directory(config, stop_event=stop_event)
-    )
-
-    return {"status": "started", "scanned": count}
+def _get_ps(request: Request):
+    ps = getattr(request.app.state, "ps", None)
+    if not ps:
+        raise HTTPException(status_code=503, detail="Process registry not available")
+    return ps
 
 
-@admin_router.post("/watcher/stop", dependencies=[Depends(verify_token)])
-async def watcher_stop(request: Request):
-    """Stop the file watcher."""
-    app = request.app
-    task = getattr(app.state, "watcher_task", None)
-
-    if task is None or task.done():
-        return {"status": "not_running"}
-
-    stop = getattr(app.state, "watcher_stop", None)
-    if stop:
-        stop.set()
-    task.cancel()
-    with contextlib.suppress(asyncio.CancelledError):
-        await task
-
-    app.state.watcher_task = None
-    app.state.watcher_stop = None
-    logger.info("Watcher stopped via admin API")
-    return {"status": "stopped"}
+@admin_router.get("/ps", dependencies=[Depends(verify_token)])
+async def ps_list(request: Request):
+    """List all registered processes and their states."""
+    return {"processes": _get_ps(request).status()}
 
 
-@admin_router.post("/watcher/rescan", dependencies=[Depends(verify_token)])
-async def watcher_rescan(request: Request):
-    """Force a full directory rescan (runs in background)."""
-    if not getattr(request.app.state, "db_ready", False):
-        raise HTTPException(status_code=503, detail="Database not available")
-
-    from hive.watcher.watcher import scan_and_ingest
-
-    config = request.app.state.config
-    dep_registry = request.app.state.dep_registry
-
-    async def _run():
-        try:
-            count = await scan_and_ingest(config.watcher, dep_registry=dep_registry)
-            logger.info("Rescan complete: %d files indexed", count)
-        except Exception as e:
-            logger.error("Rescan failed: %s", e)
-
-    asyncio.create_task(_run())
-    return {"status": "started"}
+@admin_router.post("/ps/{name}/start", dependencies=[Depends(verify_token)])
+async def ps_start(name: str, request: Request):
+    """Start a registered process."""
+    ps = _get_ps(request)
+    state = ps.get_state(name)
+    if state is None:
+        raise HTTPException(status_code=404, detail=f"Unknown process: {name}")
+    if state == ProcessState.running:
+        return {"status": "already_running", "name": name}
+    await ps.start(name)
+    return {"status": "started", "name": name}
 
 
-@admin_router.post("/watcher/reindex", dependencies=[Depends(verify_token)])
-async def watcher_reindex(request: Request):
-    """Force full re-parse of all files (runs in background)."""
-    if not getattr(request.app.state, "db_ready", False):
-        raise HTTPException(status_code=503, detail="Database not available")
+@admin_router.post("/ps/{name}/stop", dependencies=[Depends(verify_token)])
+async def ps_stop(name: str, request: Request):
+    """Stop a running process."""
+    ps = _get_ps(request)
+    state = ps.get_state(name)
+    if state is None:
+        raise HTTPException(status_code=404, detail=f"Unknown process: {name}")
+    if state not in (ProcessState.running, ProcessState.paused):
+        return {"status": "not_running", "name": name}
+    await ps.stop(name)
+    return {"status": "stopped", "name": name}
 
-    from sqlalchemy import update
 
-    # Reset all file hashes so ingest_file treats them as changed
-    async with db.async_session_factory() as s:
-        result = await s.execute(
-            update(IndexedFile)
-            .where(IndexedFile.status == "active")
-            .values(file_hash="")
-        )
-        await s.commit()
-        reset_count = result.rowcount
+@admin_router.post("/ps/{name}/pause", dependencies=[Depends(verify_token)])
+async def ps_pause(name: str, request: Request):
+    """Pause a running process."""
+    ps = _get_ps(request)
+    state = ps.get_state(name)
+    if state is None:
+        raise HTTPException(status_code=404, detail=f"Unknown process: {name}")
+    if state != ProcessState.running:
+        return {"status": "not_running", "name": name}
+    ps.pause(name)
+    return {"status": "paused", "name": name}
 
-    logger.info("Reset %d file hashes for reindex", reset_count)
 
-    from hive.watcher.watcher import scan_and_ingest
-
-    config = request.app.state.config
-    dep_registry = request.app.state.dep_registry
-
-    async def _run():
-        try:
-            count = await scan_and_ingest(config.watcher, dep_registry=dep_registry)
-            logger.info("Reindex complete: %d files re-parsed", count)
-        except Exception as e:
-            logger.error("Reindex failed: %s", e)
-
-    asyncio.create_task(_run())
-    return {"status": "started", "reset": reset_count}
+@admin_router.post("/ps/{name}/resume", dependencies=[Depends(verify_token)])
+async def ps_resume(name: str, request: Request):
+    """Resume a paused process."""
+    ps = _get_ps(request)
+    state = ps.get_state(name)
+    if state is None:
+        raise HTTPException(status_code=404, detail=f"Unknown process: {name}")
+    if state != ProcessState.paused:
+        return {"status": "not_paused", "name": name}
+    ps.resume(name)
+    return {"status": "resumed", "name": name}
 
 
 # ── Database ─────────────────────────────────────────────────────────
