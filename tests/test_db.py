@@ -9,7 +9,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from hive.admin.db import audit, dedupe, prune
-from hive.db.models import Base, Feature, IndexedFile, Primer, Sequence
+from hive.db.models import Base, IndexedFile, Part, PartInstance, PartName, Sequence
+from hive.utils import hash_sequence
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -44,15 +45,39 @@ async def _make_file_with_seq(session, path="/tmp/test.dna", file_hash="abc123",
     f = _make_file(session, path=path, file_hash=file_hash)
     await session.flush()
     seq = Sequence(
-        file_id=f.id, name=seq_name, size_bp=len(seq_text),
+        file_id=f.id, name=seq_name, length=len(seq_text),
         topology="circular", sequence=seq_text,
+        sequence_hash=hash_sequence(seq_text), molecule="DNA",
     )
     session.add(seq)
     await session.flush()
-    feat = Feature(
-        seq_id=seq.id, name="GFP", type="CDS", start=1, end=4, strand=1,
-    )
-    session.add(feat)
+
+    # Create a Part + PartInstance (replaces Feature)
+    # Use get-or-create since Part.sequence_hash is unique
+    part_hash = hash_sequence(seq_text)
+    existing = (await session.execute(
+        select(Part).where(Part.sequence_hash == part_hash)
+    )).scalar_one_or_none()
+    if existing:
+        part = existing
+    else:
+        part = Part(
+            sequence_hash=part_hash, sequence=seq_text.upper(),
+            molecule="DNA", length=len(seq_text),
+        )
+        session.add(part)
+        await session.flush()
+    existing_name = (await session.execute(
+        select(PartName).where(
+            PartName.part_id == part.id, PartName.name == "GFP", PartName.source == "file"
+        )
+    )).scalar_one_or_none()
+    if not existing_name:
+        session.add(PartName(part_id=part.id, name="GFP", source="file"))
+    session.add(PartInstance(
+        part_id=part.id, seq_id=seq.id,
+        annotation_type="CDS", start=1, end=len(seq_text), strand=1,
+    ))
     await session.commit()
     return f
 
@@ -69,7 +94,7 @@ class TestAudit:
         result = await audit(db_session, "/tmp")
         assert result["totals"]["indexed_files"]["active"] == 2
         assert result["totals"]["sequences"] == 2
-        assert result["totals"]["features"] == 2
+        assert result["totals"]["part_instances"] == 2
 
     async def test_hash_duplicates(self, db_session):
         await _make_file_with_seq(db_session, path="/tmp/a.dna", file_hash="same")
@@ -194,7 +219,7 @@ class TestPrune:
         record = json.loads(lines[0])
         assert record["name"] == "pOrphan"
         assert record["file_path"] == "/nonexistent/orphan.dna"
-        assert record["size_bp"] == 8
-        assert len(record["features"]) == 1
-        assert record["features"][0]["name"] == "GFP"
+        assert record["length"] == 8
         assert record["sequence_hash"] is not None
+        assert len(record["parts"]) == 1
+        assert record["parts"][0]["type"] == "CDS"

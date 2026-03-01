@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from hive.db.models import Base, Feature, IndexedFile, Sequence
+from hive.db.models import Base, IndexedFile, Part, PartInstance, PartName, Sequence
 from hive.watcher.ingest import extract_tags, ingest_file, remove_file
 from hive.watcher.rules import MatchResult
 
@@ -48,15 +48,32 @@ class TestIngestGenbank:
         assert seqs[0].topology == "circular"
         assert seqs[0].size_bp == 120
 
-    async def test_creates_features(self, db_session):
+    async def test_creates_parts(self, db_session):
         match = MatchResult(action="parse", parser="biopython", extract=None)
         await ingest_file(db_session, FIXTURES / "test_plasmid.gb", match)
 
-        feats = (await db_session.execute(select(Feature))).scalars().all()
-        assert len(feats) == 3
-        names = {f.name for f in feats}
-        assert "GFP_mini" in names
-        assert "T7_promoter" in names
+        # Parts should be created from features
+        parts = (await db_session.execute(select(Part))).scalars().all()
+        assert len(parts) >= 1
+
+        # PartInstances link parts to the sequence
+        pis = (await db_session.execute(select(PartInstance))).scalars().all()
+        assert len(pis) == 3  # 3 features in test_plasmid.gb
+
+        # PartNames should include feature names
+        names = (await db_session.execute(select(PartName))).scalars().all()
+        name_set = {n.name for n in names}
+        assert "GFP_mini" in name_set
+        assert "T7_promoter" in name_set
+
+    async def test_sequence_has_hash_and_molecule(self, db_session):
+        match = MatchResult(action="parse", parser="biopython", extract=None)
+        await ingest_file(db_session, FIXTURES / "test_plasmid.gb", match)
+
+        seq = (await db_session.execute(select(Sequence))).scalar_one()
+        assert seq.sequence_hash != ""
+        assert seq.molecule == "DNA"
+        assert seq.length == 120
 
     async def test_skip_unchanged(self, db_session):
         match = MatchResult(action="parse", parser="biopython", extract=None)
@@ -84,12 +101,13 @@ class TestIngestFasta:
         assert result is not None
         assert result.format == "fasta"
 
-    async def test_fasta_no_features(self, db_session):
+    async def test_fasta_no_parts(self, db_session):
         match = MatchResult(action="parse", parser="biopython", extract=None)
         await ingest_file(db_session, FIXTURES / "test_sequence.fasta", match)
 
-        feats = (await db_session.execute(select(Feature))).scalars().all()
-        assert len(feats) == 0
+        # FASTA files have no features, so no parts
+        pis = (await db_session.execute(select(PartInstance))).scalars().all()
+        assert len(pis) == 0
 
     async def test_fasta_sequence_data(self, db_session):
         match = MatchResult(action="parse", parser="biopython", extract=None)

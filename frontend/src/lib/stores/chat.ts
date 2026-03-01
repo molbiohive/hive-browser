@@ -84,7 +84,7 @@ const defaultConfig: AppConfig = {
 interface StatusBar {
 	indexed_files: number;
 	sequences: number;
-	features: number;
+	parts: number;
 	users: number;
 	tools: number;
 	db_connected: boolean;
@@ -99,7 +99,7 @@ export const toolList = writable<ToolMeta[]>([]);
 export const statusBar = writable<StatusBar>({
 	indexed_files: 0,
 	sequences: 0,
-	features: 0,
+	parts: 0,
 	users: 0,
 	tools: 0,
 	db_connected: false,

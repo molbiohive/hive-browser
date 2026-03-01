@@ -5,6 +5,7 @@
 	let { data } = $props();
 
 	const featureColumns = [
+		{ key: 'pid', label: 'PID' },
 		{ key: 'name', label: 'Name' },
 		{ key: 'type', label: 'Type' },
 		{ key: 'location', label: 'Location', format: (row) => `${row.start}..${row.end}` },
@@ -12,9 +13,9 @@
 	];
 
 	const primerColumns = [
+		{ key: 'pid', label: 'PID' },
 		{ key: 'name', label: 'Name' },
-		{ key: 'sequence', label: 'Sequence', class: 'mono' },
-		{ key: 'tm', label: 'Tm', format: (row) => row.tm ? row.tm.toFixed(1) + '\u00B0C' : '\u2014' },
+		{ key: 'length', label: 'Length', format: (row) => row.length ? `${row.length} bp` : '' },
 	];
 
 	const seqPreview = $derived.by(() => {
@@ -30,6 +31,9 @@
 	<div class="field"><strong>Name:</strong> {data.sequence.name}</div>
 	<div class="field"><strong>Size:</strong> {data.sequence.size_bp} bp</div>
 	<div class="field"><strong>Topology:</strong> {data.sequence.topology}</div>
+	{#if data.sequence.molecule}
+	<div class="field"><strong>Molecule:</strong> {data.sequence.molecule}</div>
+	{/if}
 
 	{#if data.sequence.description}
 	<div class="field"><strong>Description:</strong> {data.sequence.description}</div>

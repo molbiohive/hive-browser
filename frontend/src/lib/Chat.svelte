@@ -424,7 +424,7 @@
 							<span class="status-dot">&middot;</span>
 							<span>{$statusBar.sequences} seq</span>
 							<span class="status-dot">&middot;</span>
-							<span>{$statusBar.features} feat</span>
+							<span>{$statusBar.parts} parts</span>
 							<span class="status-dot">&middot;</span>
 							<span>{$statusBar.tools} tools</span>
 							<span class="status-dot">&middot;</span>
