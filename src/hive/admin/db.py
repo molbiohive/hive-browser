@@ -10,7 +10,15 @@ from pathlib import Path
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from hive.db.models import Feature, IndexedFile, Primer, Sequence
+from hive.db.models import (
+    Annotation,
+    IndexedFile,
+    Library,
+    Part,
+    PartInstance,
+    PartName,
+    Sequence,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -42,11 +50,14 @@ async def audit(
     sequences = (await session.execute(
         select(func.count()).select_from(Sequence)
     )).scalar()
-    features = (await session.execute(
-        select(func.count()).select_from(Feature)
+    parts = (await session.execute(
+        select(func.count()).select_from(Part)
     )).scalar()
-    primers = (await session.execute(
-        select(func.count()).select_from(Primer)
+    part_instances = (await session.execute(
+        select(func.count()).select_from(PartInstance)
+    )).scalar()
+    libraries = (await session.execute(
+        select(func.count()).select_from(Library)
     )).scalar()
 
     # --- Hash duplicates (active files with same file_hash) ---
@@ -114,8 +125,9 @@ async def audit(
                 "active": active_files, "error": error_files, "deleted": deleted_files,
             },
             "sequences": sequences,
-            "features": features,
-            "primers": primers,
+            "parts": parts,
+            "part_instances": part_instances,
+            "libraries": libraries,
         },
         "hash_duplicates": {"groups": hash_dupe_groups, "files": hash_dupe_files},
         "inode_duplicates": {"groups": inode_dupe_groups, "files": inode_dupe_files},
@@ -214,30 +226,27 @@ async def prune(
                 seqs = (await session.execute(seqs_q)).scalars().all()
 
                 for seq in seqs:
-                    feats_q = select(Feature).where(Feature.seq_id == seq.id)
-                    feats = (await session.execute(feats_q)).scalars().all()
-                    primers_q = select(Primer).where(Primer.seq_id == seq.id)
-                    primers_list = (await session.execute(primers_q)).scalars().all()
+                    pis_q = (
+                        select(PartInstance)
+                        .where(PartInstance.seq_id == seq.id)
+                    )
+                    pis = (await session.execute(pis_q)).scalars().all()
 
                     record = {
                         "file_path": f.file_path,
                         "file_hash": f.file_hash,
                         "format": f.format,
                         "name": seq.name,
-                        "size_bp": seq.size_bp,
-                        "sequence_hash": _sequence_hash(seq.sequence) if seq.sequence else None,
+                        "length": seq.length,
+                        "sequence_hash": seq.sequence_hash or _sequence_hash(seq.sequence) if seq.sequence else None,
                         "topology": seq.topology,
+                        "molecule": seq.molecule,
                         "description": seq.description,
                         "meta": seq.meta,
-                        "features": [
-                            {"name": ft.name, "type": ft.type, "start": ft.start,
-                             "end": ft.end, "strand": ft.strand}
-                            for ft in feats
-                        ],
-                        "primers": [
-                            {"name": p.name, "sequence": p.sequence, "tm": p.tm,
-                             "start": p.start, "end": p.end, "strand": p.strand}
-                            for p in primers_list
+                        "parts": [
+                            {"part_id": pi.part_id, "type": pi.annotation_type,
+                             "start": pi.start, "end": pi.end, "strand": pi.strand}
+                            for pi in pis
                         ],
                     }
                     fh.write(json.dumps(record) + "\n")

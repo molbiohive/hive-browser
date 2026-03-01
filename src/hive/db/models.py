@@ -15,6 +15,7 @@ from sqlalchemy import (
     Integer,
     SmallInteger,
     Text,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -61,9 +62,11 @@ class Sequence(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     file_id: Mapped[int] = mapped_column(ForeignKey("indexed_files.id", ondelete="CASCADE"))
     name: Mapped[str] = mapped_column(Text)
-    size_bp: Mapped[int] = mapped_column(Integer)
+    length: Mapped[int] = mapped_column(Integer)
     topology: Mapped[str] = mapped_column(Text)  # 'circular' | 'linear'
     sequence: Mapped[str] = mapped_column(Text)
+    sequence_hash: Mapped[str] = mapped_column(Text, default="")
+    molecule: Mapped[str] = mapped_column(Text, default="DNA")  # DNA | RNA | AA
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     meta: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -74,50 +77,137 @@ class Sequence(Base):
     )
 
     file: Mapped[IndexedFile] = relationship(back_populates="sequences")
-    features: Mapped[list["Feature"]] = relationship(back_populates="sequence", cascade="all")
-    primers: Mapped[list["Primer"]] = relationship(back_populates="sequence_ref", cascade="all")
+    part_instances: Mapped[list["PartInstance"]] = relationship(
+        back_populates="sequence", cascade="all, delete-orphan"
+    )
+
+    @property
+    def size_bp(self) -> int:
+        return self.length
 
     __table_args__ = (
         Index("idx_seq_name_trgm", "name", postgresql_using="gin",
               postgresql_ops={"name": "gin_trgm_ops"}),
         Index("idx_seq_meta", "meta", postgresql_using="gin"),
+        Index("idx_seq_hash", "sequence_hash"),
     )
 
 
-class Feature(Base):
-    __tablename__ = "features"
+# ── Part system ──────────────────────────────────────────────────
+
+
+class Part(Base):
+    __tablename__ = "parts"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    seq_id: Mapped[int] = mapped_column(ForeignKey("sequences.id", ondelete="CASCADE"))
-    name: Mapped[str] = mapped_column(Text)
-    type: Mapped[str] = mapped_column(Text)  # SO term: CDS, promoter, terminator...
-    start: Mapped[int] = mapped_column(Integer)
-    end: Mapped[int] = mapped_column(Integer)
-    strand: Mapped[int] = mapped_column(SmallInteger)  # +1 or -1
-    qualifiers: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    sequence_hash: Mapped[str] = mapped_column(Text, unique=True, index=True)
+    sequence: Mapped[str] = mapped_column(Text)
+    molecule: Mapped[str] = mapped_column(Text)  # DNA | RNA | AA
+    length: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
 
-    sequence: Mapped[Sequence] = relationship(back_populates="features")
+    names: Mapped[list["PartName"]] = relationship(back_populates="part", cascade="all, delete-orphan")
+    instances: Mapped[list["PartInstance"]] = relationship(back_populates="part", cascade="all, delete-orphan")
+    annotations: Mapped[list["Annotation"]] = relationship(back_populates="part", cascade="all, delete-orphan")
+    library_members: Mapped[list["LibraryMember"]] = relationship(back_populates="part", cascade="all, delete-orphan")
+
+
+class PartName(Base):
+    __tablename__ = "part_names"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    part_id: Mapped[int] = mapped_column(ForeignKey("parts.id", ondelete="CASCADE"))
+    name: Mapped[str] = mapped_column(Text)
+    source: Mapped[str] = mapped_column(Text)  # "file" | "manual" | "external"
+    source_detail: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    part: Mapped[Part] = relationship(back_populates="names")
 
     __table_args__ = (
-        Index("idx_feat_name_trgm", "name", postgresql_using="gin",
+        UniqueConstraint("part_id", "name", "source", name="uq_part_name_source"),
+        Index("idx_partname_trgm", "name", postgresql_using="gin",
               postgresql_ops={"name": "gin_trgm_ops"}),
-        Index("idx_feat_type", "type"),
     )
 
 
-class Primer(Base):
-    __tablename__ = "primers"
+class PartInstance(Base):
+    __tablename__ = "part_instances"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    part_id: Mapped[int] = mapped_column(ForeignKey("parts.id", ondelete="CASCADE"))
     seq_id: Mapped[int] = mapped_column(ForeignKey("sequences.id", ondelete="CASCADE"))
-    name: Mapped[str] = mapped_column(Text)
-    sequence: Mapped[str] = mapped_column(Text)
-    tm: Mapped[float | None] = mapped_column(nullable=True)
+    annotation_type: Mapped[str] = mapped_column(Text)  # "CDS", "promoter", "primer_bind", etc.
     start: Mapped[int | None] = mapped_column(Integer, nullable=True)
     end: Mapped[int | None] = mapped_column(Integer, nullable=True)
     strand: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    qualifiers: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
-    sequence_ref: Mapped[Sequence] = relationship(back_populates="primers")
+    part: Mapped[Part] = relationship(back_populates="instances")
+    sequence: Mapped[Sequence] = relationship(back_populates="part_instances")
+
+    __table_args__ = (
+        Index("idx_pi_seq_start", "seq_id", "start"),
+        Index("idx_pi_part", "part_id"),
+    )
+
+
+# ── Libraries ────────────────────────────────────────────────────
+
+
+class Library(Base):
+    __tablename__ = "libraries"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(Text, unique=True)
+    source: Mapped[str] = mapped_column(Text)  # "native" | "manual"
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    members: Mapped[list["LibraryMember"]] = relationship(back_populates="library", cascade="all, delete-orphan")
+
+
+class LibraryMember(Base):
+    __tablename__ = "library_members"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    library_id: Mapped[int] = mapped_column(ForeignKey("libraries.id", ondelete="CASCADE"))
+    part_id: Mapped[int] = mapped_column(ForeignKey("parts.id", ondelete="CASCADE"))
+
+    library: Mapped[Library] = relationship(back_populates="members")
+    part: Mapped[Part] = relationship(back_populates="library_members")
+
+    __table_args__ = (
+        UniqueConstraint("library_id", "part_id", name="uq_library_part"),
+    )
+
+
+# ── Annotations ──────────────────────────────────────────────────
+
+
+class Annotation(Base):
+    __tablename__ = "annotations"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    part_id: Mapped[int] = mapped_column(ForeignKey("parts.id", ondelete="CASCADE"))
+    key: Mapped[str] = mapped_column(Text)
+    value: Mapped[str] = mapped_column(Text)
+    source: Mapped[str] = mapped_column(Text)  # "native" | "manual" | "external"
+
+    part: Mapped[Part] = relationship(back_populates="annotations")
+
+    __table_args__ = (
+        Index("idx_annotation_part_key", "part_id", "key"),
+    )
+
+
+# ── Feedback & Tool Approvals ────────────────────────────────────
 
 
 class Feedback(Base):
