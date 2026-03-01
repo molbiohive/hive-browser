@@ -18,6 +18,9 @@ depends_on = None
 
 
 def upgrade():
+    # Enable pgcrypto for SHA256 hashing in migration
+    op.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto")
+
     # Drop old tables
     op.drop_table("primers")
     op.drop_table("features")
@@ -34,7 +37,12 @@ def upgrade():
             meta::jsonb->>'molecule_type', 'DNA'
         ) WHERE molecule IS NULL
     """)
-    # sequence_hash will be populated by re-ingest
+    # Compute sequence_hash from existing sequence data (SHA256 of uppercased text)
+    op.execute("""
+        UPDATE sequences SET sequence_hash = encode(
+            digest(upper(COALESCE(sequence, '')), 'sha256'), 'hex'
+        ) WHERE sequence_hash IS NULL
+    """)
 
     # Drop old size_bp column
     op.drop_column("sequences", "size_bp")
