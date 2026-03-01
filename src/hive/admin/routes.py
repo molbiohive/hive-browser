@@ -10,7 +10,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import func, select, text
 
 from hive.db import session as db
-from hive.db.models import Feature, IndexedFile, Primer, Sequence
+from hive.db.models import IndexedFile, Part, PartInstance, Sequence
 from hive.ps import ProcessState
 
 logger = logging.getLogger(__name__)
@@ -66,7 +66,7 @@ async def admin_health(request: Request):
 @admin_router.get("/status", dependencies=[Depends(verify_token)])
 async def admin_status(request: Request):
     """Full system status — counts, watcher, config summary."""
-    counts = {"indexed_files": 0, "sequences": 0, "features": 0, "primers": 0}
+    counts = {"indexed_files": 0, "sequences": 0, "parts": 0, "part_instances": 0}
 
     if db.async_session_factory:
         try:
@@ -78,11 +78,11 @@ async def admin_status(request: Request):
                 counts["sequences"] = (await s.execute(
                     select(func.count()).select_from(Sequence)
                 )).scalar()
-                counts["features"] = (await s.execute(
-                    select(func.count()).select_from(Feature)
+                counts["parts"] = (await s.execute(
+                    select(func.count()).select_from(Part)
                 )).scalar()
-                counts["primers"] = (await s.execute(
-                    select(func.count()).select_from(Primer)
+                counts["part_instances"] = (await s.execute(
+                    select(func.count()).select_from(PartInstance)
                 )).scalar()
         except Exception as e:
             logger.warning("Status query failed: %s", e)
@@ -250,6 +250,112 @@ async def db_prune(request: Request, body: dict | None = None):
             s, watcher_root, archive_dir=archive_dir,
             dry_run=dry_run, no_archive=no_archive,
         )
+
+
+# ── Libraries ────────────────────────────────────────────────────────
+
+
+@admin_router.get("/libraries", dependencies=[Depends(verify_token)])
+async def list_libraries():
+    """List all libraries with member counts."""
+    if not db.async_session_factory:
+        return {"libraries": []}
+
+    from hive.db.models import Library, LibraryMember
+
+    async with db.async_session_factory() as s:
+        libs = (await s.execute(
+            select(
+                Library.id, Library.name, Library.source,
+                Library.description, Library.created_at,
+                func.count(LibraryMember.id).label("member_count"),
+            )
+            .outerjoin(LibraryMember, Library.id == LibraryMember.library_id)
+            .group_by(Library.id)
+            .order_by(Library.name)
+        )).all()
+
+    return {
+        "libraries": [
+            {
+                "id": lib.id,
+                "name": lib.name,
+                "source": lib.source,
+                "description": lib.description,
+                "member_count": lib.member_count,
+                "created_at": lib.created_at.isoformat() if lib.created_at else None,
+            }
+            for lib in libs
+        ]
+    }
+
+
+@admin_router.post("/libraries", dependencies=[Depends(verify_token)])
+async def create_library(body: dict):
+    """Create a manual library."""
+    if not db.async_session_factory:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    from hive.db.models import Library
+
+    name = body.get("name", "").strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="Library name required")
+
+    async with db.async_session_factory() as s:
+        existing = (await s.execute(
+            select(Library).where(Library.name == name)
+        )).scalar_one_or_none()
+        if existing:
+            raise HTTPException(status_code=409, detail=f"Library already exists: {name}")
+
+        lib = Library(
+            name=name,
+            source="manual",
+            description=body.get("description"),
+        )
+        s.add(lib)
+        await s.commit()
+        return {"id": lib.id, "name": lib.name}
+
+
+@admin_router.post("/libraries/{lib_id}/add", dependencies=[Depends(verify_token)])
+async def add_to_library(lib_id: int, body: dict):
+    """Add a part to a library by PID."""
+    if not db.async_session_factory:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    from hive.db.models import Library, LibraryMember
+
+    pid = body.get("pid")
+    if pid is None:
+        raise HTTPException(status_code=422, detail="pid required")
+
+    async with db.async_session_factory() as s:
+        lib = (await s.execute(
+            select(Library).where(Library.id == lib_id)
+        )).scalar_one_or_none()
+        if not lib:
+            raise HTTPException(status_code=404, detail="Library not found")
+
+        part = (await s.execute(
+            select(Part).where(Part.id == pid)
+        )).scalar_one_or_none()
+        if not part:
+            raise HTTPException(status_code=404, detail=f"Part not found: PID {pid}")
+
+        existing = (await s.execute(
+            select(LibraryMember).where(
+                LibraryMember.library_id == lib_id,
+                LibraryMember.part_id == pid,
+            )
+        )).scalar_one_or_none()
+        if existing:
+            return {"status": "already_member"}
+
+        s.add(LibraryMember(library_id=lib_id, part_id=pid))
+        await s.commit()
+        return {"status": "added", "library": lib.name, "pid": pid}
 
 
 # ── Helpers ──────────────────────────────────────────────────────────

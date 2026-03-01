@@ -11,7 +11,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy import func, select
 
 from hive.db import session as db
-from hive.db.models import Feature, IndexedFile, Sequence, User
+from hive.db.models import IndexedFile, Part, Sequence, User
 from hive.tools.router import route_input
 from hive.users.service import create_feedback, get_user_by_token, update_preferences
 
@@ -506,7 +506,7 @@ def _widget_type(tool_name: str, registry=None) -> str:
 async def _quick_status(llm_client=None, tool_count: int = 0) -> dict:
     """Lightweight status for the status bar (no full tool execution)."""
     status = {
-        "indexed_files": 0, "sequences": 0, "features": 0, "users": 0,
+        "indexed_files": 0, "sequences": 0, "parts": 0, "users": 0,
         "tools": tool_count,
         "db_connected": False, "llm_available": False, "last_updated": None,
     }
@@ -521,8 +521,8 @@ async def _quick_status(llm_client=None, tool_count: int = 0) -> dict:
                 status["sequences"] = (await s.execute(
                     select(func.count()).select_from(Sequence)
                 )).scalar()
-                status["features"] = (await s.execute(
-                    select(func.count()).select_from(Feature)
+                status["parts"] = (await s.execute(
+                    select(func.count()).select_from(Part)
                 )).scalar()
                 status["users"] = (await s.execute(
                     select(func.count()).select_from(User)

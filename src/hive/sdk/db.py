@@ -13,7 +13,13 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from hive.db import session as db
-from hive.db.models import Feature, IndexedFile, Primer, Sequence
+from hive.db.models import (
+    IndexedFile,
+    Part,
+    PartInstance,
+    PartName,
+    Sequence,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +53,7 @@ class ToolDB:
         async with db.async_session_factory() as session:
             stmt = (
                 select(
-                    Sequence.id, Sequence.name, Sequence.size_bp,
+                    Sequence.id, Sequence.name, Sequence.length,
                     Sequence.topology, Sequence.description,
                     IndexedFile.file_path,
                 )
@@ -66,16 +72,16 @@ class ToolDB:
             if topology:
                 stmt = stmt.where(Sequence.topology == topology)
             if size_min is not None:
-                stmt = stmt.where(Sequence.size_bp >= size_min)
+                stmt = stmt.where(Sequence.length >= size_min)
             if size_max is not None:
-                stmt = stmt.where(Sequence.size_bp <= size_max)
+                stmt = stmt.where(Sequence.length <= size_max)
 
             stmt = stmt.limit(limit)
             rows = (await session.execute(stmt)).all()
 
             return [
                 {
-                    "id": r.id, "name": r.name, "size_bp": r.size_bp,
+                    "id": r.id, "name": r.name, "size_bp": r.length,
                     "topology": r.topology, "description": r.description,
                     "file_path": r.file_path, "score": round(float(r.score), 3),
                 }
@@ -89,8 +95,8 @@ class ToolDB:
     ) -> dict[str, Any] | None:
         """Get one sequence with full details.
 
-        Returns: {id, name, size_bp, topology, description, sequence, meta,
-                  features: [...], primers: [...], file: {...}} or None.
+        Returns: {id, name, size_bp, topology, description, sequence, meta, molecule,
+                  parts: [...], file: {...}} or None.
         """
         if not self._check_db():
             return None
@@ -102,8 +108,9 @@ class ToolDB:
                 select(Sequence)
                 .join(IndexedFile, Sequence.file_id == IndexedFile.id)
                 .options(
-                    selectinload(Sequence.features),
-                    selectinload(Sequence.primers),
+                    selectinload(Sequence.part_instances)
+                    .selectinload(PartInstance.part)
+                    .selectinload(Part.names),
                     selectinload(Sequence.file),
                 )
                 .where(IndexedFile.status == "active")
@@ -117,25 +124,31 @@ class ToolDB:
             if not seq:
                 return None
 
+            parts = []
+            for pi in seq.part_instances:
+                parts.append({
+                    "pid": pi.part.id,
+                    "name": pi.part.names[0].name if pi.part.names else "",
+                    "annotation_type": pi.annotation_type,
+                    "start": pi.start,
+                    "end": pi.end,
+                    "strand": pi.strand,
+                    "qualifiers": pi.qualifiers,
+                    "length": pi.part.length,
+                    "molecule": pi.part.molecule,
+                })
+
             return {
                 "id": seq.id,
                 "name": seq.name,
-                "size_bp": seq.size_bp,
+                "size_bp": seq.length,
                 "topology": seq.topology,
                 "description": seq.description,
                 "sequence": seq.sequence,
+                "molecule": seq.molecule,
                 "meta": seq.meta,
-                "features": [
-                    {"id": f.id, "name": f.name, "type": f.type,
-                     "start": f.start, "end": f.end, "strand": f.strand,
-                     "qualifiers": f.qualifiers}
-                    for f in seq.features
-                ],
-                "primers": [
-                    {"id": p.id, "name": p.name, "sequence": p.sequence,
-                     "tm": p.tm, "start": p.start, "end": p.end, "strand": p.strand}
-                    for p in seq.primers
-                ],
+                "features": [p for p in parts if p["annotation_type"] != "primer_bind"],
+                "primers": [p for p in parts if p["annotation_type"] == "primer_bind"],
                 "file": {
                     "path": seq.file.file_path,
                     "format": seq.file.format,
@@ -144,85 +157,54 @@ class ToolDB:
                 },
             }
 
-    # --- Features ---
+    # --- Parts ---
 
-    async def find_features(
+    async def find_parts(
         self,
         seq_id: int | None = None,
         name: str | None = None,
-        type: str | None = None,
+        annotation_type: str | None = None,
         limit: int = 100,
     ) -> list[dict[str, Any]]:
-        """Query features.
+        """Query part instances on sequences.
 
-        Returns: [{id, name, type, start, end, strand, qualifiers, seq_name}]
+        Returns: [{pid, name, annotation_type, start, end, strand, seq_name}]
         """
         if not self._check_db():
             return []
 
         async with db.async_session_factory() as session:
             stmt = (
-                select(Feature, Sequence.name.label("seq_name"))
-                .join(Sequence, Feature.seq_id == Sequence.id)
+                select(PartInstance, Sequence.name.label("seq_name"))
+                .join(Part, PartInstance.part_id == Part.id)
+                .join(Sequence, PartInstance.seq_id == Sequence.id)
                 .join(IndexedFile, Sequence.file_id == IndexedFile.id)
+                .options(selectinload(PartInstance.part).selectinload(Part.names))
                 .where(IndexedFile.status == "active")
             )
             if seq_id is not None:
-                stmt = stmt.where(Feature.seq_id == seq_id)
+                stmt = stmt.where(PartInstance.seq_id == seq_id)
             if name:
-                stmt = stmt.where(Feature.name.ilike(f"%{name}%"))
-            if type:
-                stmt = stmt.where(Feature.type == type)
+                stmt = stmt.where(
+                    PartInstance.part_id.in_(
+                        select(PartName.part_id).where(PartName.name.ilike(f"%{name}%"))
+                    )
+                )
+            if annotation_type:
+                stmt = stmt.where(PartInstance.annotation_type == annotation_type)
 
             stmt = stmt.limit(limit)
             rows = (await session.execute(stmt)).all()
 
             return [
                 {
-                    "id": f.id, "name": f.name, "type": f.type,
-                    "start": f.start, "end": f.end, "strand": f.strand,
-                    "qualifiers": f.qualifiers, "seq_name": seq_name,
+                    "pid": pi.part.id,
+                    "name": pi.part.names[0].name if pi.part.names else "",
+                    "annotation_type": pi.annotation_type,
+                    "start": pi.start, "end": pi.end, "strand": pi.strand,
+                    "qualifiers": pi.qualifiers, "seq_name": seq_name,
                 }
-                for f, seq_name in rows
-            ]
-
-    # --- Primers ---
-
-    async def find_primers(
-        self,
-        seq_id: int | None = None,
-        name: str | None = None,
-        limit: int = 100,
-    ) -> list[dict[str, Any]]:
-        """Query primers.
-
-        Returns: [{id, name, sequence, tm, start, end, strand, seq_name}]
-        """
-        if not self._check_db():
-            return []
-
-        async with db.async_session_factory() as session:
-            stmt = (
-                select(Primer, Sequence.name.label("seq_name"))
-                .join(Sequence, Primer.seq_id == Sequence.id)
-                .join(IndexedFile, Sequence.file_id == IndexedFile.id)
-                .where(IndexedFile.status == "active")
-            )
-            if seq_id is not None:
-                stmt = stmt.where(Primer.seq_id == seq_id)
-            if name:
-                stmt = stmt.where(Primer.name.ilike(f"%{name}%"))
-
-            stmt = stmt.limit(limit)
-            rows = (await session.execute(stmt)).all()
-
-            return [
-                {
-                    "id": p.id, "name": p.name, "sequence": p.sequence,
-                    "tm": p.tm, "start": p.start, "end": p.end,
-                    "strand": p.strand, "seq_name": seq_name,
-                }
-                for p, seq_name in rows
+                for pi, seq_name in rows
             ]
 
     # --- Files ---
@@ -266,15 +248,15 @@ class ToolDB:
         """Count rows in a table.
 
         Args:
-            table: 'sequences' | 'features' | 'primers' | 'files'
+            table: 'sequences' | 'parts' | 'part_instances' | 'files'
         """
         if not self._check_db():
             return 0
 
         model_map = {
             "sequences": Sequence,
-            "features": Feature,
-            "primers": Primer,
+            "parts": Part,
+            "part_instances": PartInstance,
             "files": IndexedFile,
         }
         model = model_map.get(table)

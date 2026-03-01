@@ -79,11 +79,13 @@ def _pp(data):
 
 def _db_url():
     from hive.config import load_config
+
     return load_config().database.url
 
 
 async def _run_db(coro_fn):
     from hive.db import session as db
+
     await db.init_db(type("C", (), {"url": _db_url()})())
     async with db.async_session_factory() as s:
         await coro_fn(s)
@@ -146,7 +148,6 @@ def cmd_ps_resume(args):
 # ── db ────────────────────────────────────────────────────────────────
 
 
-
 def cmd_db_errors(args):
     data = _get(args, "/admin/db/errors")
     errors = data.get("errors", [])
@@ -165,8 +166,9 @@ def cmd_db_audit(args):
     print("Database audit:")
     print(f"  Files:      {fi['active']} active, {fi['error']} errors, {fi['deleted']} deleted")
     print(f"  Sequences:  {t['sequences']}")
-    print(f"  Features:   {t['features']}")
-    print(f"  Primers:    {t['primers']}")
+    print(f"  Parts:      {t['parts']}")
+    print(f"  Instances:  {t['part_instances']}")
+    print(f"  Libraries:  {t['libraries']}")
     hd = data["hash_duplicates"]
     print(f"  Hash dupes: {hd['groups']} groups ({hd['files']} files)")
     nd = data["inode_duplicates"]
@@ -194,9 +196,14 @@ def cmd_db_dedupe(args):
 
 
 def cmd_db_prune(args):
-    data = _post_json(args, "/admin/db/prune", {
-        "dry_run": args.dry_run, "no_archive": args.no_archive,
-    })
+    data = _post_json(
+        args,
+        "/admin/db/prune",
+        {
+            "dry_run": args.dry_run,
+            "no_archive": args.no_archive,
+        },
+    )
     prefix = "Would prune" if data.get("dry_run") else "Pruned"
     print(f"{prefix} {data['pruned']} orphan file(s)")
     for d in data.get("details", []):
@@ -209,18 +216,21 @@ def cmd_db_prune(args):
 def cmd_users_list(args):
     async def _list(s):
         from hive.users.service import list_users
+
         users = await list_users(s)
         if not users:
             print("No users.")
             return
         for u in users:
             print(f"  {u.id:3d}  {u.slug:<20s}  {u.username}")
+
     asyncio.run(_run_db(_list))
 
 
 def cmd_users_add(args):
     async def _add(s):
         from hive.users.service import create_user
+
         try:
             user = await create_user(s, args.username)
             await s.commit()
@@ -229,6 +239,7 @@ def cmd_users_add(args):
         except ValueError as e:
             print(f"Error: {e}", file=sys.stderr)
             sys.exit(1)
+
     asyncio.run(_run_db(_add))
 
 
@@ -236,6 +247,7 @@ def cmd_users_rm(args):
     async def _rm(s):
         from sqlalchemy import delete
         from hive.db.models import User
+
         result = await s.execute(delete(User).where(User.slug == args.slug))
         await s.commit()
         if result.rowcount:
@@ -243,12 +255,14 @@ def cmd_users_rm(args):
         else:
             print(f"User not found: {args.slug}", file=sys.stderr)
             sys.exit(1)
+
     asyncio.run(_run_db(_rm))
 
 
 def cmd_users_edit(args):
     async def _edit(s):
         from hive.users.service import get_user_by_slug, make_slug
+
         user = await get_user_by_slug(s, args.slug)
         if not user:
             print(f"User not found: {args.slug}", file=sys.stderr)
@@ -258,6 +272,7 @@ def cmd_users_edit(args):
         user.slug = make_slug(args.new_name)
         await s.commit()
         print(f"Renamed: {old_name} -> {user.username} (slug: {user.slug})")
+
     asyncio.run(_run_db(_edit))
 
 
@@ -267,6 +282,7 @@ def cmd_users_edit(args):
 def cmd_feedback_stats(args):
     async def _stats(s):
         from hive.users.service import feedback_stats
+
         st = await feedback_stats(s)
         total = st["total"]
         if not total:
@@ -281,18 +297,21 @@ def cmd_feedback_stats(args):
         print(f"  Bad:   {bad} ({bad_pct}%)")
         if st["last_at"]:
             print(f"  Last:  {st['last_at']} by {st['last_by']}")
+
     asyncio.run(_run_db(_stats))
 
 
 def cmd_feedback_report(args):
     async def _report(s):
         from hive.users.service import feedback_stats, list_feedback
+
         items = await list_feedback(s)
         if not items:
             print("No feedback to report.")
             return
         st = await feedback_stats(s)
         from datetime import UTC, datetime
+
         lines = [
             "# Hive Browser Feedback Report",
             "",
@@ -310,14 +329,66 @@ def cmd_feedback_report(args):
             date = fb.created_at.strftime("%Y-%m-%d %H:%M") if fb.created_at else ""
             username = fb.user.username if fb.user else "unknown"
             comment = fb.comment.replace("|", "\\|").replace("\n", " ")
-            lines.append(
-                f"| {i} | {date} | {username} | {fb.rating} | {fb.priority} | {comment} |"
-            )
+            lines.append(f"| {i} | {date} | {username} | {fb.rating} | {fb.priority} | {comment} |")
         out = args.output
         with open(out, "w") as f:
             f.write("\n".join(lines) + "\n")
         print(f"Report written to {out} ({len(items)} entries)")
+
     asyncio.run(_run_db(_report))
+
+
+# ── library ───────────────────────────────────────────────────────────
+
+
+def cmd_library_list(args):
+    data = _get(args, "/admin/libraries")
+    libs = data.get("libraries", [])
+    if not libs:
+        print("No libraries.")
+        return
+    for lib in libs:
+        src = lib["source"]
+        desc = lib.get("description") or ""
+        print(
+            f"  {lib['id']:3d}  {lib['name']:<20s}  {src:<8s}  {lib['member_count']:4d} parts  {desc}"
+        )
+
+
+def cmd_library_create(args):
+    data = _post_json(
+        args,
+        "/admin/libraries",
+        {
+            "name": args.name,
+            "description": args.description,
+        },
+    )
+    print(f"Created library: {data['name']} (id: {data['id']})")
+
+
+def cmd_library_add(args):
+    # Resolve library id by name
+    libs = _get(args, "/admin/libraries").get("libraries", [])
+    lib = next((l for l in libs if l["name"] == args.library_name), None)
+    if not lib:
+        print(f"Library not found: {args.library_name}", file=sys.stderr)
+        sys.exit(1)
+    data = _post_json(args, f"/admin/libraries/{lib['id']}/add", {"pid": args.pid})
+    print(f"{data.get('status', 'done')}: PID {args.pid} -> {args.library_name}")
+
+
+def cmd_library_show(args):
+    libs = _get(args, "/admin/libraries").get("libraries", [])
+    lib = next((l for l in libs if l["name"] == args.library_name), None)
+    if not lib:
+        print(f"Library not found: {args.library_name}", file=sys.stderr)
+        sys.exit(1)
+    print(f"Library: {lib['name']}")
+    print(f"  Source: {lib['source']}")
+    print(f"  Parts:  {lib['member_count']}")
+    if lib.get("description"):
+        print(f"  Desc:   {lib['description']}")
 
 
 # ── tools ─────────────────────────────────────────────────────────────
@@ -327,9 +398,10 @@ def cmd_tools_list(args):
     async def _list(s):
         from sqlalchemy import select as sel
         from hive.db.models import ToolApproval
-        rows = (await s.execute(
-            sel(ToolApproval).order_by(ToolApproval.created_at)
-        )).scalars().all()
+
+        rows = (
+            (await s.execute(sel(ToolApproval).order_by(ToolApproval.created_at))).scalars().all()
+        )
         if not rows:
             print("No external tools registered.")
             return
@@ -338,6 +410,7 @@ def cmd_tools_list(args):
             short_hash = t.file_hash[:8]
             date = t.created_at.strftime("%Y-%m-%d") if t.created_at else ""
             print(f"  {t.status:<13s} {t.filename:<30s} {name:<20s} {short_hash}  {date}")
+
     asyncio.run(_run_db(_list))
 
 
@@ -345,9 +418,10 @@ def cmd_tools_approve(args):
     async def _approve(s):
         from sqlalchemy import select as sel
         from hive.db.models import ToolApproval
-        record = (await s.execute(
-            sel(ToolApproval).where(ToolApproval.filename == args.filename)
-        )).scalar_one_or_none()
+
+        record = (
+            await s.execute(sel(ToolApproval).where(ToolApproval.filename == args.filename))
+        ).scalar_one_or_none()
         if not record:
             print(f"Tool not found: {args.filename}", file=sys.stderr)
             sys.exit(1)
@@ -355,11 +429,13 @@ def cmd_tools_approve(args):
             print(f"Already approved: {args.filename}")
             return
         from datetime import UTC, datetime
+
         record.status = "approved"
         record.reviewed_at = datetime.now(UTC)
         await s.commit()
         print(f"Approved: {args.filename}")
         print("Restart the server to load this tool.")
+
     asyncio.run(_run_db(_approve))
 
 
@@ -367,22 +443,26 @@ def cmd_tools_reject(args):
     async def _reject(s):
         from sqlalchemy import select as sel
         from hive.db.models import ToolApproval
-        record = (await s.execute(
-            sel(ToolApproval).where(ToolApproval.filename == args.filename)
-        )).scalar_one_or_none()
+
+        record = (
+            await s.execute(sel(ToolApproval).where(ToolApproval.filename == args.filename))
+        ).scalar_one_or_none()
         if not record:
             print(f"Tool not found: {args.filename}", file=sys.stderr)
             sys.exit(1)
         from datetime import UTC, datetime
+
         record.status = "rejected"
         record.reviewed_at = datetime.now(UTC)
         await s.commit()
         print(f"Rejected: {args.filename}")
+
     asyncio.run(_run_db(_reject))
 
 
 def cmd_tools_show(args):
     from hive.config import load_config
+
     tools_dir = Path(load_config().tools_dir)
     tool_file = tools_dir / args.filename
     if not tool_file.is_file():
@@ -425,73 +505,207 @@ def main():
         p.set_defaults(func=fn)
 
     # admin ps <list|start|stop|pause|resume>
-    _add_group(sub, "ps", "Background process management", [
-        ("list", "List all processes", cmd_ps_list, []),
-        ("start", "Start a process", cmd_ps_start, [
-            (["name"], {"help": "Process name (scan, watcher, rescan, reindex)"}),
-        ]),
-        ("stop", "Stop a process", cmd_ps_stop, [
-            (["name"], {"help": "Process name"}),
-        ]),
-        ("pause", "Pause a process", cmd_ps_pause, [
-            (["name"], {"help": "Process name"}),
-        ]),
-        ("resume", "Resume a paused process", cmd_ps_resume, [
-            (["name"], {"help": "Process name"}),
-        ]),
-    ])
+    _add_group(
+        sub,
+        "ps",
+        "Background process management",
+        [
+            ("list", "List all processes", cmd_ps_list, []),
+            (
+                "start",
+                "Start a process",
+                cmd_ps_start,
+                [
+                    (["name"], {"help": "Process name (scan, watcher, rescan, reindex)"}),
+                ],
+            ),
+            (
+                "stop",
+                "Stop a process",
+                cmd_ps_stop,
+                [
+                    (["name"], {"help": "Process name"}),
+                ],
+            ),
+            (
+                "pause",
+                "Pause a process",
+                cmd_ps_pause,
+                [
+                    (["name"], {"help": "Process name"}),
+                ],
+            ),
+            (
+                "resume",
+                "Resume a paused process",
+                cmd_ps_resume,
+                [
+                    (["name"], {"help": "Process name"}),
+                ],
+            ),
+        ],
+    )
 
     # admin db <errors|audit|dedupe|prune>
-    _add_group(sub, "db", "Database inspection and cleanup", [
-        ("errors", "List parse errors", cmd_db_errors, []),
-        ("audit", "Audit database integrity", cmd_db_audit, [
-            (["-v", "--verbose"], {"action": "store_true", "help": "Show individual items"}),
-        ]),
-        ("dedupe", "Remove duplicate file records", cmd_db_dedupe, [
-            (["--dry-run"], {"action": "store_true", "help": "Preview only, don't delete"}),
-        ]),
-        ("prune", "Remove records for missing files", cmd_db_prune, [
-            (["--dry-run"], {"action": "store_true", "help": "Preview only, don't delete"}),
-            (["--no-archive"], {"action": "store_true", "help": "Skip JSONL archiving"}),
-        ]),
-    ])
+    _add_group(
+        sub,
+        "db",
+        "Database inspection and cleanup",
+        [
+            ("errors", "List parse errors", cmd_db_errors, []),
+            (
+                "audit",
+                "Audit database integrity",
+                cmd_db_audit,
+                [
+                    (
+                        ["-v", "--verbose"],
+                        {"action": "store_true", "help": "Show individual items"},
+                    ),
+                ],
+            ),
+            (
+                "dedupe",
+                "Remove duplicate file records",
+                cmd_db_dedupe,
+                [
+                    (["--dry-run"], {"action": "store_true", "help": "Preview only, don't delete"}),
+                ],
+            ),
+            (
+                "prune",
+                "Remove records for missing files",
+                cmd_db_prune,
+                [
+                    (["--dry-run"], {"action": "store_true", "help": "Preview only, don't delete"}),
+                    (["--no-archive"], {"action": "store_true", "help": "Skip JSONL archiving"}),
+                ],
+            ),
+        ],
+    )
 
     # admin users <list|add|rm|edit>
-    _add_group(sub, "user", "User management", [
-        ("list", "List all users", cmd_users_list, []),
-        ("add", "Create a new user", cmd_users_add, [
-            (["username"], {"help": "Display name"}),
-        ]),
-        ("rm", "Remove a user by slug", cmd_users_rm, [
-            (["slug"], {"help": "User slug to remove"}),
-        ]),
-        ("edit", "Rename a user", cmd_users_edit, [
-            (["slug"], {"help": "Current user slug"}),
-            (["new_name"], {"help": "New display name"}),
-        ]),
-    ])
+    _add_group(
+        sub,
+        "user",
+        "User management",
+        [
+            ("list", "List all users", cmd_users_list, []),
+            (
+                "add",
+                "Create a new user",
+                cmd_users_add,
+                [
+                    (["username"], {"help": "Display name"}),
+                ],
+            ),
+            (
+                "rm",
+                "Remove a user by slug",
+                cmd_users_rm,
+                [
+                    (["slug"], {"help": "User slug to remove"}),
+                ],
+            ),
+            (
+                "edit",
+                "Rename a user",
+                cmd_users_edit,
+                [
+                    (["slug"], {"help": "Current user slug"}),
+                    (["new_name"], {"help": "New display name"}),
+                ],
+            ),
+        ],
+    )
 
     # admin feedback <stats|report>
-    _add_group(sub, "feedback", "User feedback", [
-        ("stats", "Show feedback summary", cmd_feedback_stats, []),
-        ("report", "Generate feedback report (.md)", cmd_feedback_report, [
-            (["-o", "--output"], {"default": "feedback_report.md", "help": "Output file"}),
-        ]),
-    ])
+    _add_group(
+        sub,
+        "feedback",
+        "User feedback",
+        [
+            ("stats", "Show feedback summary", cmd_feedback_stats, []),
+            (
+                "report",
+                "Generate feedback report (.md)",
+                cmd_feedback_report,
+                [
+                    (["-o", "--output"], {"default": "feedback_report.md", "help": "Output file"}),
+                ],
+            ),
+        ],
+    )
+
+    # admin library <list|create|add|show>
+    _add_group(
+        sub,
+        "library",
+        "Part library management",
+        [
+            ("list", "List all libraries", cmd_library_list, []),
+            (
+                "create",
+                "Create a manual library",
+                cmd_library_create,
+                [
+                    (["name"], {"help": "Library name"}),
+                    (["--description"], {"default": None, "help": "Library description"}),
+                ],
+            ),
+            (
+                "add",
+                "Add a part to a library",
+                cmd_library_add,
+                [
+                    (["library_name"], {"help": "Library name"}),
+                    (["pid"], {"type": int, "help": "Part ID (PID)"}),
+                ],
+            ),
+            (
+                "show",
+                "Show library details",
+                cmd_library_show,
+                [
+                    (["library_name"], {"help": "Library name"}),
+                ],
+            ),
+        ],
+    )
 
     # admin tools <list|approve|reject|show>
-    _add_group(sub, "tool", "External tool quarantine", [
-        ("list", "List tools and approval status", cmd_tools_list, []),
-        ("approve", "Approve a quarantined tool", cmd_tools_approve, [
-            (["filename"], {"help": "Tool filename (e.g. my_tool.py)"}),
-        ]),
-        ("reject", "Reject a quarantined tool", cmd_tools_reject, [
-            (["filename"], {"help": "Tool filename (e.g. my_tool.py)"}),
-        ]),
-        ("show", "Show tool source code for review", cmd_tools_show, [
-            (["filename"], {"help": "Tool filename (e.g. my_tool.py)"}),
-        ]),
-    ])
+    _add_group(
+        sub,
+        "tool",
+        "External tool quarantine",
+        [
+            ("list", "List tools and approval status", cmd_tools_list, []),
+            (
+                "approve",
+                "Approve a quarantined tool",
+                cmd_tools_approve,
+                [
+                    (["filename"], {"help": "Tool filename (e.g. my_tool.py)"}),
+                ],
+            ),
+            (
+                "reject",
+                "Reject a quarantined tool",
+                cmd_tools_reject,
+                [
+                    (["filename"], {"help": "Tool filename (e.g. my_tool.py)"}),
+                ],
+            ),
+            (
+                "show",
+                "Show tool source code for review",
+                cmd_tools_show,
+                [
+                    (["filename"], {"help": "Tool filename (e.g. my_tool.py)"}),
+                ],
+            ),
+        ],
+    )
 
     args = parser.parse_args()
     args.func(args)

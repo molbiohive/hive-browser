@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
 
 from hive.db import session as db
-from hive.db.models import Feature, IndexedFile, Primer, Sequence
+from hive.db.models import IndexedFile, Part, PartInstance, Sequence
 from hive.users.service import (
     create_user,
     get_user_by_slug,
@@ -202,8 +202,8 @@ async def status():
         return {
             "indexed_files": 0,
             "sequences": 0,
-            "features": 0,
-            "primers": 0,
+            "parts": 0,
+            "part_instances": 0,
             "database": False,
         }
 
@@ -215,18 +215,18 @@ async def status():
             seqs = (await s.execute(
                 select(func.count()).select_from(Sequence)
             )).scalar()
-            feats = (await s.execute(
-                select(func.count()).select_from(Feature)
+            parts = (await s.execute(
+                select(func.count()).select_from(Part)
             )).scalar()
-            prims = (await s.execute(
-                select(func.count()).select_from(Primer)
+            pis = (await s.execute(
+                select(func.count()).select_from(PartInstance)
             )).scalar()
 
         return {
             "indexed_files": files,
             "sequences": seqs,
-            "features": feats,
-            "primers": prims,
+            "parts": parts,
+            "part_instances": pis,
             "database": True,
         }
     except Exception as e:
@@ -234,7 +234,7 @@ async def status():
         return {
             "indexed_files": 0,
             "sequences": 0,
-            "features": 0,
-            "primers": 0,
+            "parts": 0,
+            "part_instances": 0,
             "database": False,
         }
