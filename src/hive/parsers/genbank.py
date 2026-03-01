@@ -26,11 +26,21 @@ def parse_genbank(filepath: Path, extract: list[str] | None = None) -> ParseResu
                             for k, v in f.qualifiers.items()},
             ))
 
+    # Detect molecule type from GenBank annotations
+    mol_type = record.annotations.get("molecule_type", "")
+    if "protein" in mol_type.lower():
+        molecule = "protein"
+    elif "rna" in mol_type.lower():
+        molecule = "RNA"
+    else:
+        molecule = "DNA"
+
     return ParseResult(
         name=record.name,
         sequence=str(record.seq),
         size_bp=len(record.seq),
         topology=record.annotations.get("topology", "linear"),
+        molecule=molecule,
         description=record.description if record.description != "." else None,
         features=features,
         meta={},

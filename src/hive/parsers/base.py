@@ -29,6 +29,7 @@ class ParseResult:
     sequence: str
     size_bp: int
     topology: str  # 'circular' | 'linear'
+    molecule: str = "DNA"  # 'DNA' | 'RNA' | 'AA'
     description: str | None = None
     features: list[ParsedFeature] = field(default_factory=list)
     primers: list[ParsedPrimer] = field(default_factory=list)

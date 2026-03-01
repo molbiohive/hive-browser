@@ -66,7 +66,7 @@ class Sequence(Base):
     topology: Mapped[str] = mapped_column(Text)  # 'circular' | 'linear'
     sequence: Mapped[str] = mapped_column(Text)
     sequence_hash: Mapped[str] = mapped_column(Text, default="")
-    molecule: Mapped[str] = mapped_column(Text, default="DNA")  # DNA | RNA | AA
+    molecule: Mapped[str] = mapped_column(Text, default="DNA")  # DNA | RNA | protein
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     meta: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

@@ -74,6 +74,7 @@ def parse_snapgene(filepath: Path, extract: list[str] | None = None) -> ParseRes
         sequence=sgff.sequence.value,
         size_bp=len(sgff.sequence.value),
         topology=sgff.sequence.topology,
+        molecule=molecule_type,
         description=description,
         features=features,
         primers=primers,

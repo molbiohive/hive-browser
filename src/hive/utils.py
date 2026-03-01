@@ -14,16 +14,16 @@ def hash_sequence(seq: str) -> str:
 def detect_molecule(seq: str, meta: dict | None = None) -> str:
     """Detect molecule type from sequence + metadata hints.
 
-    Returns "DNA", "RNA", or "AA".
+    Returns "DNA", "RNA", or "protein".
     """
     if meta:
         mol = meta.get("molecule_type", "")
-        if mol in ("DNA", "RNA", "AA", "protein"):
-            return "AA" if mol == "protein" else mol
+        if mol in ("DNA", "RNA", "protein"):
+            return mol
 
     upper = seq.upper()
     if any(c in _AA_ONLY for c in upper):
-        return "AA"
+        return "protein"
     if "U" in upper and "T" not in upper:
         return "RNA"
     return "DNA"

@@ -1,17 +1,38 @@
-"""Ingestion pipeline — parse file, upsert into database."""
+"""Ingestion pipeline — parse file, upsert into database with Part-based identity."""
 
 import hashlib
 import logging
 from datetime import UTC, datetime
 from pathlib import Path
 
+from Bio.Seq import Seq
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from hive.db.models import Feature, IndexedFile, Primer, Sequence
+from hive.db.models import (
+    Annotation,
+    IndexedFile,
+    Library,
+    LibraryMember,
+    Part,
+    PartInstance,
+    PartName,
+    Sequence,
+)
 from hive.parsers import BIOPYTHON_PARSERS, PARSERS
 from hive.parsers.base import ParseResult
+from hive.utils import hash_sequence
 from hive.watcher.rules import MatchResult
+
+# Annotation type -> native library name
+NATIVE_LIBRARY_MAP = {
+    "CDS": "CDS",
+    "promoter": "Promoters",
+    "terminator": "Terminators",
+    "primer_bind": "Primers",
+    "rep_origin": "Origins",
+    "misc_feature": "Misc",
+}
 
 
 def extract_tags(file_path: Path, watcher_root: str) -> list[str]:
@@ -31,6 +52,7 @@ def hash_file(path: Path) -> str:
             h.update(chunk)
     return h.hexdigest()
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -48,6 +70,120 @@ def _resolve_parser(match: MatchResult, file_path: Path):
     if not parser_fn:
         raise ValueError(f"Unknown parser: {parser_name}")
     return parser_fn
+
+
+def _extract_subseq(
+    parent_seq: str, start: int, end: int, strand: int, topology: str,
+) -> str:
+    """Extract subsequence from parent, handling circular wrap and reverse complement."""
+    if start <= end:
+        subseq = parent_seq[start:end]
+    elif topology == "circular":
+        subseq = parent_seq[start:] + parent_seq[:end]
+    else:
+        subseq = parent_seq[start:end]
+
+    if strand == -1:
+        subseq = str(Seq(subseq).reverse_complement())
+    return subseq
+
+
+async def get_or_create_part(
+    session: AsyncSession, sequence: str, molecule: str,
+) -> Part:
+    """Find Part by sequence_hash or create new one."""
+    seq_hash = hash_sequence(sequence)
+    existing = await session.execute(
+        select(Part).where(Part.sequence_hash == seq_hash)
+    )
+    part = existing.scalar_one_or_none()
+    if part:
+        return part
+    part = Part(
+        sequence_hash=seq_hash,
+        sequence=sequence.upper(),
+        molecule=molecule,
+        length=len(sequence),
+    )
+    session.add(part)
+    await session.flush()
+    return part
+
+
+async def add_part_name(
+    session: AsyncSession,
+    part_id: int,
+    name: str,
+    source: str,
+    source_detail: str | None = None,
+):
+    """Add a PartName if not already present for this (part, name, source)."""
+    existing = await session.execute(
+        select(PartName).where(
+            PartName.part_id == part_id,
+            PartName.name == name,
+            PartName.source == source,
+        )
+    )
+    if not existing.scalar_one_or_none():
+        session.add(PartName(
+            part_id=part_id,
+            name=name,
+            source=source,
+            source_detail=source_detail,
+        ))
+
+
+async def add_annotation(
+    session: AsyncSession, part_id: int, key: str, value: str, source: str,
+):
+    """Add annotation if not already present."""
+    existing = await session.execute(
+        select(Annotation).where(
+            Annotation.part_id == part_id,
+            Annotation.key == key,
+            Annotation.value == value,
+            Annotation.source == source,
+        )
+    )
+    if not existing.scalar_one_or_none():
+        session.add(Annotation(
+            part_id=part_id, key=key, value=value, source=source,
+        ))
+
+
+async def get_or_create_library(
+    session: AsyncSession, name: str, source: str = "native",
+) -> Library:
+    """Get or create a library by name."""
+    existing = await session.execute(
+        select(Library).where(Library.name == name)
+    )
+    lib = existing.scalar_one_or_none()
+    if lib:
+        return lib
+    lib = Library(name=name, source=source)
+    session.add(lib)
+    await session.flush()
+    return lib
+
+
+async def auto_library_tag(
+    session: AsyncSession, part_id: int, annotation_type: str,
+):
+    """Add part to native library matching its annotation type."""
+    lib_name = NATIVE_LIBRARY_MAP.get(annotation_type)
+    if not lib_name:
+        return
+    lib = await get_or_create_library(session, lib_name, source="native")
+    existing = await session.execute(
+        select(LibraryMember).where(
+            LibraryMember.library_id == lib.id,
+            LibraryMember.part_id == part_id,
+        )
+    )
+    if not existing.scalar_one_or_none():
+        session.add(LibraryMember(library_id=lib.id, part_id=part_id))
 
 
 async def ingest_file(
@@ -100,7 +236,7 @@ async def ingest_file(
 
     # Upsert IndexedFile
     if existing_file:
-        # Delete old sequences (cascades to features/primers)
+        # Delete old sequences (cascades to part_instances)
         await session.execute(
             delete(Sequence).where(Sequence.file_id == existing_file.id)
         )
@@ -130,48 +266,70 @@ async def ingest_file(
         if tags:
             meta["tags"] = tags
 
-    # Insert Sequence
+    # Insert Sequence (with new fields)
     seq = Sequence(
         file_id=indexed.id,
         name=result.name,
-        size_bp=result.size_bp,
+        length=result.size_bp,
         topology=result.topology,
         sequence=result.sequence,
+        sequence_hash=hash_sequence(result.sequence),
+        molecule=result.molecule,
         description=result.description,
         meta=meta or None,
     )
     session.add(seq)
     await session.flush()  # Get seq.id
 
-    # Insert Features
+    # For each ParsedFeature: extract subsequence, hash, get_or_create Part
     for f in result.features:
-        session.add(Feature(
+        subseq = _extract_subseq(
+            result.sequence, f.start, f.end, f.strand, result.topology,
+        )
+        if not subseq:
+            continue
+        part = await get_or_create_part(session, subseq, result.molecule)
+        await add_part_name(
+            session, part.id, f.name, source="file", source_detail=file_path.name,
+        )
+        session.add(PartInstance(
+            part_id=part.id,
             seq_id=seq.id,
-            name=f.name,
-            type=f.type,
+            annotation_type=f.type,
             start=f.start,
             end=f.end,
             strand=f.strand,
             qualifiers=f.qualifiers or None,
         ))
+        await add_annotation(session, part.id, "type", f.type, source="native")
+        await auto_library_tag(session, part.id, f.type)
 
-    # Insert Primers
+    # For each ParsedPrimer: create Part from oligo sequence
     for p in result.primers:
-        session.add(Primer(
+        if not p.sequence:
+            continue
+        part = await get_or_create_part(session, p.sequence, "DNA")
+        await add_part_name(
+            session, part.id, p.name, source="file", source_detail=file_path.name,
+        )
+        session.add(PartInstance(
+            part_id=part.id,
             seq_id=seq.id,
-            name=p.name,
-            sequence=p.sequence,
-            tm=p.tm,
+            annotation_type="primer_bind",
             start=p.start,
             end=p.end,
             strand=p.strand,
         ))
+        await add_annotation(session, part.id, "type", "primer_bind", source="native")
+        await auto_library_tag(session, part.id, "primer_bind")
 
     if commit:
         await session.commit()
+
+    n_parts = len(result.features) + len(result.primers)
     logger.info(
-        "Indexed: %s (%d bp, %d features, %d primers)",
-        result.name, result.size_bp, len(result.features), len(result.primers),
+        "Indexed: %s (%d bp, %d features, %d primers, %d parts)",
+        result.name, result.size_bp, len(result.features), len(result.primers), n_parts,
     )
     return indexed
 
@@ -187,7 +345,7 @@ async def remove_file(session: AsyncSession, file_path: Path) -> bool:
     if not indexed:
         return False
 
-    # Cascade delete removes sequences, features, primers
+    # Cascade delete removes sequences and part_instances
     await session.execute(
         delete(Sequence).where(Sequence.file_id == indexed.id)
     )
