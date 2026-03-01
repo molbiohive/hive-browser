@@ -21,7 +21,7 @@ class ProfileTool(Tool):
     name = "profile"
     description = (
         "Show full details of a specific sequence: "
-        "metadata, features, primers, file info."
+        "metadata, parts (features, primers), file info."
     )
     widget = "profile"
     tags = {"llm", "info"}
@@ -67,45 +67,65 @@ class ProfileTool(Tool):
                 session,
                 sid=inp.sid,
                 name=inp.name,
-                load_features=True,
-                load_primers=True,
+                load_parts=True,
                 load_file=True,
             )
 
             if not seq:
                 return {"error": f"Sequence not found: {inp.sid or inp.name}"}
 
+            # Build parts list with pid and names
+            parts_list = [
+                {
+                    "pid": pi.part.id,
+                    "names": [n.name for n in pi.part.names],
+                    "name": pi.part.names[0].name if pi.part.names else "",
+                    "annotation_type": pi.annotation_type,
+                    "start": pi.start,
+                    "end": pi.end,
+                    "strand": pi.strand,
+                    "length": pi.part.length,
+                    "molecule": pi.part.molecule,
+                    "qualifiers": pi.qualifiers,
+                }
+                for pi in seq.part_instances
+            ]
+
             return {
                 "sequence": {
                     "sid": seq.id,
                     "name": seq.name,
-                    "size_bp": seq.size_bp,
+                    "size_bp": seq.length,
                     "topology": seq.topology,
+                    "molecule": seq.molecule,
                     "description": seq.description,
                     "meta": seq.meta,
                     "sequence_data": seq.sequence,
                 },
                 "features": [
                     {
-                        "name": f.name,
-                        "type": f.type,
-                        "start": f.start,
-                        "end": f.end,
-                        "strand": f.strand,
-                        "qualifiers": f.qualifiers,
+                        "pid": p["pid"],
+                        "name": p["name"],
+                        "type": p["annotation_type"],
+                        "start": p["start"],
+                        "end": p["end"],
+                        "strand": p["strand"],
+                        "qualifiers": p["qualifiers"],
                     }
-                    for f in seq.features
+                    for p in parts_list
+                    if p["annotation_type"] != "primer_bind"
                 ],
                 "primers": [
                     {
-                        "name": p.name,
-                        "sequence": p.sequence,
-                        "tm": p.tm,
-                        "start": p.start,
-                        "end": p.end,
-                        "strand": p.strand,
+                        "pid": p["pid"],
+                        "name": p["name"],
+                        "start": p["start"],
+                        "end": p["end"],
+                        "strand": p["strand"],
+                        "length": p["length"],
                     }
-                    for p in seq.primers
+                    for p in parts_list
+                    if p["annotation_type"] == "primer_bind"
                 ],
                 "file": {
                     "path": display_file_path(seq.file.file_path),

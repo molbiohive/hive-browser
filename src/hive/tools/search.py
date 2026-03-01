@@ -1,4 +1,4 @@
-"""Search tool — fuzzy metadata + feature search using pg_trgm.
+"""Search tool — fuzzy metadata + part name search using pg_trgm.
 
 Supports boolean queries: "KanR && circular" (AND), "GFP || RFP" (OR).
 """
@@ -14,7 +14,7 @@ from sqlalchemy.orm import selectinload
 
 from hive.config import display_file_path
 from hive.db import session as db
-from hive.db.models import Feature, IndexedFile, Sequence
+from hive.db.models import IndexedFile, PartInstance, PartName, Sequence
 from hive.tools.base import Tool
 
 
@@ -43,7 +43,7 @@ class SearchInput(BaseModel):
     )
     filters: dict[str, Any] = Field(
         default_factory=dict,
-        description="Optional: topology, size_min, size_max, feature_type",
+        description="Optional: topology, size_min, size_max",
     )
 
 
@@ -109,10 +109,10 @@ class SearchTool(Tool):
         terms, op = _parse_bool_query(inp.query)
 
         async with db.async_session_factory() as session:
-            # Per-term: similarity expressions, feature subqueries, match conditions
+            # Per-term: similarity expressions, part name subqueries, match conditions
             term_scores = []
             term_conditions = []
-            feat_subs = []
+            pn_subs = []
 
             for i, term in enumerate(terms):
                 seq_sim = func.similarity(Sequence.name, term)
@@ -121,28 +121,30 @@ class SearchTool(Tool):
                     func.similarity(cast(Sequence.meta["tags"], Text), term), 0
                 )
 
-                fsub = (
+                # Part name similarity subquery (replaces Feature name subquery)
+                pn_sub = (
                     select(
-                        Feature.seq_id,
-                        func.max(func.similarity(Feature.name, term)).label(f"fs_{i}"),
+                        PartInstance.seq_id,
+                        func.max(func.similarity(PartName.name, term)).label(f"ps_{i}"),
                     )
-                    .group_by(Feature.seq_id)
-                    .subquery(name=f"feat_{i}")
+                    .join(PartName, PartInstance.part_id == PartName.part_id)
+                    .group_by(PartInstance.seq_id)
+                    .subquery(name=f"pn_{i}")
                 )
-                feat_score = func.coalesce(getattr(fsub.c, f"fs_{i}"), 0)
+                part_score = func.coalesce(getattr(pn_sub.c, f"ps_{i}"), 0)
 
                 # Exact match on topology (circular/linear)
                 topo_match = func.lower(Sequence.topology) == func.lower(term)
 
-                score = func.greatest(seq_sim, desc_sim, feat_score, tags_sim)
+                score = func.greatest(seq_sim, desc_sim, part_score, tags_sim)
                 condition = or_(
-                    seq_sim > 0.1, desc_sim > 0.1, feat_score > 0.1,
+                    seq_sim > 0.1, desc_sim > 0.1, part_score > 0.1,
                     tags_sim > 0.1, topo_match,
                 )
 
                 term_scores.append(score)
                 term_conditions.append(condition)
-                feat_subs.append(fsub)
+                pn_subs.append(pn_sub)
 
             # Ordering: worst term for AND (all must be good), best for OR
             if len(term_scores) == 1:
@@ -156,13 +158,17 @@ class SearchTool(Tool):
             stmt = (
                 select(Sequence, combined.label("score"), IndexedFile.file_path)
                 .join(IndexedFile, Sequence.file_id == IndexedFile.id)
-                .options(selectinload(Sequence.features))
+                .options(
+                    selectinload(Sequence.part_instances)
+                    .selectinload(PartInstance.part)
+                    .selectinload(PartName)
+                )
                 .where(IndexedFile.status == "active")
             )
 
-            # Join feature subqueries
-            for fsub in feat_subs:
-                stmt = stmt.outerjoin(fsub, Sequence.id == fsub.c.seq_id)
+            # Join part name subqueries
+            for pn_sub in pn_subs:
+                stmt = stmt.outerjoin(pn_sub, Sequence.id == pn_sub.c.seq_id)
 
             # Boolean condition
             if op == "and":
@@ -184,32 +190,27 @@ class SearchTool(Tool):
             if topo := inp.filters.get("topology"):
                 stmt = stmt.where(Sequence.topology == topo)
             if size_min := inp.filters.get("size_min"):
-                stmt = stmt.where(Sequence.size_bp >= int(size_min))
+                stmt = stmt.where(Sequence.length >= int(size_min))
             if size_max := inp.filters.get("size_max"):
-                stmt = stmt.where(Sequence.size_bp <= int(size_max))
-            if feat_type := inp.filters.get("feature_type"):
-                if isinstance(feat_type, list):
-                    feat_type = feat_type[0] if feat_type else None
-                if feat_type:
-                    stmt = stmt.where(
-                        Sequence.id.in_(
-                            select(Feature.seq_id).where(Feature.type == feat_type)
-                        )
-                    )
+                stmt = stmt.where(Sequence.length <= int(size_max))
 
             rows = (await session.execute(stmt)).all()
 
             results = []
             for seq, score, file_path in rows:
-                feat_names = [f.name for f in seq.features]
+                # Collect part names (first name per part) as "features" for display
+                part_names = []
+                for pi in seq.part_instances:
+                    if pi.part and pi.part.names:
+                        part_names.append(pi.part.names[0].name)
                 meta = seq.meta or {}
                 results.append(
                     SearchResultItem(
                         sid=seq.id,
                         name=seq.name,
-                        size_bp=seq.size_bp,
+                        size_bp=seq.length,
                         topology=seq.topology,
-                        features=feat_names,
+                        features=part_names,
                         tags=meta.get("tags", []),
                         file_path=display_file_path(file_path),
                         score=round(float(score), 3),

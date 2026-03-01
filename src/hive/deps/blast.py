@@ -101,7 +101,7 @@ class BlastDep(Dep):
 
         async with db.async_session_factory() as session:
             rows = (await session.execute(
-                select(Sequence.name, Sequence.sequence, Sequence.meta)
+                select(Sequence.name, Sequence.sequence, Sequence.molecule)
                 .join(IndexedFile, Sequence.file_id == IndexedFile.id)
                 .where(IndexedFile.status == "active")
             )).all()
@@ -117,14 +117,13 @@ class BlastDep(Dep):
         prot_count = 0
 
         with open(nucl_fasta, "w") as nf, open(prot_fasta, "w") as pf:
-            for name, seq, meta in rows:
-                mol = (meta or {}).get("molecule_type", "DNA")
+            for name, seq, molecule in rows:
                 safe_name = name.replace(" ", "_")
-                if mol == "protein":
+                if molecule == "protein":
                     pf.write(f">{safe_name}\n{seq}\n")
                     prot_count += 1
                 else:
-                    nucl_seq = seq.replace("U", "T").replace("u", "t") if mol == "RNA" else seq
+                    nucl_seq = seq.replace("U", "T").replace("u", "t") if molecule == "RNA" else seq
                     nf.write(f">{safe_name}\n{nucl_seq}\n")
                     nucl_count += 1
 

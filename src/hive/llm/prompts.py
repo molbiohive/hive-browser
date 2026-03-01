@@ -18,6 +18,11 @@ sequences in a local database.
 Do NOT call tools for greetings, general knowledge, capability questions, \
 or follow-ups about previous results. Only call tools for sequence data operations.
 
+## Identifiers
+- SID = Sequence ID (whole plasmid/construct). Use for sequence operations.
+- PID = Part ID (individual feature/primer). Parts are canonical — same sequence \
+across files shares the same PID.
+
 ## Workflow
 - ONE tool per turn. Data pipes automatically between tools.
 - If user names a sequence/SID and feature, go directly to extract. \

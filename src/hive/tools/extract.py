@@ -7,9 +7,10 @@ from typing import Any
 from Bio.Seq import Seq
 from pydantic import BaseModel, Field
 from sqlalchemy import case, select
+from sqlalchemy.orm import selectinload
 
 from hive.db import session as db
-from hive.db.models import Feature, Primer
+from hive.db.models import Part, PartInstance, PartName
 from hive.tools.base import Tool
 from hive.tools.resolve import resolve_sequence
 
@@ -76,64 +77,45 @@ class ExtractTool(Tool):
             parent_seq = seq_row.sequence
             topology = seq_row.topology
 
-            # Extract by primer name
+            # Extract by primer name — query PartInstance + PartName
             if inp.primer_name:
-                primer = (await session.execute(
-                    select(Primer)
-                    .where(Primer.seq_id == seq_row.id)
-                    .where(Primer.name.ilike(f"%{inp.primer_name}%"))
-                    .order_by(
-                        case(
-                            (Primer.name.ilike(inp.primer_name), 0),
-                            else_=1,
-                        ),
-                    )
-                    .limit(1)
-                )).scalar_one_or_none()
-
-                if not primer:
+                pi = await _find_part_instance(
+                    session, seq_row.id, inp.primer_name, annotation_type="primer_bind",
+                )
+                if not pi:
                     return {"error": f"Primer not found: {inp.primer_name} on {seq_row.name}"}
 
                 return {
-                    "sequence": primer.sequence,
-                    "name": primer.name,
+                    "sequence": pi.part.sequence,
+                    "name": pi.part.names[0].name if pi.part.names else inp.primer_name,
+                    "pid": pi.part.id,
                     "source": seq_row.name,
-                    "start": primer.start,
-                    "end": primer.end,
-                    "strand": primer.strand,
-                    "length": len(primer.sequence),
+                    "start": pi.start,
+                    "end": pi.end,
+                    "strand": pi.strand,
+                    "length": pi.part.length,
                 }
 
             # Extract by feature name (prefer exact match, then longest)
             if inp.feature_name:
-                feat = (await session.execute(
-                    select(Feature)
-                    .where(Feature.seq_id == seq_row.id)
-                    .where(Feature.name.ilike(f"%{inp.feature_name}%"))
-                    .order_by(
-                        case(
-                            (Feature.name.ilike(inp.feature_name), 0),
-                            else_=1,
-                        ),
-                        (Feature.end - Feature.start).desc(),
-                    )
-                    .limit(1)
-                )).scalar_one_or_none()
-
-                if not feat:
+                pi = await _find_part_instance(
+                    session, seq_row.id, inp.feature_name,
+                )
+                if not pi:
                     return {"error": f"Feature not found: {inp.feature_name} on {seq_row.name}"}
 
-                subseq = _slice_sequence(parent_seq, feat.start, feat.end, topology)
-                if feat.strand == -1:
+                subseq = _slice_sequence(parent_seq, pi.start, pi.end, topology)
+                if pi.strand == -1:
                     subseq = str(Seq(subseq).reverse_complement())
 
                 return {
                     "sequence": subseq,
-                    "name": feat.name,
+                    "name": pi.part.names[0].name if pi.part.names else inp.feature_name,
+                    "pid": pi.part.id,
                     "source": seq_row.name,
-                    "start": feat.start,
-                    "end": feat.end,
-                    "strand": feat.strand,
+                    "start": pi.start,
+                    "end": pi.end,
+                    "strand": pi.strand,
                     "length": len(subseq),
                 }
 
@@ -149,7 +131,7 @@ class ExtractTool(Tool):
                         f"{inp.region}. Use start:end (1-based)"
                     }
 
-                # User provides 1-based inclusive → convert to 0-based exclusive
+                # User provides 1-based inclusive -> convert to 0-based exclusive
                 subseq = _slice_sequence(parent_seq, start - 1, end, topology)
                 return {
                     "sequence": subseq,
@@ -162,18 +144,50 @@ class ExtractTool(Tool):
                 }
 
             # No feature/primer/region — return full sequence
-            if not inp.feature_name and not inp.primer_name and not inp.region:
-                return {
-                    "sequence": parent_seq,
-                    "name": seq_row.name,
-                    "source": seq_row.name,
-                    "start": 1,
-                    "end": len(parent_seq),
-                    "strand": 1,
-                    "length": len(parent_seq),
-                }
+            return {
+                "sequence": parent_seq,
+                "name": seq_row.name,
+                "source": seq_row.name,
+                "start": 1,
+                "end": len(parent_seq),
+                "strand": 1,
+                "length": len(parent_seq),
+            }
 
-        return {"error": "No extraction method specified"}
+
+async def _find_part_instance(
+    session, seq_id: int, name: str, annotation_type: str | None = None,
+) -> PartInstance | None:
+    """Find a PartInstance by part name on a given sequence."""
+    # Subquery: part_ids whose names match
+    name_sub = (
+        select(PartName.part_id)
+        .where(PartName.name.ilike(f"%{name}%"))
+        .subquery()
+    )
+    query = (
+        select(PartInstance)
+        .options(selectinload(PartInstance.part).selectinload(Part.names))
+        .where(PartInstance.seq_id == seq_id)
+        .where(PartInstance.part_id.in_(select(name_sub)))
+    )
+    if annotation_type:
+        query = query.where(PartInstance.annotation_type == annotation_type)
+    else:
+        query = query.where(PartInstance.annotation_type != "primer_bind")
+
+    # Prefer exact match, then longest
+    query = query.order_by(
+        case(
+            (PartInstance.part_id.in_(
+                select(PartName.part_id).where(PartName.name.ilike(name))
+            ), 0),
+            else_=1,
+        ),
+        (PartInstance.end - PartInstance.start).desc(),
+    ).limit(1)
+
+    return (await session.execute(query)).scalar_one_or_none()
 
 
 def _slice_sequence(seq: str, start: int, end: int, topology: str) -> str:

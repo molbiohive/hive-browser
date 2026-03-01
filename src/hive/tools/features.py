@@ -1,4 +1,4 @@
-"""Features tool — list features on a sequence."""
+"""Features tool — list features (parts) on a sequence."""
 
 from __future__ import annotations
 
@@ -6,9 +6,10 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from hive.db import session as db
-from hive.db.models import Feature
+from hive.db.models import Part, PartInstance, PartName
 from hive.tools.base import Tool
 from hive.tools.resolve import resolve_sequence
 
@@ -18,7 +19,7 @@ class FeaturesInput(BaseModel):
     sequence_name: str | None = Field(default=None, description="Sequence name (fallback)")
     type: str | None = Field(
         default=None,
-        description="Filter by feature type (e.g. CDS, promoter)",
+        description="Filter by annotation type (e.g. CDS, promoter)",
     )
 
 
@@ -70,22 +71,29 @@ class FeaturesTool(Tool):
             if not seq_row:
                 return {"error": f"Sequence not found: {inp.sequence_name}"}
 
-            query = select(Feature).where(Feature.seq_id == seq_row.id)
+            query = (
+                select(PartInstance)
+                .join(Part, PartInstance.part_id == Part.id)
+                .options(selectinload(PartInstance.part).selectinload(Part.names))
+                .where(PartInstance.seq_id == seq_row.id)
+                .where(PartInstance.annotation_type != "primer_bind")
+            )
             if inp.type:
-                query = query.where(Feature.type.ilike(inp.type))
-            query = query.order_by(Feature.start)
+                query = query.where(PartInstance.annotation_type.ilike(inp.type))
+            query = query.order_by(PartInstance.start)
 
             rows = (await session.execute(query)).scalars().all()
 
             features = [
                 {
-                    "name": f.name,
-                    "type": f.type,
-                    "start": f.start,
-                    "end": f.end,
-                    "strand": f.strand,
+                    "pid": pi.part.id,
+                    "name": pi.part.names[0].name if pi.part.names else "",
+                    "type": pi.annotation_type,
+                    "start": pi.start,
+                    "end": pi.end,
+                    "strand": pi.strand,
                 }
-                for f in rows
+                for pi in rows
             ]
 
             return {

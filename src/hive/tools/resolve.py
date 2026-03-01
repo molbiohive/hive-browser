@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from hive.db.models import IndexedFile, Sequence
+from hive.db.models import IndexedFile, Part, PartInstance, PartName, Sequence
 
 
 async def resolve_sequence(
@@ -14,8 +14,7 @@ async def resolve_sequence(
     *,
     sid: int | None = None,
     name: str | None = None,
-    load_features: bool = False,
-    load_primers: bool = False,
+    load_parts: bool = False,
     load_file: bool = False,
 ) -> Sequence | None:
     """Resolve a sequence by SID (primary) or exact name (fallback).
@@ -35,10 +34,12 @@ async def resolve_sequence(
     else:
         return None
 
-    if load_features:
-        stmt = stmt.options(selectinload(Sequence.features))
-    if load_primers:
-        stmt = stmt.options(selectinload(Sequence.primers))
+    if load_parts:
+        stmt = stmt.options(
+            selectinload(Sequence.part_instances)
+            .selectinload(PartInstance.part)
+            .selectinload(Part.names)
+        )
     if load_file:
         stmt = stmt.options(selectinload(Sequence.file))
 

@@ -1,4 +1,4 @@
-"""Primers tool — list primers on a sequence."""
+"""Primers tool — list primers (parts with annotation_type=primer_bind) on a sequence."""
 
 from __future__ import annotations
 
@@ -6,9 +6,10 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from hive.db import session as db
-from hive.db.models import Primer
+from hive.db.models import Part, PartInstance, PartName
 from hive.tools.base import Tool
 from hive.tools.resolve import resolve_sequence
 
@@ -67,23 +68,34 @@ class PrimersTool(Tool):
             if not seq_row:
                 return {"error": f"Sequence not found: {inp.sequence_name}"}
 
-            query = select(Primer).where(Primer.seq_id == seq_row.id)
+            query = (
+                select(PartInstance)
+                .join(Part, PartInstance.part_id == Part.id)
+                .options(selectinload(PartInstance.part).selectinload(Part.names))
+                .where(PartInstance.seq_id == seq_row.id)
+                .where(PartInstance.annotation_type == "primer_bind")
+            )
             if inp.name:
-                query = query.where(Primer.name.ilike(f"%{inp.name}%"))
-            query = query.order_by(Primer.start)
+                query = query.where(
+                    PartInstance.part_id.in_(
+                        select(PartName.part_id).where(PartName.name.ilike(f"%{inp.name}%"))
+                    )
+                )
+            query = query.order_by(PartInstance.start)
 
             rows = (await session.execute(query)).scalars().all()
 
             primers = [
                 {
-                    "name": p.name,
-                    "sequence": p.sequence,
-                    "tm": p.tm,
-                    "start": p.start,
-                    "end": p.end,
-                    "strand": p.strand,
+                    "pid": pi.part.id,
+                    "name": pi.part.names[0].name if pi.part.names else "",
+                    "sequence": pi.part.sequence,
+                    "length": pi.part.length,
+                    "start": pi.start,
+                    "end": pi.end,
+                    "strand": pi.strand,
                 }
-                for p in rows
+                for pi in rows
             ]
 
             return {
