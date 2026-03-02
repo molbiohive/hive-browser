@@ -88,6 +88,8 @@ class Sequence(Base):
     __table_args__ = (
         Index("idx_seq_name_trgm", "name", postgresql_using="gin",
               postgresql_ops={"name": "gin_trgm_ops"}),
+        Index("idx_seq_desc_trgm", "description", postgresql_using="gin",
+              postgresql_ops={"description": "gin_trgm_ops"}),
         Index("idx_seq_meta", "meta", postgresql_using="gin"),
         Index("idx_seq_hash", "sequence_hash"),
     )
@@ -153,6 +155,8 @@ class PartInstance(Base):
     __table_args__ = (
         Index("idx_pi_seq_start", "seq_id", "start"),
         Index("idx_pi_part", "part_id"),
+        Index("idx_pi_anntype_trgm", "annotation_type", postgresql_using="gin",
+              postgresql_ops={"annotation_type": "gin_trgm_ops"}),
     )
 
 
