@@ -14,6 +14,7 @@ from hive.db import session as db
 from hive.db.models import IndexedFile, Sequence
 from hive.deps.blast import BlastDep
 from hive.tools.base import Tool
+from hive.tools.resolve import resolve_input
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,7 @@ _PROT_ONLY = set("EFIJLOPQZX*")
 class BlastInput(BaseModel):
     sequence: str = Field(
         ...,
-        description="Query sequence, SID (integer), or pid:N to look up from DB",
+        description="DNA/protein sequence, sid:N for Sequence ID, pid:N for Part ID, or bare integer for SID",
     )
     program: str = Field(
         default="auto",
@@ -113,7 +114,7 @@ class BlastTool(Tool):
         return {
             "type": "object",
             "properties": {
-                "sequence": {"type": "string", "description": "Query sequence, SID (integer), or pid:N (Part ID)"},
+                "sequence": {"type": "string", "description": "DNA/protein sequence, sid:N, pid:N, or bare integer SID"},
             },
             "required": ["sequence"],
         }
@@ -142,25 +143,18 @@ class BlastTool(Tool):
         inp = BlastInput(**cleaned)
         query_seq = inp.sequence.strip()
 
-        # Resolve PID (pid:N) from DB
-        if query_seq.lower().startswith("pid:"):
-            pid_str = query_seq[4:].strip()
-            resolved = await _resolve_by_pid(pid_str)
-            if resolved is None:
-                return {
-                    "error": f"Part not found for PID {pid_str}",
-                    "hits": [],
-                }
-            query_seq = resolved
-        # Resolve SID (integer) from DB
-        elif query_seq.isdigit():
-            resolved = await _resolve_by_sid(int(query_seq))
-            if resolved is None:
-                return {
-                    "error": f"Sequence not found for SID {query_seq}",
-                    "hits": [],
-                }
-            query_seq = resolved
+        # Resolve sid:N, pid:N, bare integer SID, or name fallback
+        low = query_seq.lower()
+        if low.startswith(("sid:", "pid:")) or query_seq.isdigit():
+            # Normalise bare integer to sid:N for resolve_input
+            raw = f"sid:{query_seq}" if query_seq.isdigit() else query_seq
+            if not db.async_session_factory:
+                return {"error": "Database unavailable", "hits": []}
+            async with db.async_session_factory() as session:
+                try:
+                    query_seq, _meta = await resolve_input(session, raw)
+                except ValueError as exc:
+                    return {"error": str(exc), "hits": []}
         elif not _is_nucleotide(query_seq) and not _is_protein(query_seq):
             # Legacy: try name-based lookup
             resolved = await _resolve_by_name(query_seq)
@@ -257,32 +251,6 @@ def _is_protein(s: str) -> bool:
     # If it contains any protein-only characters, it's protein
     # Otherwise ambiguous (e.g. "ACGT" valid as both) — default to nucl
     return any(c in _PROT_ONLY for c in clean)
-
-
-async def _resolve_by_pid(pid_str: str) -> str | None:
-    """Look up a part's sequence by PID."""
-    if not db.async_session_factory:
-        return None
-    try:
-        pid = int(pid_str)
-    except ValueError:
-        return None
-    from hive.tools.resolve import resolve_part
-
-    async with db.async_session_factory() as session:
-        part = await resolve_part(session, pid=pid)
-        return part.sequence if part else None
-
-
-async def _resolve_by_sid(sid: int) -> str | None:
-    """Look up a sequence by SID."""
-    if not db.async_session_factory:
-        return None
-    from hive.tools.resolve import resolve_sequence
-
-    async with db.async_session_factory() as session:
-        seq = await resolve_sequence(session, sid=sid)
-        return seq.sequence if seq else None
 
 
 async def _resolve_by_name(name: str) -> str | None:

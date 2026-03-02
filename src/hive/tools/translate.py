@@ -7,11 +7,13 @@ from typing import Any
 from Bio.Seq import Seq
 from pydantic import BaseModel, Field
 
+from hive.db import session as db
 from hive.tools.base import Tool
+from hive.tools.resolve import resolve_input
 
 
 class TranslateInput(BaseModel):
-    sequence: str = Field(..., description="Nucleotide sequence (ATGC or AUGC) to translate")
+    sequence: str = Field(..., description="DNA/RNA sequence, or sid:N for Sequence ID, or pid:N for Part ID")
     table: int = Field(default=1, description="Codon table number (1=Standard, 11=Bacterial)")
 
 
@@ -20,7 +22,7 @@ class TranslateTool(Tool):
     description = "Translate a DNA or RNA sequence to protein."
     widget = "text"
     tags = {"llm", "hidden", "analysis"}
-    guidelines = "Translate DNA/RNA to protein. table=1 standard, table=11 bacterial."
+    guidelines = "Translate DNA/RNA to protein. Accepts sequence, sid:N, or pid:N. table=1 standard, table=11 bacterial."
 
     def __init__(self, **_):
         pass
@@ -34,7 +36,7 @@ class TranslateTool(Tool):
         return {
             "type": "object",
             "properties": {
-                "sequence": {"type": "string", "description": "Nucleotide sequence to translate"},
+                "sequence": {"type": "string", "description": "DNA/RNA sequence, sid:N, or pid:N"},
             },
             "required": ["sequence"],
         }
@@ -49,7 +51,14 @@ class TranslateTool(Tool):
 
     async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
         inp = TranslateInput(**params)
-        cleaned = inp.sequence.upper().replace(" ", "").replace("\n", "")
+        seq = inp.sequence
+        if seq.strip().lower().startswith(("sid:", "pid:")) and db.async_session_factory:
+            async with db.async_session_factory() as session:
+                try:
+                    seq, _meta = await resolve_input(session, seq)
+                except ValueError as exc:
+                    return {"error": str(exc)}
+        cleaned = seq.upper().replace(" ", "").replace("\n", "")
 
         # Handle RNA input
         if "U" in cleaned:

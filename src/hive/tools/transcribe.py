@@ -7,11 +7,13 @@ from typing import Any
 from Bio.Seq import Seq
 from pydantic import BaseModel, Field
 
+from hive.db import session as db
 from hive.tools.base import Tool
+from hive.tools.resolve import resolve_input
 
 
 class TranscribeInput(BaseModel):
-    sequence: str = Field(..., description="DNA sequence (ATGC) to transcribe")
+    sequence: str = Field(..., description="DNA sequence, or sid:N for Sequence ID, or pid:N for Part ID")
 
 
 class TranscribeTool(Tool):
@@ -19,7 +21,7 @@ class TranscribeTool(Tool):
     description = "Transcribe a DNA sequence to mRNA (T→U on coding strand)."
     widget = "text"
     tags = {"llm", "hidden", "analysis"}
-    guidelines = "DNA to mRNA transcription (T to U)."
+    guidelines = "DNA to mRNA transcription (T to U). Accepts sequence, sid:N, or pid:N."
 
     def __init__(self, **_):
         pass
@@ -36,7 +38,14 @@ class TranscribeTool(Tool):
 
     async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
         inp = TranscribeInput(**params)
-        cleaned = inp.sequence.upper().replace(" ", "").replace("\n", "")
+        seq = inp.sequence
+        if seq.strip().lower().startswith(("sid:", "pid:")) and db.async_session_factory:
+            async with db.async_session_factory() as session:
+                try:
+                    seq, _meta = await resolve_input(session, seq)
+                except ValueError as exc:
+                    return {"error": str(exc)}
+        cleaned = seq.upper().replace(" ", "").replace("\n", "")
 
         if len(cleaned) < 1:
             return {"error": "Empty sequence"}

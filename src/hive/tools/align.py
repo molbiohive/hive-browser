@@ -8,13 +8,17 @@ from pydantic import BaseModel, Field
 
 from hive.db import session as db
 from hive.tools.base import Tool
-from hive.tools.resolve import resolve_sequence
+from hive.tools.resolve import resolve_part, resolve_sequence
 
 
 class AlignInput(BaseModel):
     sids: list[int] = Field(
         default_factory=list,
         description="Sequence IDs to align",
+    )
+    pids: list[int] = Field(
+        default_factory=list,
+        description="Part IDs to include in alignment",
     )
     algorithm: str = Field(
         default="auto",
@@ -29,7 +33,7 @@ class AlignTool(Tool):
     tags = {"llm", "analysis"}
     guidelines = (
         "Multiple sequence alignment using MAFFT. Provide SIDs "
-        "(integers from search results) for 2+ sequences to align."
+        "and/or PIDs for 2+ sequences to align."
     )
 
     def __init__(self, config=None, **_):
@@ -50,10 +54,14 @@ class AlignTool(Tool):
                 "sids": {
                     "type": "array",
                     "items": {"type": "integer"},
-                    "description": "Sequence IDs to align (at least 2)",
+                    "description": "Sequence IDs to align",
+                },
+                "pids": {
+                    "type": "array",
+                    "items": {"type": "integer"},
+                    "description": "Part IDs to include in alignment",
                 },
             },
-            "required": ["sids"],
         }
 
     def format_result(self, result: dict) -> str:
@@ -67,9 +75,10 @@ class AlignTool(Tool):
             return {"error": "MAFFT not configured"}
 
         inp = AlignInput(**params)
+        total = len(inp.sids) + len(inp.pids)
 
-        if len(inp.sids) < 2:
-            return {"error": "Need at least 2 SIDs to align"}
+        if total < 2:
+            return {"error": "Need at least 2 sequences (SIDs and/or PIDs) to align"}
 
         if not db.async_session_factory:
             return {"error": "Database unavailable"}
@@ -82,6 +91,12 @@ class AlignTool(Tool):
                 if not seq:
                     return {"error": f"Sequence not found for SID {sid}"}
                 sequences.append((seq.name, seq.sequence))
+            for pid in inp.pids:
+                part = await resolve_part(session, pid=pid, load_names=True)
+                if not part:
+                    return {"error": f"Part not found for PID {pid}"}
+                name = part.names[0].name if part.names else f"PID_{pid}"
+                sequences.append((name, part.sequence))
 
         result = await self._dep.align(sequences, algorithm=inp.algorithm)
         return result
