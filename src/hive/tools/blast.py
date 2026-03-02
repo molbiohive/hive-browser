@@ -28,7 +28,7 @@ _PROT_ONLY = set("EFIJLOPQZX*")
 class BlastInput(BaseModel):
     sequence: str = Field(
         ...,
-        description="Query sequence or SID (integer) to look up from DB",
+        description="Query sequence, SID (integer), or pid:N to look up from DB",
     )
     program: str = Field(
         default="auto",
@@ -91,8 +91,8 @@ class BlastTool(Tool):
         "Sequence similarity search using BLAST+. Supports blastn "
         "(nucl vs nucl), blastp (prot vs prot), blastx (nucl query "
         "vs prot db), tblastn, tblastx. Set program='auto' to detect "
-        "from sequence type. Use SID (integer from search results) to "
-        "search with a database sequence."
+        "from sequence type. Use SID (integer from search results) or "
+        "pid:N (Part ID) to search with a database sequence."
     )
 
     def __init__(self, config=None, **_):
@@ -113,7 +113,7 @@ class BlastTool(Tool):
         return {
             "type": "object",
             "properties": {
-                "sequence": {"type": "string", "description": "Query sequence or SID (integer)"},
+                "sequence": {"type": "string", "description": "Query sequence, SID (integer), or pid:N (Part ID)"},
             },
             "required": ["sequence"],
         }
@@ -142,8 +142,18 @@ class BlastTool(Tool):
         inp = BlastInput(**cleaned)
         query_seq = inp.sequence.strip()
 
+        # Resolve PID (pid:N) from DB
+        if query_seq.lower().startswith("pid:"):
+            pid_str = query_seq[4:].strip()
+            resolved = await _resolve_by_pid(pid_str)
+            if resolved is None:
+                return {
+                    "error": f"Part not found for PID {pid_str}",
+                    "hits": [],
+                }
+            query_seq = resolved
         # Resolve SID (integer) from DB
-        if query_seq.isdigit():
+        elif query_seq.isdigit():
             resolved = await _resolve_by_sid(int(query_seq))
             if resolved is None:
                 return {
@@ -247,6 +257,21 @@ def _is_protein(s: str) -> bool:
     # If it contains any protein-only characters, it's protein
     # Otherwise ambiguous (e.g. "ACGT" valid as both) — default to nucl
     return any(c in _PROT_ONLY for c in clean)
+
+
+async def _resolve_by_pid(pid_str: str) -> str | None:
+    """Look up a part's sequence by PID."""
+    if not db.async_session_factory:
+        return None
+    try:
+        pid = int(pid_str)
+    except ValueError:
+        return None
+    from hive.tools.resolve import resolve_part
+
+    async with db.async_session_factory() as session:
+        part = await resolve_part(session, pid=pid)
+        return part.sequence if part else None
 
 
 async def _resolve_by_sid(sid: int) -> str | None:
