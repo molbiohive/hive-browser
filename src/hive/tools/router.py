@@ -7,7 +7,12 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 from hive.llm.client import LLMClient
-from hive.llm.prompts import build_multi_tool_schema, build_system_prompt
+from hive.llm.prompts import (
+    build_multi_tool_schema,
+    build_system_prompt,
+    build_triage_messages,
+    is_tools_needed,
+)
 from hive.tools.base import Tool, ToolRegistry
 
 logger = logging.getLogger(__name__)
@@ -115,6 +120,7 @@ async def route_input(
             pipe_min_length=pipe_min_length,
             summary_token_limit=summary_token_limit,
             on_progress=on_progress,
+            skip_triage=True,
         )
 
     # ── Mode 3: Natural language — unified agentic loop ──
@@ -145,6 +151,7 @@ async def _unified_loop(
     pipe_min_length: int = 200,
     summary_token_limit: int = 1000,
     on_progress: Callable[[dict], Awaitable[None]] | None = None,
+    skip_triage: bool = False,
 ) -> dict[str, Any]:
     """Unified agentic loop — LLM converses and chains tools as needed.
 
@@ -152,6 +159,28 @@ async def _unified_loop(
     and pure conversation. Large data (sequences, etc.) is cached locally
     and auto-injected into subsequent tools — never sent through LLM context.
     """
+
+    # ── Triage: cheap LLM call without tool schemas ──
+    if not skip_triage:
+        try:
+            triage_msgs = build_triage_messages(history, user_input)
+            triage_resp = await llm_client.chat(triage_msgs)
+            triage_text = triage_resp["choices"][0]["message"].get("content", "")
+            triage_usage = triage_resp.get("usage") or {}
+            if not is_tools_needed(triage_text):
+                logger.info("Triage: conversation (no tools needed)")
+                return {
+                    "type": "message",
+                    "content": triage_text,
+                    "tokens": {
+                        "in": triage_usage.get("prompt_tokens", 0),
+                        "out": triage_usage.get("completion_tokens", 0),
+                    },
+                }
+            logger.info("Triage: tools needed, entering agentic loop")
+        except Exception as e:
+            logger.warning("Triage call failed, falling through: %s", e)
+
     all_tools = registry.llm_tools()
     tool_map = {t.name: t for t in all_tools}
     all_schemas = build_multi_tool_schema(all_tools)

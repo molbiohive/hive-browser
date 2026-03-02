@@ -11,6 +11,16 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from hive.tools.base import Tool
 
+_TRIAGE = """\
+You are a lab sequence assistant. Decide if this message needs database tools \
+(search, BLAST, profile, extract, analysis, parts) or is pure conversation \
+(greetings, general biology knowledge, follow-up commentary, thanks).
+
+If database tools are needed, respond ONLY with: TOOLS_NEEDED
+Otherwise, answer the user directly."""
+
+_TOOLS_NEEDED = "TOOLS_NEEDED"
+
 _SYSTEM = """\
 You are Hive Browser, a lab sequence search assistant for DNA/RNA/protein \
 sequences in a local database.
@@ -41,6 +51,22 @@ NEVER list or restate individual items -- the user sees a rich widget.
 def build_system_prompt() -> str:
     """Return the system prompt. Tool info comes via the tools parameter."""
     return _SYSTEM
+
+
+def build_triage_messages(
+    history: list[dict] | None, user_input: str,
+) -> list[dict]:
+    """Build messages for the triage call (no tool schemas)."""
+    msgs: list[dict] = [{"role": "system", "content": _TRIAGE}]
+    if history:
+        msgs.extend(history)
+    msgs.append({"role": "user", "content": user_input})
+    return msgs
+
+
+def is_tools_needed(text: str) -> bool:
+    """Check if triage response indicates tools are needed."""
+    return text.strip().startswith(_TOOLS_NEEDED)
 
 
 def _tool_desc(tool: Tool) -> str:
