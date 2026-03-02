@@ -88,3 +88,30 @@ async def resolve_part(
         )
 
     return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def resolve_input(session: AsyncSession, raw: str) -> tuple[str, dict]:
+    """Resolve raw sequence, sid:N, or pid:N to (sequence, metadata).
+
+    Returns: (sequence_string, {"source": "raw"|"sid"|"pid", ...})
+    Raises: ValueError if SID/PID not found.
+    """
+    raw = raw.strip()
+    low = raw.lower()
+    if low.startswith("sid:"):
+        sid = int(raw[4:].strip())
+        seq = await resolve_sequence(session, sid=sid)
+        if not seq:
+            raise ValueError(f"Sequence not found: SID {sid}")
+        return seq.sequence, {"source": "sid", "sid": seq.id, "name": seq.name}
+    if low.startswith("pid:"):
+        pid = int(raw[4:].strip())
+        part = await resolve_part(session, pid=pid, load_names=True)
+        if not part:
+            raise ValueError(f"Part not found: PID {pid}")
+        return part.sequence, {
+            "source": "pid",
+            "pid": part.id,
+            "names": [n.name for n in part.names],
+        }
+    return raw, {"source": "raw"}
