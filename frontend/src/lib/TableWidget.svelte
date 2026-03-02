@@ -43,15 +43,52 @@
 			title: () => 'View sequence details',
 		},
 	];
+
+	// Parts columns and actions
+	const partsColumns = [
+		{ key: 'pid', label: 'PID' },
+		{ key: 'names', label: 'Names', class: 'name', format: (row) => Array.isArray(row.names) ? row.names.join(', ') : '' },
+		{ key: 'types', label: 'Type(s)', format: (row) => Array.isArray(row.types) ? row.types.join(', ') : '' },
+		{ key: 'length', label: 'Length', format: (row) => row.length ? `${row.length} bp` : '' },
+		{ key: 'instance_count', label: 'Instances' },
+		{ key: 'score', label: 'Score', format: (row) => row.score != null ? row.score.toFixed(2) : '' },
+	];
+
+	function viewPart(row) {
+		sendMessage(`//parts ${JSON.stringify({ pid: row.pid })}`);
+	}
+
+	const partsActions = [
+		{
+			label: 'View',
+			onClick: (row) => viewPart(row),
+			title: () => 'View part details',
+		},
+	];
 </script>
 
 {#if data?.results?.length}
 	<DataTable rows={data.results} {columns} actions={tableActions} />
-{:else}
+{:else if !data?.parts?.length}
 	<p class="empty">No results</p>
+{/if}
+
+{#if data?.parts?.length}
+	<div class="parts-section">
+		<h4 class="parts-heading">Matching Parts ({data.parts_total})</h4>
+		<DataTable rows={data.parts} columns={partsColumns} actions={partsActions} defaultPageSize={5} />
+	</div>
 {/if}
 
 <style>
 	.empty { color: var(--text-placeholder); font-size: 0.85rem; }
 	:global(.name) { font-weight: 500; }
+	.parts-section { margin-top: 1rem; }
+	.parts-heading {
+		font-size: 0.8rem;
+		font-weight: 600;
+		color: var(--text-faint);
+		text-transform: uppercase;
+		margin: 0 0 0.5rem 0;
+	}
 </style>
