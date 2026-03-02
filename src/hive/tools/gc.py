@@ -12,7 +12,10 @@ from hive.tools.resolve import resolve_input
 
 
 class GCInput(BaseModel):
-    sequence: str = Field(..., description="DNA sequence, or sid:N for Sequence ID, or pid:N for Part ID")
+    sequence: str = Field(
+        ...,
+        description="DNA sequence, or sid:N for Sequence ID, or pid:N for Part ID",
+    )
 
 
 class GCTool(Tool):

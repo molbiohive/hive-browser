@@ -3,7 +3,6 @@
 from hive.deps import Dep, DepRegistry
 from hive.deps.blast import BlastDep
 
-
 # ── Helpers ──
 
 

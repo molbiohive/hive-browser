@@ -157,14 +157,21 @@ class BlastDep(Dep):
 
         # Build nucleotide DB
         if nucl_count > 0:
-            ok = await self._run_makeblastdb(makeblastdb, nucl_fasta, blast_dir / "hive_nucl", "nucl") and ok
-            logger.info("BLAST nucl index: %d entries (%d seq + %d parts)", nucl_count, len(seq_rows), len(seen_pids))
+            ok = await self._run_makeblastdb(
+                makeblastdb, nucl_fasta, blast_dir / "hive_nucl", "nucl"
+            ) and ok
+            logger.info(
+                "BLAST nucl index: %d entries (%d seq + %d parts)",
+                nucl_count, len(seq_rows), len(seen_pids),
+            )
         else:
             logger.info("No nucleotide sequences to index for BLAST")
 
         # Build protein DB
         if prot_count > 0:
-            ok = await self._run_makeblastdb(makeblastdb, prot_fasta, blast_dir / "hive_prot", "prot") and ok
+            ok = await self._run_makeblastdb(
+                makeblastdb, prot_fasta, blast_dir / "hive_prot", "prot"
+            ) and ok
             logger.info("BLAST prot index: %d entries", prot_count)
 
         return ok

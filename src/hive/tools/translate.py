@@ -13,7 +13,10 @@ from hive.tools.resolve import resolve_input
 
 
 class TranslateInput(BaseModel):
-    sequence: str = Field(..., description="DNA/RNA sequence, or sid:N for Sequence ID, or pid:N for Part ID")
+    sequence: str = Field(
+        ...,
+        description="DNA/RNA sequence, or sid:N for Sequence ID, or pid:N for Part ID",
+    )
     table: int = Field(default=1, description="Codon table number (1=Standard, 11=Bacterial)")
 
 
@@ -22,7 +25,10 @@ class TranslateTool(Tool):
     description = "Translate a DNA or RNA sequence to protein."
     widget = "text"
     tags = {"llm", "hidden", "analysis"}
-    guidelines = "Translate DNA/RNA to protein. Accepts sequence, sid:N, or pid:N. table=1 standard, table=11 bacterial."
+    guidelines = (
+        "Translate DNA/RNA to protein. Accepts sequence, sid:N, or pid:N."
+        " table=1 standard, table=11 bacterial."
+    )
 
     def __init__(self, **_):
         pass

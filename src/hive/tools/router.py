@@ -12,7 +12,7 @@ from hive.llm.prompts import (
     build_system_prompt,
 )
 from hive.secrets import SecretVault
-from hive.tools.base import Tool, ToolRegistry
+from hive.tools.base import ToolRegistry
 
 logger = logging.getLogger(__name__)
 

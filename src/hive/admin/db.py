@@ -11,12 +11,10 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from hive.db.models import (
-    Annotation,
     IndexedFile,
     Library,
     Part,
     PartInstance,
-    PartName,
     Sequence,
 )
 
@@ -238,7 +236,10 @@ async def prune(
                         "format": f.format,
                         "name": seq.name,
                         "length": seq.length,
-                        "sequence_hash": seq.sequence_hash or _sequence_hash(seq.sequence) if seq.sequence else None,
+                        "sequence_hash": (
+                            seq.sequence_hash or _sequence_hash(seq.sequence)
+                            if seq.sequence else None
+                        ),
                         "topology": seq.topology,
                         "molecule": seq.molecule,
                         "description": seq.description,

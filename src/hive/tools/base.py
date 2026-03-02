@@ -34,7 +34,10 @@ class Tool(ABC):
     tags: set[str] = {"llm"}
     guidelines: str = ""
     params: dict | None = None
-    redact_keys: set[str] = {"file_path", "path", "file_name", "filename", "sequence", "raw_sequence"}
+    redact_keys: set[str] = {
+        "file_path", "path", "file_name", "filename",
+        "sequence", "raw_sequence",
+    }
 
     # Injected by factory for external tools
     db: Any = None

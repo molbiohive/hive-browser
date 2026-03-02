@@ -110,10 +110,18 @@ class Part(Base):
         DateTime(timezone=True), server_default=func.now()
     )
 
-    names: Mapped[list["PartName"]] = relationship(back_populates="part", cascade="all, delete-orphan")
-    instances: Mapped[list["PartInstance"]] = relationship(back_populates="part", cascade="all, delete-orphan")
-    annotations: Mapped[list["Annotation"]] = relationship(back_populates="part", cascade="all, delete-orphan")
-    library_members: Mapped[list["LibraryMember"]] = relationship(back_populates="part", cascade="all, delete-orphan")
+    names: Mapped[list["PartName"]] = relationship(
+        back_populates="part", cascade="all, delete-orphan"
+    )
+    instances: Mapped[list["PartInstance"]] = relationship(
+        back_populates="part", cascade="all, delete-orphan"
+    )
+    annotations: Mapped[list["Annotation"]] = relationship(
+        back_populates="part", cascade="all, delete-orphan"
+    )
+    library_members: Mapped[list["LibraryMember"]] = relationship(
+        back_populates="part", cascade="all, delete-orphan"
+    )
 
 
 class PartName(Base):
@@ -174,7 +182,9 @@ class Library(Base):
         DateTime(timezone=True), server_default=func.now()
     )
 
-    members: Mapped[list["LibraryMember"]] = relationship(back_populates="library", cascade="all, delete-orphan")
+    members: Mapped[list["LibraryMember"]] = relationship(
+        back_populates="library", cascade="all, delete-orphan"
+    )
 
 
 class LibraryMember(Base):

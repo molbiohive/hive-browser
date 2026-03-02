@@ -7,13 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from hive.db.models import (
-    Annotation,
     IndexedFile,
-    Library,
     LibraryMember,
     Part,
     PartInstance,
-    PartName,
     Sequence,
 )
 

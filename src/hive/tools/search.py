@@ -122,7 +122,10 @@ class SearchTool(Tool):
             lines.append(f"{total} sequences for '{query}':")
             for s in seqs[:max_seqs]:
                 topo = s.get("topology", "")
-                lines.append(f"  sid={s['sid']} {s['size_bp']}bp {topo} (score {s.get('score', '')})")
+                lines.append(
+                    f"  sid={s['sid']} {s['size_bp']}bp {topo}"
+                    f" (score {s.get('score', '')})"
+                )
             if total > max_seqs:
                 lines.append(f"  ... and {total - max_seqs} more")
 

@@ -29,7 +29,10 @@ _PROT_ONLY = set("EFIJLOPQZX*")
 class BlastInput(BaseModel):
     sequence: str = Field(
         ...,
-        description="DNA/protein sequence, sid:N for Sequence ID, pid:N for Part ID, or bare integer for SID",
+        description=(
+            "DNA/protein sequence, sid:N for Sequence ID,"
+            " pid:N for Part ID, or bare integer for SID"
+        ),
     )
     program: str = Field(
         default="auto",
@@ -116,7 +119,10 @@ class BlastTool(Tool):
         return {
             "type": "object",
             "properties": {
-                "sequence": {"type": "string", "description": "DNA/protein sequence, sid:N, pid:N, or bare integer SID"},
+                "sequence": {
+                    "type": "string",
+                    "description": "DNA/protein sequence, sid:N, pid:N, or bare integer SID",
+                },
             },
             "required": ["sequence"],
         }

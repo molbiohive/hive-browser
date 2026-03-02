@@ -11,7 +11,7 @@ from sqlalchemy.orm import selectinload
 
 from hive.config import display_file_path
 from hive.db import session as db
-from hive.db.models import Part, PartInstance, PartName
+from hive.db.models import Part, PartInstance
 from hive.tools.base import Tool
 from hive.tools.resolve import resolve_part, resolve_sequence
 
@@ -66,7 +66,10 @@ class PartsTool(Tool):
         if "part" in result:
             p = result["part"]
             names = ", ".join(p.get("names", [])) or "unnamed"
-            return f"Part PID {p['pid']} ({names}): {p['length']} bp, {result['instances_count']} instance(s)"
+            return (
+                f"Part PID {p['pid']} ({names}): {p['length']} bp,"
+                f" {result['instances_count']} instance(s)"
+            )
         total = result.get("total", 0)
         seq_name = result.get("sequence_name", "")
         return f"{total} part(s) on {seq_name}"

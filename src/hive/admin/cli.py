@@ -246,6 +246,7 @@ def cmd_users_add(args):
 def cmd_users_rm(args):
     async def _rm(s):
         from sqlalchemy import delete
+
         from hive.db.models import User
 
         result = await s.execute(delete(User).where(User.slug == args.slug))
@@ -351,7 +352,8 @@ def cmd_library_list(args):
         src = lib["source"]
         desc = lib.get("description") or ""
         print(
-            f"  {lib['id']:3d}  {lib['name']:<20s}  {src:<8s}  {lib['member_count']:4d} parts  {desc}"
+            f"  {lib['id']:3d}  {lib['name']:<20s}  {src:<8s}"
+            f"  {lib['member_count']:4d} parts  {desc}"
         )
 
 
@@ -370,7 +372,7 @@ def cmd_library_create(args):
 def cmd_library_add(args):
     # Resolve library id by name
     libs = _get(args, "/admin/libraries").get("libraries", [])
-    lib = next((l for l in libs if l["name"] == args.library_name), None)
+    lib = next((lib_ for lib_ in libs if lib_["name"] == args.library_name), None)
     if not lib:
         print(f"Library not found: {args.library_name}", file=sys.stderr)
         sys.exit(1)
@@ -380,7 +382,7 @@ def cmd_library_add(args):
 
 def cmd_library_show(args):
     libs = _get(args, "/admin/libraries").get("libraries", [])
-    lib = next((l for l in libs if l["name"] == args.library_name), None)
+    lib = next((lib_ for lib_ in libs if lib_["name"] == args.library_name), None)
     if not lib:
         print(f"Library not found: {args.library_name}", file=sys.stderr)
         sys.exit(1)
@@ -397,6 +399,7 @@ def cmd_library_show(args):
 def cmd_tools_list(args):
     async def _list(s):
         from sqlalchemy import select as sel
+
         from hive.db.models import ToolApproval
 
         rows = (
@@ -417,6 +420,7 @@ def cmd_tools_list(args):
 def cmd_tools_approve(args):
     async def _approve(s):
         from sqlalchemy import select as sel
+
         from hive.db.models import ToolApproval
 
         record = (
@@ -442,6 +446,7 @@ def cmd_tools_approve(args):
 def cmd_tools_reject(args):
     async def _reject(s):
         from sqlalchemy import select as sel
+
         from hive.db.models import ToolApproval
 
         record = (

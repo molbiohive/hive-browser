@@ -4,15 +4,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from hive.tools.translate import TranslateTool
-from hive.tools.transcribe import TranscribeTool
 from hive.tools.digest import DigestTool
-from hive.tools.gc import GCTool
-from hive.tools.revcomp import RevCompTool
 from hive.tools.extract import _slice_sequence
+from hive.tools.gc import GCTool
 from hive.tools.resolve import resolve_input
+from hive.tools.revcomp import RevCompTool
 from hive.tools.search import _parse_bool_query
-
+from hive.tools.transcribe import TranscribeTool
+from hive.tools.translate import TranslateTool
 
 # ── Translate ──
 
@@ -332,15 +331,19 @@ class TestResolveInput:
 
     async def test_sid_not_found_raises(self):
         session = AsyncMock()
-        with patch("hive.tools.resolve.resolve_sequence", return_value=None):
-            with pytest.raises(ValueError, match="SID 999"):
-                await resolve_input(session, "sid:999")
+        with (
+            patch("hive.tools.resolve.resolve_sequence", return_value=None),
+            pytest.raises(ValueError, match="SID 999"),
+        ):
+            await resolve_input(session, "sid:999")
 
     async def test_pid_not_found_raises(self):
         session = AsyncMock()
-        with patch("hive.tools.resolve.resolve_part", return_value=None):
-            with pytest.raises(ValueError, match="PID 999"):
-                await resolve_input(session, "pid:999")
+        with (
+            patch("hive.tools.resolve.resolve_part", return_value=None),
+            pytest.raises(ValueError, match="PID 999"),
+        ):
+            await resolve_input(session, "pid:999")
 
     async def test_case_insensitive(self):
         mock_seq = MagicMock()
@@ -366,7 +369,9 @@ class TestUniversalInputNoDB:
 
     async def test_digest_raw_still_works(self):
         tool = DigestTool()
-        result = await tool.execute({"sequence": "AAAGAATTCAAA", "enzymes": ["EcoRI"], "circular": False})
+        result = await tool.execute(
+            {"sequence": "AAAGAATTCAAA", "enzymes": ["EcoRI"], "circular": False}
+        )
         assert result["total_cuts"] == 1
 
     async def test_gc_raw_still_works(self):

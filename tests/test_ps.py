@@ -18,7 +18,7 @@ class CountProcess(Process):
         self.count = 0
 
     async def run(self, ctx: ProcessContext) -> str:
-        for i in range(self.n):
+        for _i in range(self.n):
             await ctx.check()
             self.count += 1
             await asyncio.sleep(0)
