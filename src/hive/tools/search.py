@@ -14,7 +14,7 @@ from sqlalchemy.orm import selectinload
 
 from hive.config import display_file_path
 from hive.db import session as db
-from hive.db.models import IndexedFile, PartInstance, PartName, Sequence
+from hive.db.models import IndexedFile, Part, PartInstance, PartName, Sequence
 from hive.tools.base import Tool
 
 
@@ -161,7 +161,7 @@ class SearchTool(Tool):
                 .options(
                     selectinload(Sequence.part_instances)
                     .selectinload(PartInstance.part)
-                    .selectinload(PartName)
+                    .selectinload(Part.names)
                 )
                 .where(IndexedFile.status == "active")
             )
