@@ -7,7 +7,6 @@ from unittest.mock import AsyncMock
 import pytest
 
 from hive.tools.base import Tool, ToolRegistry
-from hive.llm.prompts import build_triage_messages, is_tools_needed
 from hive.tools.router import (
     DIRECT_PATTERN,
     GUIDED_PATTERN,
@@ -247,13 +246,6 @@ class TestAgenticLoop:
         client.chat = AsyncMock(side_effect=responses)
         return client
 
-    def _triage_tools(self):
-        """Triage response that says tools are needed."""
-        return {
-            "choices": [{"message": {"content": "TOOLS_NEEDED"}}],
-            "usage": {"prompt_tokens": 50, "completion_tokens": 5},
-        }
-
     def _text_response(self, content, usage=None):
         """LLM response with text only (no tool calls)."""
         return {
@@ -289,7 +281,6 @@ class TestAgenticLoop:
     async def test_single_tool_call(self, registry):
         """LLM calls echo tool, then summarizes."""
         llm = self._mock_llm([
-            self._triage_tools(),
             self._tool_call_response("echo", {"query": "test"}),
             self._text_response("Here are your echo results."),
         ])
@@ -302,7 +293,6 @@ class TestAgenticLoop:
     async def test_multi_tool_chain(self, registry):
         """LLM chains two tool calls before summarizing."""
         llm = self._mock_llm([
-            self._triage_tools(),
             self._tool_call_response("echo", {"query": "step1"}, call_id="c1"),
             self._tool_call_response("echo", {"query": "step2"}, call_id="c2"),
             self._text_response("Done with both steps."),
@@ -341,7 +331,6 @@ class TestAgenticLoop:
             events.append(data)
 
         llm = self._mock_llm([
-            self._triage_tools(),
             self._tool_call_response("echo", {"query": "x"}),
             self._text_response("Done."),
         ])
@@ -387,7 +376,6 @@ class TestAgenticLoop:
         reg.register(ConsumerTool())
 
         llm = self._mock_llm([
-            self._triage_tools(),
             self._tool_call_response("producer", {"name": "test"}, call_id="c1"),
             # LLM sends consumer with short placeholder -- cache should inject
             self._tool_call_response("consumer", {"sequence": "injected"}, call_id="c2"),
@@ -413,137 +401,3 @@ class TestAgenticLoop:
         resp = await route_input("test error", registry, llm_client=llm)
         assert resp["type"] == "message"
         assert "No tools were called" in resp["content"]
-
-
-# -- Triage --
-
-
-class TestTriage:
-    """Tests for two-phase triage (prompts + router integration)."""
-
-    def test_is_tools_needed_positive(self):
-        assert is_tools_needed("TOOLS_NEEDED") is True
-        assert is_tools_needed("TOOLS_NEEDED\nmore text") is True
-        assert is_tools_needed("  TOOLS_NEEDED") is True
-
-    def test_is_tools_needed_negative(self):
-        assert is_tools_needed("Hello! How can I help?") is False
-        assert is_tools_needed("") is False
-        assert is_tools_needed("A promoter is a DNA region...") is False
-
-    def test_build_triage_messages_no_history(self):
-        msgs = build_triage_messages(None, "hello")
-        assert len(msgs) == 2
-        assert msgs[0]["role"] == "system"
-        assert msgs[1] == {"role": "user", "content": "hello"}
-
-    def test_build_triage_messages_with_history(self):
-        history = [{"role": "user", "content": "prev"}]
-        msgs = build_triage_messages(history, "hello")
-        assert len(msgs) == 3
-        assert msgs[1] == {"role": "user", "content": "prev"}
-        assert msgs[2] == {"role": "user", "content": "hello"}
-
-    async def test_triage_conversation_returns_directly(self, registry):
-        """When triage says no tools needed, return text directly."""
-        llm = AsyncMock()
-        llm.chat = AsyncMock(return_value={
-            "choices": [{"message": {"content": "Hello! I can help with sequences."}}],
-            "usage": {"prompt_tokens": 50, "completion_tokens": 15},
-        })
-        resp = await route_input("hello", registry, llm_client=llm)
-        assert resp["type"] == "message"
-        assert "Hello" in resp["content"]
-        # Only one LLM call (triage), no agentic loop
-        assert llm.chat.call_count == 1
-
-    async def test_triage_tools_needed_enters_loop(self, registry):
-        """When triage says TOOLS_NEEDED, proceed to agentic loop."""
-        call_count = 0
-
-        async def mock_chat(messages, **kwargs):
-            nonlocal call_count
-            call_count += 1
-            if call_count == 1:
-                # Triage call
-                return {
-                    "choices": [{"message": {"content": "TOOLS_NEEDED"}}],
-                    "usage": {"prompt_tokens": 50, "completion_tokens": 5},
-                }
-            elif call_count == 2:
-                # Agentic loop: tool call
-                return {
-                    "choices": [{"message": {
-                        "content": None,
-                        "tool_calls": [{
-                            "id": "c1",
-                            "function": {"name": "echo", "arguments": '{"query": "test"}'},
-                        }],
-                    }}],
-                    "usage": {"prompt_tokens": 100, "completion_tokens": 20},
-                }
-            else:
-                # Summary
-                return {
-                    "choices": [{"message": {"content": "Found results."}}],
-                    "usage": {"prompt_tokens": 100, "completion_tokens": 20},
-                }
-
-        llm = AsyncMock()
-        llm.chat = AsyncMock(side_effect=mock_chat)
-        resp = await route_input("search for GFP", registry, llm_client=llm)
-        assert resp["type"] == "tool_result"
-        assert resp["tool"] == "echo"
-        assert call_count == 3  # triage + tool call + summary
-
-    async def test_triage_skipped_for_guided_mode(self, registry):
-        """Guided mode (/command) skips triage."""
-        call_count = 0
-
-        async def mock_chat(messages, **kwargs):
-            nonlocal call_count
-            call_count += 1
-            if call_count == 1:
-                return {
-                    "choices": [{"message": {
-                        "content": None,
-                        "tool_calls": [{
-                            "id": "c1",
-                            "function": {"name": "echo", "arguments": '{"query": "test"}'},
-                        }],
-                    }}],
-                    "usage": {"prompt_tokens": 100, "completion_tokens": 20},
-                }
-            else:
-                return {
-                    "choices": [{"message": {"content": "Done."}}],
-                    "usage": {"prompt_tokens": 100, "completion_tokens": 10},
-                }
-
-        llm = AsyncMock()
-        llm.chat = AsyncMock(side_effect=mock_chat)
-        resp = await route_input("/echo test", registry, llm_client=llm)
-        assert resp["type"] == "tool_result"
-        # 2 calls (tool + summary), no triage
-        assert call_count == 2
-
-    async def test_triage_failure_falls_through(self, registry):
-        """If triage call fails, fall through to normal loop."""
-        call_count = 0
-
-        async def mock_chat(messages, **kwargs):
-            nonlocal call_count
-            call_count += 1
-            if call_count == 1:
-                raise ConnectionError("Triage failed")
-            else:
-                return {
-                    "choices": [{"message": {"content": "Fallback response."}}],
-                    "usage": {"prompt_tokens": 100, "completion_tokens": 20},
-                }
-
-        llm = AsyncMock()
-        llm.chat = AsyncMock(side_effect=mock_chat)
-        resp = await route_input("hello", registry, llm_client=llm)
-        assert resp["type"] == "message"
-        assert "Fallback" in resp["content"]

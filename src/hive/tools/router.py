@@ -10,19 +10,10 @@ from hive.llm.client import LLMClient
 from hive.llm.prompts import (
     build_multi_tool_schema,
     build_system_prompt,
-    build_triage_messages,
-    is_tools_needed,
 )
 from hive.tools.base import Tool, ToolRegistry
 
 logger = logging.getLogger(__name__)
-
-# Minimal tool schema to satisfy Anthropic's requirement that tools= is present
-# when tool messages exist in conversation. Used with tool_choice="none".
-_NOOP_TOOL = [{"type": "function", "function": {
-    "name": "_noop", "description": "n/a",
-    "parameters": {"type": "object", "properties": {}},
-}}]
 
 # After a tool runs, only offer these tools on the next turn.
 # Empty set = force text response (no tools).
@@ -119,7 +110,6 @@ async def route_input(
             pipe_min_length=pipe_min_length,
             summary_token_limit=summary_token_limit,
             on_progress=on_progress,
-            skip_triage=True,
         )
 
     # ── Mode 3: Natural language — unified agentic loop ──
@@ -150,7 +140,6 @@ async def _unified_loop(
     pipe_min_length: int = 200,
     summary_token_limit: int = 1000,
     on_progress: Callable[[dict], Awaitable[None]] | None = None,
-    skip_triage: bool = False,
 ) -> dict[str, Any]:
     """Unified agentic loop — LLM converses and chains tools as needed.
 
@@ -158,27 +147,6 @@ async def _unified_loop(
     and pure conversation. Large data (sequences, etc.) is cached locally
     and auto-injected into subsequent tools — never sent through LLM context.
     """
-
-    # ── Triage: cheap LLM call without tool schemas ──
-    if not skip_triage:
-        try:
-            triage_msgs = build_triage_messages(history, user_input)
-            triage_resp = await llm_client.chat(triage_msgs)
-            triage_text = triage_resp["choices"][0]["message"].get("content", "")
-            triage_usage = triage_resp.get("usage") or {}
-            if not is_tools_needed(triage_text):
-                logger.info("Triage: conversation (no tools needed)")
-                return {
-                    "type": "message",
-                    "content": triage_text,
-                    "tokens": {
-                        "in": triage_usage.get("prompt_tokens", 0),
-                        "out": triage_usage.get("completion_tokens", 0),
-                    },
-                }
-            logger.info("Triage: tools needed, entering agentic loop")
-        except Exception as e:
-            logger.warning("Triage call failed, falling through: %s", e)
 
     all_tools = registry.llm_tools()
     tool_map = {t.name: t for t in all_tools}
@@ -197,7 +165,7 @@ async def _unified_loop(
     tokens = {"in": 0, "out": 0}
     exceeded = False
     schemas = all_schemas  # narrows after each tool call
-    force_text = False  # when True, pass noop tool + tool_choice="none"
+    force_text = False  # when True, pass tool_choice="none" to force text summary
 
     async def _emit(phase: str, tool: str | None = None):
         if on_progress:
@@ -210,7 +178,7 @@ async def _unified_loop(
 
     for turn in range(max_turns):
         # Pick tools/tool_choice for this turn
-        turn_tools = _NOOP_TOOL if force_text else schemas
+        turn_tools = schemas
         turn_choice = "none" if force_text else None
 
         # Log payload sizes for token debugging
