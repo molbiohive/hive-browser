@@ -237,7 +237,7 @@ class TestToolFactoryInternal:
         assert names == {
             "search", "blast", "profile",
             "extract", "translate", "transcribe", "digest",
-            "gc", "revcomp", "features", "primers", "align",
+            "gc", "revcomp", "parts", "align",
         }
 
     def test_tool_attributes(self):
@@ -256,7 +256,7 @@ class TestToolFactoryInternal:
         assert llm_names == {
             "search", "blast", "profile",
             "extract", "translate", "transcribe", "digest",
-            "gc", "revcomp", "features", "primers", "align",
+            "gc", "revcomp", "parts", "align",
         }
 
     def test_visible_vs_hidden_tools(self):
@@ -265,10 +265,10 @@ class TestToolFactoryInternal:
         registry = ToolFactory.discover(config)
         visible = registry.visible_tools()
         llm = registry.llm_tools()
-        assert len(visible) == 6  # search, blast, profile, digest, gc, align
-        assert len(llm) == 12  # all tools available to LLM
+        assert len(visible) == 7  # search, blast, profile, parts, digest, gc, align
+        assert len(llm) == 11  # all tools available to LLM
         hidden_names = {t.name for t in llm} - {t.name for t in visible}
-        assert hidden_names == {"extract", "features", "primers", "translate", "transcribe", "revcomp"}
+        assert hidden_names == {"extract", "translate", "transcribe", "revcomp"}
 
 
 # ── ToolFactory — External Discovery ──
@@ -337,7 +337,7 @@ class TestToolFactoryExternal:
         internal_names = {
             "search", "blast", "profile",
             "extract", "translate", "transcribe", "digest",
-            "gc", "revcomp", "features", "primers", "align",
+            "gc", "revcomp", "parts", "align",
         }
         assert all(t.name in internal_names for t in registry.all())
 
@@ -365,7 +365,7 @@ class TestToolFactoryExternal:
     def test_missing_directory_no_error(self):
         config = Settings(data_root="/nonexistent")
         registry = ToolFactory.discover(config)
-        assert len(registry.all()) == 12  # just internal tools
+        assert len(registry.all()) == 11  # just internal tools
 
 
 # ── Prompts ──
