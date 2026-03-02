@@ -382,6 +382,8 @@ class TestPrompts:
         assert "NEVER fabricate" in prompt
         assert "## Workflow" in prompt
         assert "## Rules" in prompt
+        assert "sid:N" in prompt
+        assert "pid:N" in prompt
 
     def test_tool_schema_format(self):
         from hive.llm.prompts import build_tool_schema

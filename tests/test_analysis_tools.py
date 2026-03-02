@@ -1,5 +1,7 @@
 """Tests for pure analysis tools (no DB required)."""
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 
 from hive.tools.translate import TranslateTool
@@ -8,6 +10,7 @@ from hive.tools.digest import DigestTool
 from hive.tools.gc import GCTool
 from hive.tools.revcomp import RevCompTool
 from hive.tools.extract import _slice_sequence
+from hive.tools.resolve import resolve_input
 from hive.tools.search import _parse_bool_query
 
 
@@ -279,3 +282,104 @@ class TestParseBoolQuery:
         terms, op = _parse_bool_query("  KanR  &&  circular  ")
         assert terms == ["KanR", "circular"]
         assert op == "and"
+
+
+# ── resolve_input ──
+
+
+class TestResolveInput:
+    async def test_raw_sequence_passthrough(self):
+        session = AsyncMock()
+        seq, meta = await resolve_input(session, "ATGCATGC")
+        assert seq == "ATGCATGC"
+        assert meta == {"source": "raw"}
+
+    async def test_raw_whitespace_stripped(self):
+        session = AsyncMock()
+        seq, meta = await resolve_input(session, "  ATGC  ")
+        assert seq == "ATGC"
+        assert meta["source"] == "raw"
+
+    async def test_sid_resolution(self):
+        mock_seq = MagicMock()
+        mock_seq.sequence = "GATTACA"
+        mock_seq.id = 42
+        mock_seq.name = "TestSeq"
+
+        session = AsyncMock()
+        with patch("hive.tools.resolve.resolve_sequence", return_value=mock_seq) as mock_rs:
+            seq, meta = await resolve_input(session, "sid:42")
+            assert seq == "GATTACA"
+            assert meta == {"source": "sid", "sid": 42, "name": "TestSeq"}
+            mock_rs.assert_called_once_with(session, sid=42)
+
+    async def test_pid_resolution(self):
+        mock_name = MagicMock()
+        mock_name.name = "GFP"
+        mock_part = MagicMock()
+        mock_part.sequence = "ATGGTGAGC"
+        mock_part.id = 7
+        mock_part.names = [mock_name]
+
+        session = AsyncMock()
+        with patch("hive.tools.resolve.resolve_part", return_value=mock_part) as mock_rp:
+            seq, meta = await resolve_input(session, "pid:7")
+            assert seq == "ATGGTGAGC"
+            assert meta["source"] == "pid"
+            assert meta["pid"] == 7
+            assert meta["names"] == ["GFP"]
+            mock_rp.assert_called_once_with(session, pid=7, load_names=True)
+
+    async def test_sid_not_found_raises(self):
+        session = AsyncMock()
+        with patch("hive.tools.resolve.resolve_sequence", return_value=None):
+            with pytest.raises(ValueError, match="SID 999"):
+                await resolve_input(session, "sid:999")
+
+    async def test_pid_not_found_raises(self):
+        session = AsyncMock()
+        with patch("hive.tools.resolve.resolve_part", return_value=None):
+            with pytest.raises(ValueError, match="PID 999"):
+                await resolve_input(session, "pid:999")
+
+    async def test_case_insensitive(self):
+        mock_seq = MagicMock()
+        mock_seq.sequence = "ATGC"
+        mock_seq.id = 1
+        mock_seq.name = "Test"
+        session = AsyncMock()
+        with patch("hive.tools.resolve.resolve_sequence", return_value=mock_seq):
+            seq, meta = await resolve_input(session, "SID:1")
+            assert meta["source"] == "sid"
+
+
+# ── Universal input: tools return error for missing SID/PID without DB ──
+
+
+class TestUniversalInputNoDB:
+    """Verify analysis tools handle sid:/pid: gracefully without a live DB."""
+
+    async def test_translate_raw_still_works(self):
+        tool = TranslateTool()
+        result = await tool.execute({"sequence": "ATGAAATTTGCCTGA"})
+        assert result["protein"] == "MKFA*"
+
+    async def test_digest_raw_still_works(self):
+        tool = DigestTool()
+        result = await tool.execute({"sequence": "AAAGAATTCAAA", "enzymes": ["EcoRI"], "circular": False})
+        assert result["total_cuts"] == 1
+
+    async def test_gc_raw_still_works(self):
+        tool = GCTool()
+        result = await tool.execute({"sequence": "ATGC"})
+        assert result["gc_percent"] == 50.0
+
+    async def test_revcomp_raw_still_works(self):
+        tool = RevCompTool()
+        result = await tool.execute({"sequence": "ATGC"})
+        assert result["sequence"] == "GCAT"
+
+    async def test_transcribe_raw_still_works(self):
+        tool = TranscribeTool()
+        result = await tool.execute({"sequence": "ATGC"})
+        assert result["rna"] == "AUGC"
