@@ -102,8 +102,11 @@ class SearchTool(Tool):
             return f"Found {total} sequence(s){parts_msg} for '{query}'."
         return f"No results for '{query}'."
 
+    # Annotation types considered "primer" -- names are redacted from LLM summaries
+    _PRIMER_TYPES = {"primer_bind", "primer"}
+
     def summary_for_llm(self, result: dict, token_limit: int = 500) -> str:
-        """Explicit summary with real IDs — prevents hallucination."""
+        """Explicit summary with real IDs -- names/paths stripped for LLM safety."""
         lines = []
         query = result.get("query", "")
         total = result.get("total", 0)
@@ -113,26 +116,33 @@ class SearchTool(Tool):
         max_seqs = max(5, token_limit // 100)
         max_parts = max(5, token_limit // 60)
 
-        # Sequences — compact list of SIDs + names
+        # Sequences -- SIDs only, no sequence names (redacted)
         seqs = result.get("results", [])
         if seqs:
             lines.append(f"{total} sequences for '{query}':")
             for s in seqs[:max_seqs]:
-                lines.append(f"  sid={s['sid']} \"{s['name']}\" {s['size_bp']}bp")
+                topo = s.get("topology", "")
+                lines.append(f"  sid={s['sid']} {s['size_bp']}bp {topo} (score {s.get('score', '')})")
             if total > max_seqs:
                 lines.append(f"  ... and {total - max_seqs} more")
 
-        # Parts — list PIDs explicitly so LLM uses real IDs
+        # Parts -- keep feature/part names (CDS, promoter etc), strip primer names
         if parts:
-            lines.append(f"\n{len(parts)} matching parts:")
+            visible = []
             for p in parts[:max_parts]:
+                types = set(p.get("types", []))
+                if types and types <= self._PRIMER_TYPES:
+                    continue  # skip primer-only parts
                 names = ", ".join(p.get("names", [])[:2])
-                types = ", ".join(p.get("types", [])[:2])
-                lines.append(
-                    f"  pid={p['pid']} \"{names}\" ({types}, {p.get('length', '?')}bp, "
+                type_str = ", ".join(sorted(types - self._PRIMER_TYPES)[:2]) or "part"
+                visible.append(
+                    f"  pid={p['pid']} \"{names}\" ({type_str}, {p.get('length', '?')}bp, "
                     f"{p.get('instance_count', 0)} instances)"
                 )
-            lines.append("Use these PIDs for align, blast, extract.")
+            if visible:
+                lines.append(f"\n{len(visible)} matching parts:")
+                lines.extend(visible)
+                lines.append("Use PIDs for align, blast, extract.")
 
         if not lines:
             return f"No results for '{query}'."

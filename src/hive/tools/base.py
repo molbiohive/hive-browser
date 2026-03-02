@@ -25,6 +25,7 @@ class Tool(ABC):
         tags:        Behavioral flags + group identifiers. Known: "llm", "hidden".
         guidelines:  Concise LLM-facing description (used in tool schema if set).
         params:      Declarative param definitions for external tools (dict → JSON Schema).
+        redact_keys: Field names stripped from _auto_summarize output (LLM context).
     """
 
     name: str
@@ -33,6 +34,7 @@ class Tool(ABC):
     tags: set[str] = {"llm"}
     guidelines: str = ""
     params: dict | None = None
+    redact_keys: set[str] = {"file_path", "path", "file_name", "filename", "sequence", "raw_sequence"}
 
     # Injected by factory for external tools
     db: Any = None
@@ -97,7 +99,8 @@ class Tool(ABC):
     def summary_for_llm(self, result: dict, token_limit: int = 500) -> str:
         """Build LLM summary. Override in subclasses for custom formatting."""
         max_items = max(5, token_limit // 50)
-        return _auto_summarize(result, max_chars=token_limit * 4, max_items=max_items)
+        return _auto_summarize(result, max_chars=token_limit * 4, max_items=max_items,
+                               redact_keys=self.redact_keys)
 
     def _build_summary(self, result: dict, token_limit: int = 500) -> str:
         """Wrapper that calls summary_for_llm and enforces token limit."""
@@ -193,7 +196,10 @@ def _params_to_schema(params: dict) -> dict:
     return schema
 
 
-def _auto_summarize(result: dict, max_chars: int = 4000, max_items: int = 20) -> str:
+def _auto_summarize(
+    result: dict, max_chars: int = 4000, max_items: int = 20,
+    redact_keys: set[str] | None = None,
+) -> str:
     """Generate compact descriptive stats from a result dict.
 
     - Lists → count + first max_items items as sample (default 20)
@@ -201,10 +207,14 @@ def _auto_summarize(result: dict, max_chars: int = 4000, max_items: int = 20) ->
     - Short strings (< 200 chars) → include
     - Long strings → truncate to 100 chars
     - Nested dicts → keep shallow scalar fields
+    - Keys in redact_keys are skipped entirely (not sent to LLM)
     """
+    redact = redact_keys or set()
     stats: dict[str, Any] = {}
 
     for key, value in result.items():
+        if key in redact:
+            continue
         if isinstance(value, list):
             stats[f"{key}_count"] = len(value)
             if value and isinstance(value[0], dict):
@@ -212,6 +222,8 @@ def _auto_summarize(result: dict, max_chars: int = 4000, max_items: int = 20) ->
                 for item in value[:max_items]:
                     trimmed = {}
                     for k, v in item.items():
+                        if k in redact:
+                            continue
                         if isinstance(v, (str, int, float, bool, type(None))):
                             if not isinstance(v, str) or len(v) < 200:
                                 trimmed[k] = v
@@ -235,7 +247,8 @@ def _auto_summarize(result: dict, max_chars: int = 4000, max_items: int = 20) ->
             # Keep shallow scalar fields from nested dicts
             shallow = {
                 k: v for k, v in value.items()
-                if isinstance(v, (str, int, float, bool, type(None)))
+                if k not in redact
+                and isinstance(v, (str, int, float, bool, type(None)))
                 and (not isinstance(v, str) or len(v) < 200)
             }
             if shallow:
