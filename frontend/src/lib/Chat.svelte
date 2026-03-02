@@ -2,12 +2,14 @@
 	import { onMount } from 'svelte';
 	import { chatStore, chatList, appConfig, statusBar, connect, sendMessage, cancelRequest, loadChat, newChat, fetchChatList, deleteChat, setPreference } from '$lib/stores/chat.ts';
 	import { currentUser, needsAuth, clearToken, setToken, getUserToken } from '$lib/stores/user.ts';
+	import { leftPanelOpen, rightPanelOpen } from '$lib/stores/panels.ts';
 	import MessageBubble from '$lib/MessageBubble.svelte';
 	import CommandPalette from '$lib/CommandPalette.svelte';
 	import ModelSelector from '$lib/ModelSelector.svelte';
 	import WelcomeModal from '$lib/WelcomeModal.svelte';
 	import UserPicker from '$lib/UserPicker.svelte';
 	import FeedbackModal from '$lib/FeedbackModal.svelte';
+	import SearchPanel from '$lib/SearchPanel.svelte';
 
 	let inputText = $state('');
 	let pasteSlots = $state([]); // [{text, lines, chars}, ...] for inline paste tokens
@@ -309,6 +311,7 @@
 	<WelcomeModal mode={modalMode} onCancel={showAddUser ? handleCancelAddUser : undefined} />
 {:else}
 <div class="chat-layout">
+	{#if $leftPanelOpen}
 	<aside class="sidebar">
 		<div class="sidebar-header">
 			<img src="/logo.svg" alt="Hive Browser" class="logo" />
@@ -357,8 +360,33 @@
 			</button>
 		</div>
 	</aside>
+	{/if}
 
 	<div class="chat-main">
+		<div class="panel-toggles">
+			<button
+				class="panel-toggle left"
+				onclick={() => leftPanelOpen.update(v => !v)}
+				aria-label="Toggle sidebar"
+				title={$leftPanelOpen ? 'Hide sidebar' : 'Show sidebar'}
+			>
+				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<rect x="3" y="3" width="18" height="18" rx="2"/>
+					<line x1="9" y1="3" x2="9" y2="21"/>
+				</svg>
+			</button>
+			<button
+				class="panel-toggle right"
+				onclick={() => rightPanelOpen.update(v => !v)}
+				aria-label="Toggle search panel"
+				title={$rightPanelOpen ? 'Hide search' : 'Show search'}
+			>
+				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<circle cx="11" cy="11" r="8"/>
+					<line x1="21" y1="21" x2="16.65" y2="16.65"/>
+				</svg>
+			</button>
+		</div>
 		<div class="messages" bind:this={messagesDiv}>
 			{#if $chatStore.messages.length === 0}
 				<div class="welcome">
@@ -444,6 +472,10 @@
 			</form>
 		</div>
 	</div>
+
+	{#if $rightPanelOpen}
+		<SearchPanel />
+	{/if}
 </div>
 {#if showFeedback}
 	<FeedbackModal onClose={() => showFeedback = false} />
@@ -644,6 +676,39 @@
 		flex-direction: column;
 		min-width: 0;
 		background: var(--bg-app);
+		position: relative;
+	}
+
+	.panel-toggles {
+		position: absolute;
+		top: 0.5rem;
+		left: 0.5rem;
+		right: 0.5rem;
+		display: flex;
+		justify-content: space-between;
+		pointer-events: none;
+		z-index: 10;
+	}
+
+	.panel-toggle {
+		pointer-events: auto;
+		background: var(--bg-surface);
+		border: 1px solid var(--border);
+		border-radius: 6px;
+		padding: 0.3rem;
+		cursor: pointer;
+		color: var(--text-faint);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		transition: color 0.15s, background 0.15s;
+		opacity: 0.7;
+	}
+
+	.panel-toggle:hover {
+		color: var(--text);
+		background: var(--bg-hover);
+		opacity: 1;
 	}
 
 	.messages {
