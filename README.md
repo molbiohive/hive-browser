@@ -19,6 +19,7 @@ A bee hive is a model of organized collective work — thousands of workers buil
 - **Natural language search** — ask "find all GFP plasmids" or "show me ampicillin-resistant constructs"
 - **BLAST integration** — paste a sequence to find similar constructs in your collection
 - **Agentic tool chaining** — complex queries like "blast the AmpR promoter from pUC19" are automatically broken into extract → blast steps
+- **Search panel** — always-available right-side panel with real-time text search and BLAST, no LLM round-trips
 - **Sequence analysis** — translate, transcribe, digest, GC content, reverse complement
 - **Click-to-copy sequences** — sequence areas are clickable, copies full sequence to clipboard (with fallback for non-HTTPS/RDP contexts)
 - **Inline paste tokens** — long pastes are collapsed into compact tokens in the input area, multiple pastes supported
@@ -27,6 +28,7 @@ A bee hive is a model of organized collective work — thousands of workers buil
 - **File watching** — automatically indexes new and changed files
 - **Multiple formats** — SnapGene (.dna, .rna, .prot), GenBank (.gb), FASTA (.fasta)
 - **Fuzzy matching** — finds results even with approximate names (pg_trgm)
+- **LLM data redaction** — sensitive data (sequence names, file paths, raw sequences) is automatically stripped from LLM context while remaining visible in the UI
 - **Local-first** — your data stays on your machine, LLM runs locally via Ollama
 - **Cloud LLM support** — optionally use Anthropic, OpenAI, or any provider via litellm
 - **Extensible tools** — add custom tools by dropping a Python file in the tools directory
@@ -133,19 +135,19 @@ make docker-logs    # tail app logs
 
 ```
 Browser  <-->  Svelte 5 frontend  <-->  FastAPI + WebSocket  <-->  PostgreSQL
-                                            |
-                                       Tool Router
-                                      /     |      \
-                               Guided   Agentic    Direct
-                              (/cmd)    (free text) (//cmd)
-                                 \        |
-                              Unified agentic loop
-                                      |
-                            Tool System (11 tools)
-                           /    |    |    |    \
-                       Search BLAST Extract Digest ...
-                                      |
-                               Ollama / litellm
+                  |                         |
+             Search Panel            Tool Router + SecretVault
+             (REST API)            /     |      \
+                              Guided   Agentic    Direct
+                             (/cmd)    (free text) (//cmd)
+                                \        |
+                             Unified agentic loop
+                                     |
+                           Tool System (12 tools)
+                          /    |    |    |    \
+                      Search BLAST Extract Parts ...
+                                     |
+                              Ollama / litellm
 ```
 
 **Backend**: Python 3.12, FastAPI, SQLAlchemy (async), Pydantic, sgffp, Biopython
@@ -160,9 +162,10 @@ Tools are self-describing and auto-discovered. Each tool declares its name, sche
 
 | Tool | Tags | Description |
 |------|------|-------------|
-| search | llm, search | Fuzzy name/feature/description search |
-| blast | llm, search | BLAST sequence similarity search |
+| search | llm, search | Fuzzy name/feature/description search (sequences + parts) |
+| blast | llm, search | BLAST sequence similarity search (sequences + parts) |
 | profile | llm, info | Sequence detail view |
+| parts | llm, info | Part detail view (annotations, instances, library membership) |
 | extract | llm, analysis | Get subsequence by feature, primer, or region |
 | translate | llm, analysis | DNA/RNA to protein translation |
 | transcribe | llm, analysis | DNA to mRNA transcription |
@@ -174,7 +177,7 @@ Tools are self-describing and auto-discovered. Each tool declares its name, sche
 
 ### Agentic Loop
 
-A single unified loop handles all LLM interactions. The LLM picks tools, chains them as needed, and uses a hybrid auto-pipe cache to pass large data (sequences, etc.) between tools without sending it through LLM context.
+A single unified loop handles all LLM interactions. The LLM picks tools, chains them as needed, and uses a hybrid auto-pipe cache to pass large data (sequences, etc.) between tools without sending it through LLM context. A per-loop SecretVault replaces sensitive values with opaque tokens (SEC:...) in the cache, preventing data leakage into LLM context while keeping it available for downstream tools.
 
 - **Single query** — LLM selects tool, extracts params, summarizes. E.g. "search GFP".
 - **Multi-step chain** — LLM chains multiple tools when needed. E.g. "translate the GFP CDS from pEGFP-N1" automatically runs extract → translate.
@@ -269,11 +272,12 @@ src/hive/
 ├── db/                  # SQLAlchemy models + async session
 ├── parsers/             # File parsers (snapgene, genbank, fasta)
 ├── watcher/             # File system watcher + ingestion
-├── tools/               # Tool system (11 tools + router + factory)
-│   ├── base.py          # Tool ABC, ToolRegistry
+├── tools/               # Tool system (12 tools + router + factory)
+│   ├── base.py          # Tool ABC, ToolRegistry, redact_keys
 │   ├── factory.py       # Auto-discovery (internal + external)
-│   ├── router.py        # Dispatch: direct / guided / agentic loop
+│   ├── router.py        # Dispatch: direct / guided / agentic loop + SecretVault
 │   └── *.py             # Individual tools
+├── secrets/             # SecretVault — opaque token system for data protection
 ├── sdk/                 # Public SDK for external tools
 ├── llm/                 # LLM client + prompts (pool for multiple models)
 ├── users/               # User system (token auth, preferences)
@@ -283,11 +287,14 @@ src/hive/
 frontend/src/lib/
 ├── stores/
 │   ├── chat.ts          # Chat state, WebSocket, message/model stores
-│   └── user.ts          # User auth, token vault, multi-user switching
-├── Chat.svelte          # Main chat view with inline paste tokens
+│   ├── user.ts          # User auth, token vault, multi-user switching
+│   └── panels.ts        # Left/right panel toggle stores
+├── Chat.svelte          # Main chat view with inline paste tokens + panel toggles
 ├── MessageBubble.svelte # Message rendering with markdown + hover metadata
 ├── Widget.svelte        # Widget dispatcher (auto-discovers *Widget.svelte)
 ├── ChainSteps.svelte    # Collapsible agentic chain steps
+├── SearchPanel.svelte   # Right-side search panel (real-time search + BLAST)
+├── DataTable.svelte     # Reusable sortable/paginated table component
 ├── *Widget.svelte       # Individual widgets (Table, Blast, Profile, Extract, etc.)
 ├── FormWidget.svelte    # Dynamic form for tool params
 ├── CopyableSequence.svelte # Click-to-copy sequence display area
