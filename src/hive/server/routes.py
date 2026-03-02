@@ -177,6 +177,38 @@ async def _discover_ollama(base_url: str, configured: list[dict]) -> list[dict]:
     return []
 
 
+# ── Search / BLAST endpoints (for search panel) ──────────
+
+
+@router.get("/search")
+async def search_endpoint(request: Request, q: str = ""):
+    """Direct pg_trgm search -- reuses SearchTool.execute()."""
+    registry = getattr(request.app.state, "tool_registry", None)
+    tool = registry.get("search") if registry else None
+    if not tool:
+        return JSONResponse({"error": "Search tool not available"}, status_code=503)
+    result = await tool.execute({"query": q}, mode="direct")
+    return result
+
+
+@router.post("/blast")
+async def blast_endpoint(request: Request):
+    """Direct BLAST search -- reuses BlastTool.execute()."""
+    registry = getattr(request.app.state, "tool_registry", None)
+    tool = registry.get("blast") if registry else None
+    if not tool:
+        return JSONResponse({"error": "BLAST tool not available"}, status_code=503)
+    body = await request.json()
+    sequence = body.get("sequence", "").strip()
+    if not sequence:
+        return JSONResponse({"error": "Missing required field: sequence"}, status_code=422)
+    params = {"sequence": sequence}
+    if program := body.get("program"):
+        params["program"] = program
+    result = await tool.execute(params, mode="direct")
+    return result
+
+
 @router.get("/health")
 async def health():
     """Health check for container orchestration."""
