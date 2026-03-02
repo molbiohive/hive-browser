@@ -1,5 +1,6 @@
 <script>
 	import { sendMessage } from '$lib/stores/chat.ts';
+	import DataTable from '$lib/DataTable.svelte';
 
 	let searchQuery = $state('');
 	let blastQuery = $state('');
@@ -7,7 +8,68 @@
 	let blastResults = $state(null);
 	let searchLoading = $state(false);
 	let blastLoading = $state(false);
+	let searchTab = $state('sequences'); // 'sequences' | 'parts'
 	let _debounceTimer = null; // plain var -- must NOT be $state to avoid retriggering $effect
+
+	// ── Search columns ──
+
+	const seqColumns = [
+		{ key: 'sid', label: 'SID' },
+		{ key: 'name', label: 'Name', class: 'name' },
+		{ key: 'size_bp', label: 'Length', format: (row) => row.size_bp ? `${(row.size_bp / 1000).toFixed(1)}kb` : '' },
+		{ key: 'score', label: 'Score', format: (row) => row.score != null ? row.score.toFixed(2) : '' },
+	];
+
+	const partsColumns = [
+		{ key: 'pid', label: 'PID' },
+		{ key: 'names', label: 'Name', class: 'name', format: (row) => Array.isArray(row.names) ? row.names.join(', ') : '' },
+		{ key: 'types', label: 'Type', format: (row) => Array.isArray(row.types) ? row.types.join(', ') : '' },
+		{ key: 'instance_count', label: 'Inst.' },
+		{ key: 'score', label: 'Score', format: (row) => row.score != null ? row.score.toFixed(2) : '' },
+	];
+
+	const seqActions = [
+		{
+			label: 'Profile',
+			onClick: (row) => sendMessage(`//profile ${JSON.stringify({ sid: row.sid })}`),
+			title: () => 'View sequence details',
+		},
+	];
+
+	const partsActions = [
+		{
+			label: 'View',
+			onClick: (row) => sendMessage(`//parts ${JSON.stringify({ pid: row.pid })}`),
+			title: () => 'View part details',
+		},
+	];
+
+	// ── BLAST columns ──
+
+	const blastColumns = [
+		{ key: 'sid', label: 'S/PID' },
+		{ key: 'subject', label: 'Hit', class: 'name' },
+		{ key: 'identity', label: 'Identity', format: (row) => `${row.identity}%` },
+		{ key: 'alignment_length', label: 'Length' },
+	];
+
+	const blastActions = [
+		{
+			label: 'Profile',
+			onClick: (row) => sendMessage(`//profile ${JSON.stringify({ sid: row.sid })}`),
+			show: (row) => row.sid != null,
+			title: () => 'View sequence details',
+		},
+	];
+
+	// ── Derived ──
+
+	const seqRows = $derived(searchResults?.results || []);
+	const partsRows = $derived(searchResults?.parts || []);
+	const seqCount = $derived(searchResults?.total ?? 0);
+	const partsCount = $derived(searchResults?.parts_total ?? 0);
+
+	// ── Search logic ──
 
 	function debounceSearch(q) {
 		clearTimeout(_debounceTimer);
@@ -58,14 +120,6 @@
 		}
 	}
 
-	function viewProfile(sid) {
-		sendMessage(`//profile ${JSON.stringify({ sid })}`);
-	}
-
-	function viewParts(pid) {
-		sendMessage(`//parts ${JSON.stringify({ pid })}`);
-	}
-
 	function handleBlastKeydown(e) {
 		if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
 			e.preventDefault();
@@ -84,7 +138,7 @@
 	</div>
 
 	<div class="panel-body">
-		<!-- Text search -->
+		<!-- Text search input -->
 		<div class="search-section">
 			<input
 				type="text"
@@ -97,37 +151,38 @@
 			{/if}
 		</div>
 
-		<!-- Search results -->
+		<!-- Search results with tab toggle -->
 		{#if searchResults && !searchResults.error}
 			<div class="results-section">
-				{#if searchResults.results?.length > 0}
-					<div class="results-group">
-						<h4>Sequences ({searchResults.total})</h4>
-						{#each searchResults.results as row}
-							<button class="result-row" onclick={() => viewProfile(row.sid)}>
-								<span class="result-name">{row.name}</span>
-								<span class="result-meta">{row.size_bp}bp {row.topology}</span>
-								<span class="result-score">{row.score?.toFixed(2)}</span>
-							</button>
-						{/each}
-					</div>
-				{/if}
+				<div class="tab-bar">
+					<button
+						class="tab-btn"
+						class:active={searchTab === 'sequences'}
+						onclick={() => searchTab = 'sequences'}
+					>
+						Sequences ({seqCount})
+					</button>
+					<button
+						class="tab-btn"
+						class:active={searchTab === 'parts'}
+						onclick={() => searchTab = 'parts'}
+					>
+						Parts ({partsCount})
+					</button>
+				</div>
 
-				{#if searchResults.parts?.length > 0}
-					<div class="results-group">
-						<h4>Parts ({searchResults.parts_total})</h4>
-						{#each searchResults.parts as part}
-							<button class="result-row" onclick={() => viewParts(part.pid)}>
-								<span class="result-name">{part.names?.join(', ')}</span>
-								<span class="result-meta">{part.types?.join(', ')} {part.length ? part.length + 'bp' : ''}</span>
-								<span class="result-score">{part.instance_count} inst</span>
-							</button>
-						{/each}
-					</div>
-				{/if}
-
-				{#if searchResults.total === 0 && searchResults.parts_total === 0}
-					<div class="no-results">No results</div>
+				{#if searchTab === 'sequences'}
+					{#if seqRows.length > 0}
+						<DataTable rows={seqRows} columns={seqColumns} actions={seqActions} defaultPageSize={10} />
+					{:else}
+						<div class="no-results">No matching sequences</div>
+					{/if}
+				{:else}
+					{#if partsRows.length > 0}
+						<DataTable rows={partsRows} columns={partsColumns} actions={partsActions} defaultPageSize={10} />
+					{:else}
+						<div class="no-results">No matching parts</div>
+					{/if}
 				{/if}
 			</div>
 		{:else if searchResults?.error}
@@ -157,19 +212,8 @@
 		{#if blastResults && !blastResults.error}
 			<div class="results-section">
 				{#if blastResults.hits?.length > 0}
-					<div class="results-group">
-						<h4>BLAST Hits ({blastResults.total})</h4>
-						{#each blastResults.hits as hit}
-							<button
-								class="result-row"
-								onclick={() => { if (hit.sid) viewProfile(hit.sid); }}
-							>
-								<span class="result-name">{hit.subject}</span>
-								<span class="result-meta">{hit.identity?.toFixed(1)}% id, {hit.alignment_length}bp</span>
-								<span class="result-score">E={hit.evalue?.toExponential(1)}</span>
-							</button>
-						{/each}
-					</div>
+					<div class="blast-heading">{blastResults.program} -- {blastResults.total} hit(s)</div>
+					<DataTable rows={blastResults.hits} columns={blastColumns} actions={blastActions} defaultPageSize={10} />
 				{:else}
 					<div class="no-results">No BLAST hits</div>
 				{/if}
@@ -182,7 +226,7 @@
 
 <style>
 	.search-panel {
-		width: 380px;
+		width: 450px;
 		background: var(--bg-sidebar);
 		border-left: 1px solid var(--border);
 		display: flex;
@@ -246,60 +290,42 @@
 		padding: 0.25rem 0;
 	}
 
-	.results-section {
+	/* Tab toggle */
+	.tab-bar {
 		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
+		gap: 2px;
+		background: var(--bg-app);
+		border-radius: 6px;
+		padding: 2px;
 	}
 
-	.results-group h4 {
-		margin: 0 0 0.25rem;
-		font-size: 0.75rem;
-		font-weight: 600;
-		color: var(--text-muted);
-	}
-
-	.result-row {
-		width: 100%;
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		padding: 0.4rem 0.5rem;
+	.tab-btn {
+		flex: 1;
+		padding: 0.3rem 0.5rem;
 		border: none;
 		background: transparent;
 		border-radius: 4px;
 		cursor: pointer;
-		text-align: left;
+		font-size: 0.75rem;
 		font-family: inherit;
-		font-size: 0.8rem;
-		color: var(--text);
-		transition: background 0.1s;
-	}
-
-	.result-row:hover {
-		background: var(--bg-hover);
-	}
-
-	.result-name {
-		flex: 1;
-		min-width: 0;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		font-weight: 500;
-	}
-
-	.result-meta {
-		font-size: 0.72rem;
 		color: var(--text-faint);
-		white-space: nowrap;
+		transition: background 0.15s, color 0.15s;
 	}
 
-	.result-score {
-		font-size: 0.7rem;
-		color: var(--text-placeholder);
-		white-space: nowrap;
-		font-variant-numeric: tabular-nums;
+	.tab-btn:hover {
+		color: var(--text);
+	}
+
+	.tab-btn.active {
+		background: var(--bg-surface);
+		color: var(--text);
+		font-weight: 600;
+	}
+
+	.results-section {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
 	}
 
 	.no-results {
@@ -328,6 +354,12 @@
 		font-size: 0.75rem;
 		font-weight: 600;
 		color: var(--text-muted);
+	}
+
+	.blast-heading {
+		font-size: 0.75rem;
+		color: var(--text-muted);
+		font-weight: 600;
 	}
 
 	.blast-input {
@@ -372,5 +404,10 @@
 	.blast-btn:disabled {
 		opacity: 0.4;
 		cursor: default;
+	}
+
+	/* DataTable in panel context: ensure it doesn't overflow */
+	:global(.search-panel .table-scroll) {
+		font-size: 0.78rem;
 	}
 </style>
