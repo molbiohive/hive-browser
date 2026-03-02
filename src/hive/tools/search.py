@@ -9,7 +9,7 @@ import re
 from typing import Any
 
 from pydantic import BaseModel, Field
-from sqlalchemy import Text, and_, cast, func, or_, select
+from sqlalchemy import Text, and_, cast, desc, func, or_, select
 from sqlalchemy.orm import selectinload
 
 from hive.config import display_file_path
@@ -64,7 +64,8 @@ class SearchTool(Tool):
     widget = "table"
     tags = {"llm", "search"}
     guidelines = (
-        "Fuzzy keyword search across name, features, description, and directory tags. "
+        "Fuzzy keyword search across sequences AND parts. Returns both matching "
+        "sequences and matching parts (with instance counts). "
         "IMPORTANT: When user says 'X and Y' or 'X with Y' or 'X that have Y', "
         "ALWAYS use && in query: 'X && Y'. Without && terms are single-term fuzzy. "
         "If the user mentions a project, folder, or directory context, "
@@ -93,8 +94,12 @@ class SearchTool(Tool):
         if error := result.get("error"):
             return f"Error: {error}"
         total = result.get("total", 0)
+        parts_total = result.get("parts_total", 0)
         query = result.get("query", "")
-        return f"Found {total} result(s) for '{query}'." if total else f"No results for '{query}'."
+        parts_msg = f", {parts_total} part(s)" if parts_total else ""
+        if total or parts_total:
+            return f"Found {total} sequence(s){parts_msg} for '{query}'."
+        return f"No results for '{query}'."
 
     async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
         """Execute search with pg_trgm similarity + filters.
@@ -217,8 +222,92 @@ class SearchTool(Tool):
                     ).model_dump()
                 )
 
+            # --- Part-level search ---
+            parts = await _search_parts(session, terms, op)
+
         return {
             "results": results,
             "total": len(results),
+            "parts": parts,
+            "parts_total": len(parts),
             "query": inp.query,
         }
+
+
+async def _search_parts(
+    session: Any, terms: list[str], op: str,
+) -> list[dict]:
+    """Search parts by name similarity, returning deduplicated part entries."""
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    term_scores = []
+    term_conditions = []
+
+    for term in terms:
+        score_expr = func.max(func.similarity(PartName.name, term))
+        term_scores.append(score_expr)
+        term_conditions.append(score_expr > 0.15)
+
+    # Build combined score expression
+    if len(term_scores) == 1:
+        combined = term_scores[0]
+    elif op == "and":
+        combined = func.least(*term_scores)
+    else:
+        combined = func.greatest(*term_scores)
+
+    # Group by Part, get best name match score
+    stmt = (
+        select(Part.id, combined.label("score"))
+        .join(PartName, Part.id == PartName.part_id)
+        .group_by(Part.id)
+    )
+
+    # Apply boolean conditions
+    if op == "and":
+        for cond in term_conditions:
+            stmt = stmt.having(cond)
+    elif op == "or":
+        stmt = stmt.having(or_(*term_conditions))
+    else:
+        stmt = stmt.having(term_conditions[0])
+
+    stmt = stmt.order_by(desc("score")).limit(20)
+    rows = (await session.execute(stmt)).all()
+
+    if not rows:
+        return []
+
+    # Load full Part objects with names and instances
+    part_ids = [r[0] for r in rows]
+    score_map = {r[0]: round(float(r[1]), 2) for r in rows}
+
+    parts_stmt = (
+        select(Part)
+        .where(Part.id.in_(part_ids))
+        .options(
+            selectinload(Part.names),
+            selectinload(Part.instances),
+        )
+    )
+    parts = (await session.execute(parts_stmt)).scalars().all()
+
+    # Build result dicts preserving score order
+    part_map = {p.id: p for p in parts}
+    result = []
+    for pid in part_ids:
+        part = part_map.get(pid)
+        if not part:
+            continue
+        types = list({pi.annotation_type for pi in part.instances if pi.annotation_type})
+        result.append({
+            "pid": part.id,
+            "names": [n.name for n in part.names],
+            "molecule": part.molecule,
+            "length": part.length,
+            "instance_count": len(part.instances),
+            "types": types,
+            "score": score_map[pid],
+        })
+
+    return result
