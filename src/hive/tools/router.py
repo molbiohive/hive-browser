@@ -27,10 +27,9 @@ _NOOP_TOOL = [{"type": "function", "function": {
 # After a tool runs, only offer these tools on the next turn.
 # Empty set = force text response (no tools).
 _NEXT_TOOLS: dict[str, set[str]] = {
-    "search": {"extract", "profile", "features", "primers", "blast"},
-    "profile": {"extract", "features", "primers", "blast"},
-    "features": {"extract", "blast"},
-    "primers": {"extract", "blast"},
+    "search": {"extract", "profile", "parts", "blast"},
+    "profile": {"extract", "parts", "blast"},
+    "parts": {"blast", "extract", "parts"},
     "extract": {"blast", "translate", "transcribe", "revcomp", "digest", "gc", "align"},
     # Terminal tools — force text summary
     "align": set(),

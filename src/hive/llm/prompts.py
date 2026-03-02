@@ -32,6 +32,7 @@ or follow-ups about previous results. Only call tools for sequence data operatio
 - SID = Sequence ID (whole plasmid/construct). Use for sequence operations.
 - PID = Part ID (individual feature/primer). Parts are canonical — same sequence \
 across files shares the same PID.
+- Use the parts tool with pid to look up a part, or with sid to list parts on a sequence.
 
 ## Workflow
 - ONE tool per turn. Data pipes automatically between tools.
