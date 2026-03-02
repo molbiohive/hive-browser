@@ -65,11 +65,12 @@ class SearchTool(Tool):
     tags = {"llm", "search"}
     guidelines = (
         "Fuzzy keyword search across sequences AND parts. Returns both matching "
-        "sequences and matching parts (with instance counts). "
+        "sequences (with SIDs) and matching parts (with PIDs and instance counts). "
         "IMPORTANT: When user says 'X and Y' or 'X with Y' or 'X that have Y', "
         "ALWAYS use && in query: 'X && Y'. Without && terms are single-term fuzzy. "
         "If the user mentions a project, folder, or directory context, "
-        "put it in the tags parameter."
+        "put it in the tags parameter. "
+        "Use PIDs from the parts section for follow-up tools (align, blast, extract)."
     )
 
     def __init__(self, **_):
@@ -100,6 +101,42 @@ class SearchTool(Tool):
         if total or parts_total:
             return f"Found {total} sequence(s){parts_msg} for '{query}'."
         return f"No results for '{query}'."
+
+    def summary_for_llm(self, result: dict, token_limit: int = 500) -> str:
+        """Explicit summary with real IDs — prevents hallucination."""
+        lines = []
+        query = result.get("query", "")
+        total = result.get("total", 0)
+        parts = result.get("parts", [])
+
+        # Budget: ~40% sequences, ~60% parts (parts are more actionable)
+        max_seqs = max(5, token_limit // 100)
+        max_parts = max(5, token_limit // 60)
+
+        # Sequences — compact list of SIDs + names
+        seqs = result.get("results", [])
+        if seqs:
+            lines.append(f"{total} sequences for '{query}':")
+            for s in seqs[:max_seqs]:
+                lines.append(f"  sid={s['sid']} \"{s['name']}\" {s['size_bp']}bp")
+            if total > max_seqs:
+                lines.append(f"  ... and {total - max_seqs} more")
+
+        # Parts — list PIDs explicitly so LLM uses real IDs
+        if parts:
+            lines.append(f"\n{len(parts)} matching parts:")
+            for p in parts[:max_parts]:
+                names = ", ".join(p.get("names", [])[:2])
+                types = ", ".join(p.get("types", [])[:2])
+                lines.append(
+                    f"  pid={p['pid']} \"{names}\" ({types}, {p.get('length', '?')}bp, "
+                    f"{p.get('instance_count', 0)} instances)"
+                )
+            lines.append("Use these PIDs for align, blast, extract.")
+
+        if not lines:
+            return f"No results for '{query}'."
+        return "\n".join(lines)
 
     async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
         """Execute search with pg_trgm similarity + filters.
@@ -237,14 +274,16 @@ class SearchTool(Tool):
 async def _search_parts(
     session: Any, terms: list[str], op: str,
 ) -> list[dict]:
-    """Search parts by name similarity, returning deduplicated part entries."""
-    from sqlalchemy.ext.asyncio import AsyncSession
-
+    """Search parts by name and annotation type similarity."""
     term_scores = []
     term_conditions = []
 
     for term in terms:
-        score_expr = func.max(func.similarity(PartName.name, term))
+        name_score = func.max(func.similarity(PartName.name, term))
+        type_score = func.max(func.coalesce(
+            func.similarity(PartInstance.annotation_type, term), 0,
+        ))
+        score_expr = func.greatest(name_score, type_score)
         term_scores.append(score_expr)
         term_conditions.append(score_expr > 0.15)
 
@@ -256,10 +295,11 @@ async def _search_parts(
     else:
         combined = func.greatest(*term_scores)
 
-    # Group by Part, get best name match score
+    # Group by Part, get best match score across name + type
     stmt = (
         select(Part.id, combined.label("score"))
         .join(PartName, Part.id == PartName.part_id)
+        .join(PartInstance, Part.id == PartInstance.part_id)
         .group_by(Part.id)
     )
 

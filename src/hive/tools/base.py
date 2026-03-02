@@ -95,10 +95,17 @@ class Tool(ABC):
         return ""
 
     def summary_for_llm(self, result: dict, token_limit: int = 500) -> str:
-        """Compact result summary for LLM context. Do NOT override in subclasses."""
-        max_chars = token_limit * 4
+        """Build LLM summary. Override in subclasses for custom formatting."""
         max_items = max(5, token_limit // 50)
-        return _auto_summarize(result, max_chars=max_chars, max_items=max_items)
+        return _auto_summarize(result, max_chars=token_limit * 4, max_items=max_items)
+
+    def _build_summary(self, result: dict, token_limit: int = 500) -> str:
+        """Wrapper that calls summary_for_llm and enforces token limit."""
+        max_chars = token_limit * 4
+        text = self.summary_for_llm(result, token_limit)
+        if len(text) > max_chars:
+            text = text[:max_chars - 3] + "..."
+        return text
 
     def schema(self) -> dict:
         """Full tool schema for LLM function calling."""
@@ -203,11 +210,15 @@ def _auto_summarize(result: dict, max_chars: int = 4000, max_items: int = 20) ->
             if value and isinstance(value[0], dict):
                 sample = []
                 for item in value[:max_items]:
-                    trimmed = {
-                        k: v for k, v in item.items()
-                        if isinstance(v, (str, int, float, bool, type(None)))
-                        and (not isinstance(v, str) or len(v) < 200)
-                    }
+                    trimmed = {}
+                    for k, v in item.items():
+                        if isinstance(v, (str, int, float, bool, type(None))):
+                            if not isinstance(v, str) or len(v) < 200:
+                                trimmed[k] = v
+                        elif isinstance(v, list) and len(v) <= 5 and all(
+                            isinstance(x, (str, int, float)) for x in v
+                        ):
+                            trimmed[k] = v
                     sample.append(trimmed)
                 if sample:
                     stats[f"{key}_sample"] = sample

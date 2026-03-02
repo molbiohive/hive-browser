@@ -18,9 +18,9 @@ logger = logging.getLogger(__name__)
 # After a tool runs, only offer these tools on the next turn.
 # Empty set = force text response (no tools).
 _NEXT_TOOLS: dict[str, set[str]] = {
-    "search": {"extract", "profile", "parts", "blast"},
-    "profile": {"extract", "parts", "blast"},
-    "parts": {"blast", "extract", "parts"},
+    "search": {"extract", "profile", "parts", "blast", "align"},
+    "profile": {"extract", "parts", "blast", "align"},
+    "parts": {"blast", "extract", "parts", "align"},
     "extract": {"blast", "translate", "transcribe", "revcomp", "digest", "gc", "align"},
     # Terminal tools — force text summary
     "align": set(),
@@ -289,7 +289,7 @@ async def _unified_loop(
                 if isinstance(val, str) and len(val) >= pipe_min_length:
                     cache[key] = val
 
-            compact = tool.summary_for_llm(result, token_limit=summary_token_limit)
+            compact = tool._build_summary(result, token_limit=summary_token_limit)
             logger.debug(
                 "SUMMARY %s: %d chars | result keys: %s",
                 tool_name, len(compact),
