@@ -1,4 +1,4 @@
-"""Shared sequence resolver -- SID-first, exact name fallback."""
+"""Shared resolvers -- sequence by SID/name, part by PID."""
 
 from __future__ import annotations
 
@@ -6,7 +6,16 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from hive.db.models import IndexedFile, Part, PartInstance, PartName, Sequence
+from hive.db.models import (
+    Annotation,
+    IndexedFile,
+    Library,
+    LibraryMember,
+    Part,
+    PartInstance,
+    PartName,
+    Sequence,
+)
 
 
 async def resolve_sequence(
@@ -44,3 +53,38 @@ async def resolve_sequence(
         stmt = stmt.options(selectinload(Sequence.file))
 
     return (await session.execute(stmt.order_by(Sequence.id).limit(1))).scalar_one_or_none()
+
+
+async def resolve_part(
+    session: AsyncSession,
+    *,
+    pid: int,
+    load_names: bool = False,
+    load_instances: bool = False,
+    load_annotations: bool = False,
+    load_libraries: bool = False,
+) -> Part | None:
+    """Resolve a Part by PID with optional eager loading.
+
+    Instances chain: Part.instances -> PartInstance.sequence -> Sequence.file.
+    Libraries chain: Part.library_members -> LibraryMember.library.
+    """
+    stmt = select(Part).where(Part.id == pid)
+
+    if load_names:
+        stmt = stmt.options(selectinload(Part.names))
+    if load_instances:
+        stmt = stmt.options(
+            selectinload(Part.instances)
+            .selectinload(PartInstance.sequence)
+            .selectinload(Sequence.file)
+        )
+    if load_annotations:
+        stmt = stmt.options(selectinload(Part.annotations))
+    if load_libraries:
+        stmt = stmt.options(
+            selectinload(Part.library_members)
+            .selectinload(LibraryMember.library)
+        )
+
+    return (await session.execute(stmt)).scalar_one_or_none()
