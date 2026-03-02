@@ -187,10 +187,11 @@ class TestDirectMode:
         assert resp["type"] == "form"
         assert resp["tool"] == "required"
 
-    async def test_direct_no_args_without_required_executes(self, registry):
+    async def test_direct_no_args_always_shows_form(self, registry):
+        """All tools show a form when invoked with no args."""
         resp = await route_input("//echo", registry)
-        assert resp["type"] == "tool_result"
-        assert resp["data"]["echo"] == {}
+        assert resp["type"] == "form"
+        assert resp["tool"] == "echo"
 
 
 # ── Route Input: Help ──
@@ -217,10 +218,11 @@ class TestGuidedNoLLM:
         assert resp["type"] == "tool_result"
         assert resp["data"]["echo"] == {"query": "hello"}
 
-    async def test_guided_no_llm_tag_falls_back(self, registry):
+    async def test_guided_no_llm_tag_shows_form(self, registry):
+        """Non-LLM tool with no args in guided mode shows a form."""
         resp = await route_input("/direct", registry, llm_client=AsyncMock())
-        assert resp["type"] == "tool_result"
-        assert resp["data"]["ok"] is True
+        assert resp["type"] == "form"
+        assert resp["tool"] == "direct"
 
     async def test_guided_unknown_tool(self, registry):
         resp = await route_input("/nonexistent args", registry)

@@ -8,6 +8,16 @@
 	const properties = $derived(schema.properties || {});
 	const required = $derived(new Set(schema.required || []));
 
+	// Resolve type from Pydantic anyOf: [{type: "integer"}, {type: "null"}] → "integer"
+	function resolveType(prop) {
+		if (prop.type) return prop.type;
+		if (prop.anyOf) {
+			const types = prop.anyOf.filter((t) => t.type !== 'null');
+			if (types.length === 1) return types[0].type;
+		}
+		return 'string';
+	}
+
 	let values = $state({});
 	let tags = $state({}); // key → string[] for array, {k:v}[] for object
 
@@ -17,7 +27,7 @@
 		if (!tags[field]) tags[field] = [];
 
 		const prop = properties[field];
-		if (prop?.type === 'object') {
+		if (prop && resolveType(prop) === 'object') {
 			// Parse "key: value" or "key:value"
 			const sep = raw.indexOf(':');
 			if (sep < 1) return;
@@ -56,10 +66,11 @@
 		const params = {};
 
 		for (const [key, prop] of Object.entries(properties)) {
-			if (prop.type === 'array' || prop.type === 'object') {
+			const type = resolveType(prop);
+			if (type === 'array' || type === 'object') {
 				const items = tags[key];
 				if (!items?.length) continue;
-				if (prop.type === 'object') {
+				if (type === 'object') {
 					const obj = {};
 					for (const t of items) {
 						// Try to parse numeric values
@@ -73,8 +84,10 @@
 			} else {
 				const val = values[key];
 				if (val === '' || val === undefined) continue;
-				if (prop.type === 'number' || prop.type === 'integer') {
+				if (type === 'number' || type === 'integer') {
 					params[key] = Number(val);
+				} else if (type === 'boolean') {
+					params[key] = val;
 				} else {
 					params[key] = val;
 				}
@@ -89,13 +102,14 @@
 	}
 
 	function tagPlaceholder(prop) {
-		if (prop.type === 'object') return 'key: value, then Enter';
+		if (resolveType(prop) === 'object') return 'key: value, then Enter';
 		return 'value, then Enter';
 	}
 </script>
 
 <form class="form-widget" onsubmit={handleSubmit}>
 	{#each Object.entries(properties) as [key, prop]}
+		{@const type = resolveType(prop)}
 		<div class="field">
 			<label for={key}>
 				{key}
@@ -104,22 +118,21 @@
 			{#if prop.description}
 				<span class="desc">{prop.description}</span>
 			{/if}
-
-			{#if prop.type === 'boolean'}
+			{#if type === 'boolean'}
 				<input type="checkbox" id={key} bind:checked={values[key]} />
-			{:else if prop.type === 'number' || prop.type === 'integer'}
+			{:else if type === 'number' || type === 'integer'}
 				<input
 					type="number"
 					id={key}
-					step={prop.type === 'integer' ? '1' : 'any'}
+					step={type === 'integer' ? '1' : 'any'}
 					placeholder={prop.default != null ? String(prop.default) : ''}
 					bind:value={values[key]}
 				/>
-			{:else if prop.type === 'array' || prop.type === 'object'}
+			{:else if type === 'array' || type === 'object'}
 				<label class="tag-input" for="{key}-tag">
 					{#each tags[key] || [] as tag, i}
 						<button type="button" class="tag" onclick={() => removeTag(key, i)}>
-							{#if prop.type === 'object'}
+							{#if type === 'object'}
 								<span class="tag-key">{tag.key}:</span> {tag.value}
 							{:else}
 								{tag}

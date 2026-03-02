@@ -70,11 +70,9 @@ async def route_input(
         if not tool:
             return _error(f"Unknown tool: {tool_name}")
 
-        # If no args and tool has required params, return a form
+        # No args → always show form (all visible tools must have one)
         if not args_text:
-            schema = tool.input_schema()
-            if schema.get("required"):
-                return _form_response(tool_name, tool.description, schema)
+            return _form_response(tool_name, tool.description, tool.input_schema())
 
         params = _parse_args(args_text)
         result = await tool.execute(params, mode="direct")
@@ -91,9 +89,7 @@ async def route_input(
         if not llm_client or "llm" not in tool.tags:
             # No LLM or tool opts out — execute directly
             if not text:
-                schema = tool.input_schema()
-                if schema.get("required"):
-                    return _form_response(tool_name, tool.description, schema)
+                return _form_response(tool_name, tool.description, tool.input_schema())
 
             params = _parse_args(text)
             result = await tool.execute(params, mode="guided")
