@@ -7,16 +7,17 @@
 	let blastResults = $state(null);
 	let searchLoading = $state(false);
 	let blastLoading = $state(false);
-	let debounceTimer = $state(undefined);
+	let _debounceTimer = null; // plain var -- must NOT be $state to avoid retriggering $effect
 
 	function debounceSearch(q) {
-		clearTimeout(debounceTimer);
-		if (!q.trim()) {
+		clearTimeout(_debounceTimer);
+		if (!q.trim() || q.trim().length < 2) {
 			searchResults = null;
+			searchLoading = false;
 			return;
 		}
 		searchLoading = true;
-		debounceTimer = setTimeout(() => doSearch(q), 300);
+		_debounceTimer = setTimeout(() => doSearch(q), 300);
 	}
 
 	async function doSearch(q) {

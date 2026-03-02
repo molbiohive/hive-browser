@@ -183,6 +183,9 @@ async def _discover_ollama(base_url: str, configured: list[dict]) -> list[dict]:
 @router.get("/search")
 async def search_endpoint(request: Request, q: str = ""):
     """Direct pg_trgm search -- reuses SearchTool.execute()."""
+    q = q.strip()
+    if len(q) < 2:
+        return {"results": [], "total": 0, "parts": [], "parts_total": 0, "query": q}
     registry = getattr(request.app.state, "tool_registry", None)
     tool = registry.get("search") if registry else None
     if not tool:
