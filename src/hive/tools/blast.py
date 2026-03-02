@@ -227,6 +227,7 @@ class BlastTool(Tool):
             for hit in hits:
                 meta = meta_map.get(hit["subject"], {})
                 hit["sid"] = meta.get("sid")
+                hit["pid"] = meta.get("pid")
                 hit["file_path"] = meta.get("file_path")
 
         return {
@@ -267,21 +268,44 @@ async def _resolve_by_name(name: str) -> str | None:
 
 
 async def _resolve_hit_metadata(names: set[str]) -> dict[str, dict]:
-    """Look up SID and file path for hit subject names."""
+    """Look up SID/PID and file path for hit subject names.
+
+    Sequence hits have plain names. Part hits have 'pid_N_name' format.
+    """
     if not db.async_session_factory or not names:
         return {}
+
+    # Separate part hits (pid_N_*) from sequence hits
+    part_names = {n for n in names if n.startswith("pid_")}
+    seq_names = names - part_names
+
+    result: dict[str, dict] = {}
+
     async with db.async_session_factory() as session:
-        rows = (await session.execute(
-            select(Sequence.id, Sequence.name, IndexedFile.file_path)
-            .join(IndexedFile, Sequence.file_id == IndexedFile.id)
-            .where(IndexedFile.status == "active")
-        )).all()
-    result = {}
-    for sid, seq_name, file_path in rows:
-        safe_name = seq_name.replace(" ", "_")
-        if safe_name in names:
-            result[safe_name] = {
-                "sid": sid,
-                "file_path": display_file_path(file_path),
-            }
+        # Resolve sequence hits
+        if seq_names:
+            rows = (await session.execute(
+                select(Sequence.id, Sequence.name, IndexedFile.file_path)
+                .join(IndexedFile, Sequence.file_id == IndexedFile.id)
+                .where(IndexedFile.status == "active")
+            )).all()
+            for sid, seq_name, file_path in rows:
+                safe_name = seq_name.replace(" ", "_")
+                if safe_name in seq_names:
+                    result[safe_name] = {
+                        "sid": sid,
+                        "file_path": display_file_path(file_path),
+                    }
+
+    # Resolve part hits by parsing pid_N from subject name
+    for pname in part_names:
+        # Format: pid_N_name
+        parts = pname.split("_", 2)
+        if len(parts) >= 2:
+            try:
+                pid = int(parts[1])
+                result[pname] = {"pid": pid}
+            except ValueError:
+                pass
+
     return result

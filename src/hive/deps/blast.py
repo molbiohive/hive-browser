@@ -12,7 +12,7 @@ from typing import Any
 from sqlalchemy import select
 
 from hive.db import session as db
-from hive.db.models import IndexedFile, Sequence
+from hive.db.models import IndexedFile, Part, PartName, Sequence
 from hive.deps import Dep
 
 logger = logging.getLogger(__name__)
@@ -100,14 +100,21 @@ class BlastDep(Dep):
             old.unlink()
 
         async with db.async_session_factory() as session:
-            rows = (await session.execute(
+            # Full sequences
+            seq_rows = (await session.execute(
                 select(Sequence.name, Sequence.sequence, Sequence.molecule)
                 .join(IndexedFile, Sequence.file_id == IndexedFile.id)
                 .where(IndexedFile.status == "active")
             )).all()
 
-        if not rows:
-            logger.info("No sequences to index for BLAST")
+            # Parts (canonical subsequences: CDS, promoters, etc.)
+            part_rows = (await session.execute(
+                select(Part.id, Part.sequence, Part.molecule, PartName.name)
+                .join(PartName, Part.id == PartName.part_id)
+            )).all()
+
+        if not seq_rows and not part_rows:
+            logger.info("No sequences or parts to index for BLAST")
             return False
 
         # Split sequences by type
@@ -116,10 +123,28 @@ class BlastDep(Dep):
         nucl_count = 0
         prot_count = 0
 
+        # Deduplicate parts: keep first name per PID
+        seen_pids: set[int] = set()
+
         with open(nucl_fasta, "w") as nf, open(prot_fasta, "w") as pf:
-            for name, seq, molecule in rows:
+            # Write full sequences
+            for name, seq, molecule in seq_rows:
                 safe_name = name.replace(" ", "_")
                 if molecule == "protein":
+                    pf.write(f">{safe_name}\n{seq}\n")
+                    prot_count += 1
+                else:
+                    nucl_seq = seq.replace("U", "T").replace("u", "t") if molecule == "RNA" else seq
+                    nf.write(f">{safe_name}\n{nucl_seq}\n")
+                    nucl_count += 1
+
+            # Write parts with pid_ prefix
+            for pid, seq, molecule, pname in part_rows:
+                if pid in seen_pids:
+                    continue
+                seen_pids.add(pid)
+                safe_name = f"pid_{pid}_{pname.replace(' ', '_')}"
+                if molecule == "AA":
                     pf.write(f">{safe_name}\n{seq}\n")
                     prot_count += 1
                 else:
@@ -133,14 +158,14 @@ class BlastDep(Dep):
         # Build nucleotide DB
         if nucl_count > 0:
             ok = await self._run_makeblastdb(makeblastdb, nucl_fasta, blast_dir / "hive_nucl", "nucl") and ok
-            logger.info("BLAST nucl index: %d sequences", nucl_count)
+            logger.info("BLAST nucl index: %d entries (%d seq + %d parts)", nucl_count, len(seq_rows), len(seen_pids))
         else:
             logger.info("No nucleotide sequences to index for BLAST")
 
         # Build protein DB
         if prot_count > 0:
             ok = await self._run_makeblastdb(makeblastdb, prot_fasta, blast_dir / "hive_prot", "prot") and ok
-            logger.info("BLAST prot index: %d sequences", prot_count)
+            logger.info("BLAST prot index: %d entries", prot_count)
 
         return ok
 

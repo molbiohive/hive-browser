@@ -46,21 +46,40 @@
 
 	// ── BLAST columns ──
 
-	const blastColumns = [
-		{ key: 'sid', label: 'S/PID' },
+	let blastTab = $state('sequences'); // 'sequences' | 'parts'
+
+	const blastSeqColumns = [
+		{ key: 'sid', label: 'SID' },
 		{ key: 'subject', label: 'Hit', class: 'name' },
 		{ key: 'identity', label: 'Identity', format: (row) => `${row.identity}%` },
 		{ key: 'alignment_length', label: 'Length' },
 	];
 
-	const blastActions = [
+	const blastPartColumns = [
+		{ key: 'pid', label: 'PID' },
+		{ key: 'subject', label: 'Hit', class: 'name' },
+		{ key: 'identity', label: 'Identity', format: (row) => `${row.identity}%` },
+		{ key: 'alignment_length', label: 'Length' },
+	];
+
+	const blastSeqActions = [
 		{
 			label: 'Profile',
 			onClick: (row) => sendMessage(`//profile ${JSON.stringify({ sid: row.sid })}`),
-			show: (row) => row.sid != null,
 			title: () => 'View sequence details',
 		},
 	];
+
+	const blastPartActions = [
+		{
+			label: 'View',
+			onClick: (row) => sendMessage(`//parts ${JSON.stringify({ pid: row.pid })}`),
+			title: () => 'View part details',
+		},
+	];
+
+	const blastSeqHits = $derived((blastResults?.hits || []).filter(h => h.sid != null && h.pid == null));
+	const blastPartHits = $derived((blastResults?.hits || []).filter(h => h.pid != null));
 
 	// ── Derived ──
 
@@ -213,7 +232,35 @@
 			<div class="results-section">
 				{#if blastResults.hits?.length > 0}
 					<div class="blast-heading">{blastResults.program} -- {blastResults.total} hit(s)</div>
-					<DataTable rows={blastResults.hits} columns={blastColumns} actions={blastActions} defaultPageSize={10} />
+					<div class="tab-bar">
+						<button
+							class="tab-btn"
+							class:active={blastTab === 'sequences'}
+							onclick={() => blastTab = 'sequences'}
+						>
+							Sequences ({blastSeqHits.length})
+						</button>
+						<button
+							class="tab-btn"
+							class:active={blastTab === 'parts'}
+							onclick={() => blastTab = 'parts'}
+						>
+							Parts ({blastPartHits.length})
+						</button>
+					</div>
+					{#if blastTab === 'sequences'}
+						{#if blastSeqHits.length > 0}
+							<DataTable rows={blastSeqHits} columns={blastSeqColumns} actions={blastSeqActions} defaultPageSize={10} />
+						{:else}
+							<div class="no-results">No sequence hits</div>
+						{/if}
+					{:else}
+						{#if blastPartHits.length > 0}
+							<DataTable rows={blastPartHits} columns={blastPartColumns} actions={blastPartActions} defaultPageSize={10} />
+						{:else}
+							<div class="no-results">No part hits</div>
+						{/if}
+					{/if}
 				{:else}
 					<div class="no-results">No BLAST hits</div>
 				{/if}
