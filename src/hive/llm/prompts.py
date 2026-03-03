@@ -107,3 +107,44 @@ def build_multi_tool_schema(tools: list[Tool]) -> list[dict]:
         }
         for t in tools
     ]
+
+
+# ── Planning prompt (used by ToolRAG) ──
+
+_PLAN_SYSTEM = """\
+You are a planning assistant for a lab sequence browser.
+
+Available tools (name: description):
+{catalog}
+
+Given the user's message, decide:
+- If you can answer directly from general knowledge, prefix your response with ANSWER:
+- If you need to use tools, prefix with ACTION: and describe the steps.
+
+Rules:
+- Do NOT mention tool names in ANSWER responses.
+- ACTION responses should describe what to do, not which tools to call.
+- Be concise (1-2 sentences)."""
+
+
+def build_tool_catalog(tools: list[Tool]) -> str:
+    """One-liner-per-tool catalog for the planning prompt (~20 tokens/tool).
+
+    Uses the short ``description`` (not verbose ``guidelines``) to keep
+    the planning call cheap.
+    """
+    return "\n".join(f"- {t.name}: {t.description}" for t in tools)
+
+
+def build_plan_messages(
+    catalog: str,
+    user_input: str,
+    history: list[dict] | None = None,
+) -> list[dict]:
+    """Build message list for the planning LLM call."""
+    system = _PLAN_SYSTEM.format(catalog=catalog)
+    messages: list[dict] = [{"role": "system", "content": system}]
+    if history:
+        messages.extend(history)
+    messages.append({"role": "user", "content": user_input})
+    return messages
