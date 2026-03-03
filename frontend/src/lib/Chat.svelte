@@ -314,7 +314,7 @@
 	{#if $leftPanelOpen}
 	<aside class="sidebar">
 		<div class="sidebar-header">
-			<img src="/logo.svg" alt="Hive Browser" class="logo" />
+			<img src={dark ? "/logo-dark.svg" : "/logo.svg"} alt="Hive Browser" class="logo" />
 			<h2>Hive Browser</h2>
 		</div>
 		<div class="sidebar-actions">
@@ -390,7 +390,7 @@
 		<div class="messages" bind:this={messagesDiv}>
 			{#if $chatStore.messages.length === 0}
 				<div class="welcome">
-					<img src="/logo.svg" alt="Hive Browser" class="welcome-logo" />
+					<img src={dark ? "/logo-dark.svg" : "/logo.svg"} alt="Hive Browser" class="welcome-logo" />
 					<h2>Hive Browser</h2>
 					<p>Search your lab sequences using natural language.</p>
 					<div class="suggestions">

@@ -4,6 +4,10 @@
 	import { connect, fetchChatList } from '$lib/stores/chat.ts';
 
 	let { mode = 'return', onCancel = undefined } = $props();
+	let dark = $state(false);
+	onMount(() => {
+		dark = document.documentElement.getAttribute('data-theme') === 'dark';
+	});
 
 	const returnMessages = [
 		'The Hive is waiting for you!',
@@ -93,7 +97,7 @@
 
 <div class="modal-overlay">
 	<div class="modal-card">
-		<img src="/logo.svg" alt="Hive Browser" class="modal-logo" />
+		<img src={dark ? "/logo-dark.svg" : "/logo.svg"} alt="Hive Browser" class="modal-logo" />
 		<p class="greeting">{greeting}</p>
 
 		{#if isReturn}
