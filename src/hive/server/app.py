@@ -75,6 +75,21 @@ async def lifespan(app: FastAPI):
     )
     logger.info("Tool registry: %d tools", len(app.state.tool_registry.all()))
 
+    # --- Tool RAG (planning + selection) ---
+    app.state.tool_rag = None
+    if config.llm.tool_rag_enabled:
+        from hive.llm.tool_rag import ToolRAG
+
+        llm_tools = app.state.tool_registry.llm_tools()
+        if llm_tools:
+            app.state.tool_rag = ToolRAG(
+                tools=llm_tools,
+                embedding_model=config.llm.tool_rag_model,
+                embedding_base_url=config.llm.tool_rag_base_url,
+                threshold=config.llm.tool_rag_threshold,
+                top_k=config.llm.tool_rag_top_k,
+            )
+
     # --- Process registry ---
     from hive.ps import ProcessRegistry
     from hive.ps.scan import ReindexProcess, RescanProcess, ScanProcess

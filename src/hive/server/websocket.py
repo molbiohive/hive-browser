@@ -90,6 +90,7 @@ async def websocket_endpoint(websocket: WebSocket):
     registry = getattr(app.state, "tool_registry", None)
     model_pool = getattr(app.state, "model_pool", None)
     chat_storage = getattr(app.state, "chat_storage", None)
+    tool_rag = getattr(app.state, "tool_rag", None)
     max_pairs = config.chat.max_history_pairs if config else 20
     save_threshold = config.chat.auto_save_after if config else 2
 
@@ -300,6 +301,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     max_pairs=max_pairs,
                     save_threshold=save_threshold,
                     config=config,
+                    tool_rag=tool_rag,
                 )
             )
 
@@ -319,6 +321,7 @@ async def _handle_message(
     max_pairs: int,
     save_threshold: int,
     config,
+    tool_rag=None,
 ):
     """Process a user message — runs as a cancellable background task."""
     try:
@@ -334,6 +337,7 @@ async def _handle_message(
             pipe_min_length=config.llm.pipe_min_length if config else 200,
             summary_token_limit=config.llm.summary_token_limit if config else 1000,
             on_progress=_progress,
+            tool_rag=tool_rag,
         )
 
         # Track user message (skip bare commands that just show a form)

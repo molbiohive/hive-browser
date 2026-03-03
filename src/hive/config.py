@@ -35,6 +35,7 @@ class LLMConfig(BaseSettings):
     pipe_min_length: int = 200  # auto-pipe strings longer than this between tools
     tool_rag_enabled: bool = True  # planning call + RAG tool selection
     tool_rag_model: str = ""  # embedding model ("ollama/nomic-embed-text") or "" for TF-IDF
+    tool_rag_base_url: str = ""  # embedding API base URL (litellm api_base)
     tool_rag_threshold: float = 0.3  # min cosine similarity to include a tool
     tool_rag_top_k: int = 8  # max tools returned by RAG
 

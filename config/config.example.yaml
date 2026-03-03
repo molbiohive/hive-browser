@@ -27,6 +27,7 @@ llm:
   summary_token_limit: 1000     # max tokens for tool result summaries sent to LLM
   tool_rag_enabled: true        # planning call + RAG tool selection
   tool_rag_model: ""            # embedding model ("ollama/nomic-embed-text") or "" for TF-IDF
+  tool_rag_base_url: ""         # embedding API base URL (litellm api_base)
   tool_rag_threshold: 0.3       # min cosine similarity to include a tool
   tool_rag_top_k: 8             # max tools returned by RAG
 
