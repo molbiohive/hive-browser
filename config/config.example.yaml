@@ -25,6 +25,10 @@ llm:
   auto_discover: false          # auto-discover Ollama models at runtime
   agent_max_turns: 10           # max tool-call turns in agentic loop
   summary_token_limit: 1000     # max tokens for tool result summaries sent to LLM
+  tool_rag_enabled: true        # planning call + RAG tool selection
+  tool_rag_model: ""            # embedding model ("ollama/nomic-embed-text") or "" for TF-IDF
+  tool_rag_threshold: 0.3       # min cosine similarity to include a tool
+  tool_rag_top_k: 8             # max tools returned by RAG
 
 deps:
   blast:

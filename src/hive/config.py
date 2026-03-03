@@ -33,6 +33,10 @@ class LLMConfig(BaseSettings):
     summary_token_limit: int = 500  # max tokens for auto-summarize sent to LLM
     agent_max_turns: int = 10  # max tool-call turns in agentic loop
     pipe_min_length: int = 200  # auto-pipe strings longer than this between tools
+    tool_rag_enabled: bool = True  # planning call + RAG tool selection
+    tool_rag_model: str = ""  # embedding model ("ollama/nomic-embed-text") or "" for TF-IDF
+    tool_rag_threshold: float = 0.3  # min cosine similarity to include a tool
+    tool_rag_top_k: int = 8  # max tools returned by RAG
 
     model_config = {"env_prefix": "LLM_"}
 
