@@ -402,3 +402,106 @@ class TestAgenticLoop:
         resp = await route_input("test error", registry, llm_client=llm)
         assert resp["type"] == "message"
         assert "No tools were called" in resp["content"]
+
+
+# ── Tool RAG Integration ──
+
+
+class TestToolRAGIntegration:
+    """Tests for planning + RAG integration in the router."""
+
+    def _mock_llm(self, responses):
+        client = AsyncMock()
+        client.chat = AsyncMock(side_effect=responses)
+        return client
+
+    def _text_response(self, content, usage=None):
+        return {
+            "choices": [{"message": {"content": content}}],
+            "usage": usage or {"prompt_tokens": 100, "completion_tokens": 20},
+        }
+
+    def _tool_call_response(self, tool_name, arguments, call_id="call_1", usage=None):
+        return {
+            "choices": [{
+                "message": {
+                    "content": None,
+                    "tool_calls": [{
+                        "id": call_id,
+                        "function": {
+                            "name": tool_name,
+                            "arguments": json.dumps(arguments),
+                        },
+                    }],
+                },
+            }],
+            "usage": usage or {"prompt_tokens": 100, "completion_tokens": 20},
+        }
+
+    async def test_answer_skips_agent_loop(self, registry):
+        """ANSWER prefix returns directly, no tool calls."""
+        from hive.llm.tool_rag import ToolRAG
+
+        rag = ToolRAG(tools=registry.llm_tools(), threshold=0.2, top_k=5)
+
+        # First call = planning (returns ANSWER), no subsequent calls needed
+        llm = self._mock_llm([
+            self._text_response("ANSWER: GFP is Green Fluorescent Protein."),
+        ])
+        resp = await route_input("What is GFP?", registry, llm_client=llm, tool_rag=rag)
+        assert resp["type"] == "message"
+        assert "Green Fluorescent Protein" in resp["content"]
+        # LLM was only called once (planning), not for agent loop
+        assert llm.chat.call_count == 1
+
+    async def test_action_narrows_tools(self, registry):
+        """ACTION prefix triggers RAG, agent loop runs with narrowed tools."""
+        from hive.llm.tool_rag import ToolRAG
+
+        rag = ToolRAG(tools=registry.llm_tools(), threshold=0.2, top_k=5)
+
+        # First call = planning (ACTION), second = agent loop text response
+        llm = self._mock_llm([
+            self._text_response("ACTION: Echo the input back."),
+            self._text_response("Here is your echo."),
+        ])
+        resp = await route_input("echo test", registry, llm_client=llm, tool_rag=rag)
+        assert resp["type"] == "message"
+        # LLM was called twice: planning + agent loop
+        assert llm.chat.call_count == 2
+
+    async def test_tool_rag_none_passes_all_tools(self, registry):
+        """tool_rag=None (default) uses all tools, backward compatible."""
+        llm = self._mock_llm([self._text_response("Hello!")])
+        resp = await route_input("hello", registry, llm_client=llm, tool_rag=None)
+        assert resp["type"] == "message"
+        assert "Hello" in resp["content"]
+
+    async def test_planning_failure_falls_through(self, registry):
+        """If planning call fails, all tools are used (graceful degradation)."""
+        from hive.llm.tool_rag import ToolRAG
+
+        rag = ToolRAG(tools=registry.llm_tools(), threshold=0.2, top_k=5)
+
+        # First call = planning (raises), second = agent loop with all tools
+        llm = self._mock_llm([
+            Exception("LLM down"),
+            self._text_response("Recovered."),
+        ])
+        resp = await route_input("test fallback", registry, llm_client=llm, tool_rag=rag)
+        assert resp["type"] == "message"
+        assert "Recovered" in resp["content"]
+
+    async def test_tokens_include_planning(self, registry):
+        """Token counts include both planning and agent loop usage."""
+        from hive.llm.tool_rag import ToolRAG
+
+        rag = ToolRAG(tools=registry.llm_tools(), threshold=0.2, top_k=5)
+
+        llm = self._mock_llm([
+            self._text_response("ANSWER: Simple answer.",
+                                usage={"prompt_tokens": 50, "completion_tokens": 10}),
+        ])
+        resp = await route_input("hello", registry, llm_client=llm, tool_rag=rag)
+        assert resp["tokens"]["in"] == 50
+        assert resp["tokens"]["out"] == 10
