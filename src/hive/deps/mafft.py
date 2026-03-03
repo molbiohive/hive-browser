@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -77,6 +78,13 @@ class MafftDep(Dep):
         cmd.append(input_file)
 
         try:
+            # MAFFT's shell wrapper opens /dev/stderr by path, which may
+            # not exist in Docker containers.  Create the symlink if missing.
+            if not os.path.exists("/dev/stderr"):
+                try:
+                    os.symlink("/proc/self/fd/2", "/dev/stderr")
+                except OSError:
+                    pass
             rc, stdout, stderr = await self._run(cmd)
         finally:
             Path(input_file).unlink(missing_ok=True)
