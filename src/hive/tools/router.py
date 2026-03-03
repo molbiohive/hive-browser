@@ -1,10 +1,12 @@
 """Tool router — dispatches user input to the correct tool via LLM or direct invocation."""
 
+from __future__ import annotations
+
 import json
 import logging
 import re
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from hive.llm.client import LLMClient
 from hive.llm.prompts import (
@@ -14,24 +16,10 @@ from hive.llm.prompts import (
 from hive.secrets import SecretVault
 from hive.tools.base import ToolRegistry
 
-logger = logging.getLogger(__name__)
+if TYPE_CHECKING:
+    from hive.llm.tool_rag import ToolRAG
 
-# After a tool runs, only offer these tools on the next turn.
-# Empty set = force text response (no tools).
-_NEXT_TOOLS: dict[str, set[str]] = {
-    "search": {"extract", "profile", "parts", "blast", "align"},
-    "profile": {"extract", "parts", "blast", "align"},
-    "parts": {"blast", "extract", "parts", "align"},
-    "extract": {"blast", "translate", "transcribe", "revcomp", "digest", "gc", "align"},
-    # Terminal tools — force text summary
-    "align": set(),
-    "blast": set(),
-    "translate": set(),
-    "transcribe": set(),
-    "digest": set(),
-    "gc": set(),
-    "revcomp": set(),
-}
+logger = logging.getLogger(__name__)
 
 # Pattern: //command args (direct tool, no LLM)
 DIRECT_PATTERN = re.compile(r"^//(\w+)\s*(.*)", re.DOTALL)
@@ -49,6 +37,7 @@ async def route_input(
     pipe_min_length: int = 200,
     summary_token_limit: int = 1000,
     on_progress: Callable[[dict], Awaitable[None]] | None = None,
+    tool_rag: ToolRAG | None = None,
 ) -> dict[str, Any]:
     """
     Route user input → tool execution → response.
@@ -107,6 +96,7 @@ async def route_input(
             pipe_min_length=pipe_min_length,
             summary_token_limit=summary_token_limit,
             on_progress=on_progress,
+            tool_rag=tool_rag,
         )
 
     # ── Mode 3: Natural language — unified agentic loop ──
@@ -122,6 +112,7 @@ async def route_input(
         pipe_min_length=pipe_min_length,
         summary_token_limit=summary_token_limit,
         on_progress=on_progress,
+        tool_rag=tool_rag,
     )
 
 
@@ -137,12 +128,17 @@ async def _unified_loop(
     pipe_min_length: int = 200,
     summary_token_limit: int = 1000,
     on_progress: Callable[[dict], Awaitable[None]] | None = None,
+    tool_rag: ToolRAG | None = None,
 ) -> dict[str, Any]:
     """Unified agentic loop — LLM converses and chains tools as needed.
 
     Single loop handles everything: simple queries, multi-step chains,
     and pure conversation. Large data (sequences, etc.) is cached locally
     and auto-injected into subsequent tools — never sent through LLM context.
+
+    When tool_rag is provided, a cheap planning call decides intent first:
+    - ANSWER responses return directly (no agent loop)
+    - ACTION responses trigger RAG to narrow the tool set
     """
 
     all_tools = registry.llm_tools()
@@ -162,8 +158,7 @@ async def _unified_loop(
     vault = SecretVault()  # per-loop vault for protecting sensitive data
     tokens = {"in": 0, "out": 0}
     exceeded = False
-    schemas = all_schemas  # narrows after each tool call
-    force_text = False  # when True, pass tool_choice="none" to force text summary
+    schemas = all_schemas
 
     async def _emit(phase: str, tool: str | None = None):
         if on_progress:
@@ -174,10 +169,31 @@ async def _unified_loop(
 
     await _emit("thinking")
 
+    # ── Planning + RAG ──
+    if tool_rag:
+        try:
+            prefix, plan_content, plan_usage = await tool_rag.plan(
+                user_input, llm_client, history,
+            )
+            tokens["in"] += plan_usage.get("in", 0)
+            tokens["out"] += plan_usage.get("out", 0)
+
+            if prefix == "ANSWER":
+                return {"type": "message", "content": plan_content, "tokens": tokens}
+
+            selected = await tool_rag.select(plan_content)
+            all_tools = selected
+            tool_map = {t.name: t for t in selected}
+            schemas = build_multi_tool_schema(selected)
+            logger.info(
+                "RAG selected %d tools: %s",
+                len(selected), sorted(t.name for t in selected),
+            )
+        except Exception as e:
+            logger.warning("Planning failed, using all tools: %s", e)
+
     for turn in range(max_turns):
-        # Pick tools/tool_choice for this turn
         turn_tools = schemas
-        turn_choice = "none" if force_text else None
 
         # Log payload sizes for token debugging
         msg_chars = sum(len(str(m.get("content", ""))) for m in messages)
@@ -189,9 +205,7 @@ async def _unified_loop(
             turn, len(messages), msg_chars, len(turn_tools) if turn_tools else 0, schema_chars,
         )
         try:
-            response = await llm_client.chat(
-                messages, tools=turn_tools, tool_choice=turn_choice,
-            )
+            response = await llm_client.chat(messages, tools=turn_tools)
         except Exception as e:
             logger.error("Unified loop LLM call failed (turn %d): %s", turn, e)
             exceeded = True
@@ -222,8 +236,7 @@ async def _unified_loop(
             }
 
         # LLM responded with text — done
-        # When force_text, ignore any phantom tool_calls
-        if not msg.get("tool_calls") or force_text:
+        if not msg.get("tool_calls"):
             content = msg.get("content", "")
             logger.info(
                 "Unified loop done after %d turn(s): %s",
@@ -322,17 +335,6 @@ async def _unified_loop(
             last_tool = tool_name
             last_params = params
             await _emit("thinking")
-
-        # Narrow schemas for next turn based on last tool called
-        if last_tool and last_tool in _NEXT_TOOLS:
-            allowed = _NEXT_TOOLS[last_tool]
-            if not allowed:
-                force_text = True  # terminal tool — force text summary
-            else:
-                narrowed = [t for t in all_tools if t.name in allowed]
-                schemas = build_multi_tool_schema(narrowed) if narrowed else None
-                if not schemas:
-                    force_text = True
 
     else:
         # for-loop exhausted without break → max turns exceeded
