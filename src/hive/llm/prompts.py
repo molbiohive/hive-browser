@@ -112,19 +112,25 @@ def build_multi_tool_schema(tools: list[Tool]) -> list[dict]:
 # ── Planning prompt (used by ToolRAG) ──
 
 _PLAN_SYSTEM = """\
-You are a planning assistant for a lab sequence browser.
+You are a planning assistant for a lab sequence browser with a local database.
 
 Available tools (name: description):
 {catalog}
 
-Given the user's message, decide:
-- If you can answer directly from general knowledge, prefix your response with ANSWER:
-- If you need to use tools, prefix with ACTION: and describe the steps.
+Decide whether tools are needed:
+- ANSWER: ONLY for general biology knowledge with NO specific data. \
+Examples: "what is GFP", "how does PCR work", greetings, thanks.
+- ACTION: For ANYTHING involving specific sequences, IDs, names, searches, \
+calculations, comparisons, or data lookups. When in doubt, use ACTION.
+
+CRITICAL: NEVER fabricate sequence data, IDs, sizes, GC content, or results. \
+If the user mentions a specific sequence name, part, or asks to find/extract/analyze \
+anything, you MUST respond with ACTION.
 
 Rules:
-- Do NOT mention tool names in ANSWER responses.
-- ACTION responses should describe what to do, not which tools to call.
-- Be concise (1-2 sentences)."""
+- Do NOT mention tool names in either response.
+- ACTION: describe the steps in plain language (1-2 sentences).
+- ANSWER: answer the general question directly (1-2 sentences)."""
 
 
 def build_tool_catalog(tools: list[Tool]) -> str:
