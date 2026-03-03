@@ -17,7 +17,7 @@ def parse_genbank(filepath: Path, extract: list[str] | None = None) -> ParseResu
             if f.type == "source":
                 continue
             features.append(ParsedFeature(
-                name=f.qualifiers.get("label", [f.qualifiers.get("gene", [f.type])])[0],
+                name=(f.qualifiers.get("label") or f.qualifiers.get("gene") or [f.type])[0],
                 type=f.type,
                 start=int(f.location.start),
                 end=int(f.location.end),
