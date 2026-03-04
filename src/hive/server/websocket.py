@@ -307,7 +307,8 @@ async def websocket_endpoint(websocket: WebSocket):
                     max_pairs=max_pairs,
                     save_threshold=save_threshold,
                     config=config,
-                    tool_rag=tool_rag if use_planner else None,
+                    tool_rag=tool_rag,
+                    use_planner=use_planner,
                 )
             )
 
@@ -328,6 +329,7 @@ async def _handle_message(
     save_threshold: int,
     config,
     tool_rag=None,
+    use_planner: bool = True,
 ):
     """Process a user message — runs as a cancellable background task."""
     try:
@@ -344,6 +346,7 @@ async def _handle_message(
             summary_token_limit=config.llm.summary_token_limit if config else 1000,
             on_progress=_progress,
             tool_rag=tool_rag,
+            use_planner=use_planner,
         )
 
         # Track user message (skip bare commands that just show a form)
