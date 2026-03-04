@@ -478,10 +478,13 @@ class TestToolRAGIntegration:
         assert resp["type"] == "message"
         assert llm.chat.call_count == 2
 
-        # Agent loop (second call) should see plan text, not raw user input
+        # Agent loop (second call) should see both plan and original user input
         agent_messages = llm.chat.call_args_list[1][0][0]
         user_msg = [m for m in agent_messages if m.get("role") == "user"][-1]
-        assert user_msg["content"] == "Echo the input back."
+        assert "[Plan]" in user_msg["content"]
+        assert "Echo the input back." in user_msg["content"]
+        assert "[User request]" in user_msg["content"]
+        assert "echo test" in user_msg["content"]
 
     async def test_planner_on_tokens_include_planning(self, registry):
         """Token counts include both planning and agent loop usage."""

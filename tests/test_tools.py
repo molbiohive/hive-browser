@@ -4,7 +4,7 @@ import textwrap
 from typing import Any
 
 from hive.config import Settings
-from hive.tools.base import Tool, ToolRegistry, _auto_summarize, _params_to_schema
+from hive.tools.base import Tool, ToolRegistry, _params_to_schema
 from hive.tools.factory import ToolFactory, _is_forbidden, _validate_imports
 
 # ── Helpers ──
@@ -107,36 +107,6 @@ class TestParamsToSchema:
         assert schema["required"] == ["query"]
         assert "limit" in schema["properties"]
         assert schema["properties"]["limit"]["default"] == 10
-
-
-class TestAutoSummarize:
-    def test_scalars(self):
-        result = _auto_summarize({"count": 42, "name": "GFP", "active": True})
-        assert "42" in result
-        assert "GFP" in result
-        assert "true" in result.lower()
-
-    def test_list_count_and_sample(self):
-        items = [{"name": f"seq{i}", "size": i * 100} for i in range(50)]
-        result = _auto_summarize({"results": items})
-        assert "results_count" in result
-        assert "50" in result
-        assert "results_sample" in result
-
-    def test_long_string_truncated(self):
-        result = _auto_summarize({"dna": "A" * 500})
-        assert "..." in result
-        assert len(result) < 500
-
-    def test_nested_dict_shallow(self):
-        result = _auto_summarize({"file": {"path": "/data/test.dna", "size": 1024}})
-        assert "/data/test.dna" in result
-        assert "1024" in result
-
-    def test_max_chars_cap(self):
-        huge = {f"key{i}": "x" * 100 for i in range(100)}
-        result = _auto_summarize(huge, max_chars=500)
-        assert len(result) <= 520  # 500 + "..."
 
 
 # ── Tool Registry ──

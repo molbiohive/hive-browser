@@ -22,6 +22,12 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# Fields stripped from LLM summaries (large data, file paths, raw sequences)
+_REDACT_KEYS = frozenset({
+    "file_path", "path", "file_name", "filename",
+    "sequence", "raw_sequence", "subject",
+})
+
 # Pattern: //command args (direct tool, no LLM)
 DIRECT_PATTERN = re.compile(r"^//(\w+)\s*(.*)", re.DOTALL)
 
@@ -203,11 +209,16 @@ async def _unified_loop(
         except Exception as e:
             logger.warning("Tool selection failed, using all tools: %s", e)
 
-    # Build message list — plan replaces user input when planner is active
+    # Build message list — plan augments user input (both visible to agent)
     messages = [{"role": "system", "content": build_system_prompt()}]
     if history:
         messages.extend(history)
-    messages.append({"role": "user", "content": plan_text or user_input})
+    if plan_text:
+        messages.append({"role": "user", "content": (
+            f"[Plan]\n{plan_text}\n\n[User request]\n{user_input}"
+        )})
+    else:
+        messages.append({"role": "user", "content": user_input})
 
     for turn in range(max_turns):
         turn_tools = schemas
@@ -367,7 +378,7 @@ async def _unified_loop(
                         tool_name, key, handle, len(val),
                     )
 
-            compact = tool._build_summary(result, token_limit=summary_token_limit)
+            compact = _summarize_for_llm(result, token_limit=summary_token_limit)
             # Append cache descriptions so LLM knows what data is available
             cache_info = result_cache.describe_all()
             if cache_info:
@@ -420,6 +431,87 @@ async def _unified_loop(
         return resp
 
     return {"type": "message", "content": fallback, "tokens": tokens, "chain": chain}
+
+
+# ── Result Summarizer ──
+
+_ID_KEYS = frozenset({"sid", "pid", "id"})
+
+
+def _summarize_for_llm(
+    result: dict[str, Any],
+    token_limit: int = 1000,
+) -> str:
+    """Unified result summarizer for LLM context.
+
+    Generates compact JSON stats from a result dict:
+    - Lists → count + first N items as sample
+    - Numbers/booleans → include directly
+    - Short strings → include, long strings → truncate
+    - Nested dicts → shallow scalar fields
+    - Keys in _REDACT_KEYS stripped entirely
+
+    For list[dict] fields with more items than the sample, ALL values
+    of ID-like keys (sid, pid, id) are collected and appended as compact
+    arrays so the LLM can reference them in subsequent tool calls.
+    """
+    redact = _REDACT_KEYS
+    max_chars = token_limit * 4
+    max_items = max(5, token_limit // 50)
+    max_ids = 200
+    stats: dict[str, Any] = {}
+
+    for key, value in result.items():
+        if key in redact:
+            continue
+        if isinstance(value, list):
+            stats[f"{key}_count"] = len(value)
+            if value and isinstance(value[0], dict):
+                sample = []
+                for item in value[:max_items]:
+                    trimmed = {}
+                    for k, v in item.items():
+                        if k in redact:
+                            continue
+                        if isinstance(v, (str, int, float, bool, type(None))):
+                            if not isinstance(v, str) or len(v) < 200:
+                                trimmed[k] = v
+                        elif isinstance(v, list) and len(v) <= 5 and all(
+                            isinstance(x, (str, int, float)) for x in v
+                        ):
+                            trimmed[k] = v
+                    sample.append(trimmed)
+                if sample:
+                    stats[f"{key}_sample"] = sample
+                # Collect ALL IDs when sample is truncated
+                if len(value) > max_items:
+                    for id_key in _ID_KEYS:
+                        ids = [item[id_key] for item in value[:max_ids] if id_key in item]
+                        if ids:
+                            stats[f"all_{key}_{id_key}s"] = ids
+            elif value:
+                stats[f"{key}_sample"] = value[:max_items]
+        elif isinstance(value, (int, float, bool)):
+            stats[key] = value
+        elif isinstance(value, str):
+            if len(value) < 200:
+                stats[key] = value
+            else:
+                stats[key] = value[:100] + "..."
+        elif isinstance(value, dict):
+            shallow = {
+                k: v for k, v in value.items()
+                if k not in redact
+                and isinstance(v, (str, int, float, bool, type(None)))
+                and (not isinstance(v, str) or len(v) < 200)
+            }
+            if shallow:
+                stats[key] = shallow
+
+    text = json.dumps(stats, default=str)
+    if len(text) > max_chars:
+        text = text[:max_chars - 3] + "..."
+    return text
 
 
 # ── Helpers ──

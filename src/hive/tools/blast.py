@@ -91,8 +91,6 @@ class BlastTool(Tool):
     )
     widget = "blast"
     tags = {"llm", "search"}
-    # Strip sequence names from LLM summaries -- SID is sufficient
-    redact_keys = Tool.redact_keys | {"subject"}
     guidelines = (
         "Sequence similarity search using BLAST+. Supports blastn "
         "(nucl vs nucl), blastp (prot vs prot), blastx (nucl query "
