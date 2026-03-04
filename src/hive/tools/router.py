@@ -13,6 +13,7 @@ from hive.llm.prompts import (
     build_multi_tool_schema,
     build_system_prompt,
 )
+from hive.sandbox import ResultCache, SandboxRunner
 from hive.secrets import SecretVault
 from hive.tools.base import ToolRegistry
 
@@ -156,6 +157,8 @@ async def _unified_loop(
     chain = []  # [{tool, params, summary, widget}]
     cache = {}  # hybrid auto-pipe: field_name → large string value (may be SEC: tokens)
     vault = SecretVault()  # per-loop vault for protecting sensitive data
+    result_cache = ResultCache()  # per-loop cache for list[dict] results
+    sandbox = SandboxRunner(result_cache)
     tokens = {"in": 0, "out": 0}
     exceeded = False
     schemas = all_schemas
@@ -194,6 +197,9 @@ async def _unified_loop(
 
     for turn in range(max_turns):
         turn_tools = schemas
+        # Inject python schema when cached data is available
+        if len(result_cache) > 0:
+            turn_tools = [*schemas, sandbox.tool_schema()]
 
         # Log payload sizes for token debugging
         msg_chars = sum(len(str(m.get("content", ""))) for m in messages)
@@ -257,7 +263,6 @@ async def _unified_loop(
 
         for tc in msg["tool_calls"]:
             tool_name = tc["function"]["name"]
-            tool = tool_map.get(tool_name)
 
             try:
                 params = json.loads(tc["function"]["arguments"]) if isinstance(
@@ -273,6 +278,31 @@ async def _unified_loop(
                 "TOOL_CALL %s: args=%d chars",
                 tool_name, args_len,
             )
+
+            # Built-in sandbox -- not a registered tool
+            if tool_name == "python" and len(result_cache) > 0:
+                code = params.get("code", "")
+                sb_result = sandbox.execute(code)
+                compact = sandbox.summary_for_llm(sb_result)
+                cache_info = result_cache.describe_all()
+                if cache_info:
+                    compact += f"\n\nCached data:\n{cache_info}"
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc["id"],
+                    "content": compact,
+                })
+                chain.append({
+                    "tool": "python",
+                    "params": {"code": code},
+                    "summary": compact,
+                    "widget": "none",
+                })
+                logger.info("Sandbox exec: %s", compact[:200])
+                await _emit("thinking")
+                continue
+
+            tool = tool_map.get(tool_name)
 
             if not tool:
                 messages.append({
@@ -310,7 +340,24 @@ async def _unified_loop(
                 ):
                     cache[key] = val
 
+            # Auto-cache list[dict] fields for sandbox access
+            for key, val in result.items():
+                if (
+                    isinstance(val, list)
+                    and val
+                    and isinstance(val[0], dict)
+                ):
+                    handle = result_cache.store(val, tool_name, params)
+                    logger.info(
+                        "Cached %s.%s as %s (%d rows)",
+                        tool_name, key, handle, len(val),
+                    )
+
             compact = tool._build_summary(result, token_limit=summary_token_limit)
+            # Append cache descriptions so LLM knows what data is available
+            cache_info = result_cache.describe_all()
+            if cache_info:
+                compact += f"\n\nCached data (use python tool to filter/transform):\n{cache_info}"
             logger.debug(
                 "SUMMARY %s: %d chars | result keys: %s",
                 tool_name, len(compact),
