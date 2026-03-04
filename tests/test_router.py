@@ -505,3 +505,218 @@ class TestToolRAGIntegration:
         resp = await route_input("hello", registry, llm_client=llm, tool_rag=rag)
         assert resp["tokens"]["in"] == 50
         assert resp["tokens"]["out"] == 10
+
+
+# ── Sandbox Integration ──
+
+
+class TestSandboxIntegration:
+    """Tests for sandbox integration in the agentic loop."""
+
+    def _mock_llm(self, responses):
+        client = AsyncMock()
+        client.chat = AsyncMock(side_effect=responses)
+        return client
+
+    def _text_response(self, content, usage=None):
+        return {
+            "choices": [{"message": {"content": content}}],
+            "usage": usage or {"prompt_tokens": 100, "completion_tokens": 20},
+        }
+
+    def _tool_call_response(self, tool_name, arguments, call_id="call_1", usage=None):
+        return {
+            "choices": [{
+                "message": {
+                    "content": None,
+                    "tool_calls": [{
+                        "id": call_id,
+                        "function": {
+                            "name": tool_name,
+                            "arguments": json.dumps(arguments),
+                        },
+                    }],
+                },
+            }],
+            "usage": usage or {"prompt_tokens": 100, "completion_tokens": 20},
+        }
+
+    async def test_auto_cache_list_dict(self):
+        """Tool results with list[dict] fields are auto-cached."""
+
+        class SearchTool(Tool):
+            name = "search"
+            description = "Search sequences"
+            widget = "table"
+            tags = {"llm", "test"}
+
+            def __init__(self, **_):
+                pass
+
+            async def execute(self, params, mode="direct"):
+                return {
+                    "results": [
+                        {"sid": 1, "name": "GFP", "size_bp": 720},
+                        {"sid": 2, "name": "RFP", "size_bp": 680},
+                    ],
+                    "query": "test",
+                }
+
+        reg = ToolRegistry()
+        reg.register(SearchTool())
+
+        llm = self._mock_llm([
+            self._tool_call_response("search", {"query": "test"}, call_id="c1"),
+            self._text_response("Found 2 results."),
+        ])
+        resp = await route_input("find test", reg, llm_client=llm)
+        assert resp["type"] == "tool_result"
+        assert resp["tool"] == "search"
+        # Verify cache info appears in the tool message sent to LLM
+        tool_msg = [m for m in llm.chat.call_args_list[-1][0][0]
+                    if isinstance(m, dict) and m.get("role") == "tool"]
+        assert any("Cached data" in m.get("content", "") for m in tool_msg)
+
+    async def test_python_dispatched_to_sandbox(self):
+        """python tool calls go to sandbox, not ToolRegistry."""
+
+        class SearchTool(Tool):
+            name = "search"
+            description = "Search"
+            widget = "table"
+            tags = {"llm", "test"}
+
+            def __init__(self, **_):
+                pass
+
+            async def execute(self, params, mode="direct"):
+                return {
+                    "results": [
+                        {"sid": 1, "name": "GFP"},
+                        {"sid": 2, "name": "RFP"},
+                    ],
+                }
+
+        reg = ToolRegistry()
+        reg.register(SearchTool())
+
+        llm = self._mock_llm([
+            self._tool_call_response("search", {"query": "GFP"}, call_id="c1"),
+            self._tool_call_response(
+                "python",
+                {"code": 'result = [r["sid"] for r in r0]'},
+                call_id="c2",
+            ),
+            self._text_response("SIDs are 1 and 2."),
+        ])
+        resp = await route_input("find GFP sids", reg, llm_client=llm)
+        assert resp["type"] == "tool_result"
+        assert resp["tool"] == "search"  # last_tool stays search (sandbox skipped)
+        assert len(resp["chain"]) == 2
+        assert resp["chain"][0]["tool"] == "search"
+        assert resp["chain"][1]["tool"] == "python"
+
+    async def test_sandbox_skips_last_result_tracking(self):
+        """Sandbox calls don't update last_result/last_tool -- regular tools own widgets."""
+
+        class SearchTool(Tool):
+            name = "search"
+            description = "Search"
+            widget = "table"
+            tags = {"llm", "test"}
+
+            def __init__(self, **_):
+                pass
+
+            async def execute(self, params, mode="direct"):
+                return {
+                    "results": [{"sid": 1, "topology": "circular"}],
+                }
+
+        reg = ToolRegistry()
+        reg.register(SearchTool())
+
+        llm = self._mock_llm([
+            self._tool_call_response("search", {"query": "test"}, call_id="c1"),
+            self._tool_call_response(
+                "python",
+                {"code": 'result = sum(1 for r in r0 if r["topology"] == "circular")'},
+                call_id="c2",
+            ),
+            self._text_response("1 circular sequence."),
+        ])
+        resp = await route_input("count circular", reg, llm_client=llm)
+        # Widget comes from search (last regular tool), not python
+        assert resp["tool"] == "search"
+        assert resp["data"]["results"] == [{"sid": 1, "topology": "circular"}]
+
+    async def test_python_schema_injected_when_cache_nonempty(self):
+        """python schema only appears after first tool caches data."""
+
+        class SearchTool(Tool):
+            name = "search"
+            description = "Search"
+            widget = "table"
+            tags = {"llm", "test"}
+
+            def __init__(self, **_):
+                pass
+
+            async def execute(self, params, mode="direct"):
+                return {"results": [{"sid": 1}]}
+
+        reg = ToolRegistry()
+        reg.register(SearchTool())
+
+        llm = self._mock_llm([
+            self._tool_call_response("search", {"query": "x"}, call_id="c1"),
+            self._text_response("Done."),
+        ])
+        await route_input("test", reg, llm_client=llm)
+
+        # First LLM call (turn 0): no python schema (cache empty)
+        first_call_tools = llm.chat.call_args_list[0][1].get("tools", [])
+        tool_names_t0 = [t["function"]["name"] for t in first_call_tools]
+        assert "python" not in tool_names_t0
+
+        # Second LLM call (turn 1): python schema present (cache has data)
+        second_call_tools = llm.chat.call_args_list[1][1].get("tools", [])
+        tool_names_t1 = [t["function"]["name"] for t in second_call_tools]
+        assert "python" in tool_names_t1
+
+    async def test_cache_info_in_sandbox_response(self):
+        """Sandbox response includes cache descriptions."""
+
+        class SearchTool(Tool):
+            name = "search"
+            description = "Search"
+            widget = "table"
+            tags = {"llm", "test"}
+
+            def __init__(self, **_):
+                pass
+
+            async def execute(self, params, mode="direct"):
+                return {"results": [{"sid": 1, "name": "GFP"}]}
+
+        reg = ToolRegistry()
+        reg.register(SearchTool())
+
+        llm = self._mock_llm([
+            self._tool_call_response("search", {"query": "x"}, call_id="c1"),
+            self._tool_call_response(
+                "python", {"code": 'result = len(r0)'}, call_id="c2",
+            ),
+            self._text_response("1 result."),
+        ])
+        await route_input("count results", reg, llm_client=llm)
+
+        # Check the tool message for the python call includes cache info
+        last_call_msgs = llm.chat.call_args_list[-1][0][0]
+        python_tool_msgs = [
+            m for m in last_call_msgs
+            if isinstance(m, dict) and m.get("role") == "tool"
+            and "result = 1" in m.get("content", "")
+        ]
+        assert len(python_tool_msgs) == 1
+        assert "Cached data:" in python_tool_msgs[0]["content"]
