@@ -383,6 +383,10 @@ async def _handle_message(
                 "data": result["data"],
             }
 
+        # Chain of tools — always pass when present (even without widget)
+        if result.get("chain") and "widget" not in response:
+            response["chain"] = result["chain"]
+
         # Save assistant message (skip forms — they're ephemeral UI)
         if result.get("type") != "form":
             assistant_msg: dict = {
@@ -395,6 +399,8 @@ async def _handle_message(
                 assistant_msg["tokens"] = result_tokens
             if response.get("widget"):
                 assistant_msg["widget"] = response["widget"]
+            if response.get("chain"):
+                assistant_msg["chain"] = response["chain"]
             chat["messages"].append(assistant_msg)
 
         await manager.send_json(conn_id, response)

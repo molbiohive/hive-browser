@@ -696,14 +696,12 @@ class TestSandboxIntegration:
             self._text_response("SIDs are 1 and 2."),
         ])
         resp = await route_input("find GFP sids", reg, llm_client=llm)
-        assert resp["type"] == "tool_result"
-        assert resp["tool"] == "search"  # last_tool stays search (sandbox skipped)
-        assert len(resp["chain"]) == 2
-        assert resp["chain"][0]["tool"] == "search"
-        assert resp["chain"][1]["tool"] == "python"
+        # Scalar sandbox clears last_tool → plain message (no search widget noise)
+        assert resp["type"] == "message"
+        assert "SIDs are 1 and 2" in resp["content"]
 
-    async def test_sandbox_skips_last_result_tracking(self):
-        """Sandbox calls don't update last_result/last_tool -- regular tools own widgets."""
+    async def test_sandbox_scalar_suppresses_widget(self):
+        """Scalar sandbox results suppress the previous tool's widget."""
 
         class SearchTool(Tool):
             name = "search"
@@ -732,9 +730,9 @@ class TestSandboxIntegration:
             self._text_response("1 circular sequence."),
         ])
         resp = await route_input("count circular", reg, llm_client=llm)
-        # Widget comes from search (last regular tool), not python
-        assert resp["tool"] == "search"
-        assert resp["data"]["results"] == [{"sid": 1, "topology": "circular"}]
+        # Scalar sandbox → no widget, just text
+        assert resp["type"] == "message"
+        assert "1 circular" in resp["content"]
 
     async def test_python_schema_injected_when_cache_nonempty(self):
         """python schema only appears after first tool caches data."""

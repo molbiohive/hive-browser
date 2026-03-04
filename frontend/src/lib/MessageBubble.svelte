@@ -37,9 +37,9 @@
 
 			{#if message.widget}
 				<Widget widget={message.widget} {messageIndex} />
-				{#if message.widget.chain}
-					<ChainSteps chain={message.widget.chain} />
-				{/if}
+			{/if}
+			{#if message.widget?.chain || message.chain}
+				<ChainSteps chain={message.widget?.chain || message.chain} />
 			{/if}
 		</div>
 

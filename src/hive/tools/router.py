@@ -281,7 +281,10 @@ async def _unified_loop(
                     resp["chain"] = chain
                 return resp
 
-            return {"type": "message", "content": content, "tokens": tokens}
+            resp = {"type": "message", "content": content, "tokens": tokens}
+            if chain:
+                resp["chain"] = chain
+            return resp
 
         # Append assistant message with tool_calls
         messages.append(msg)
@@ -317,12 +320,31 @@ async def _unified_loop(
                     "tool_call_id": tc["id"],
                     "content": compact,
                 })
+
+                # Sandbox is the final computation — update last_result accordingly
+                sb_val = sb_result.get("result")
+                is_tabular = (
+                    sb_result["status"] == "ok"
+                    and isinstance(sb_val, list)
+                    and sb_val
+                    and isinstance(sb_val[0], dict)
+                )
                 chain.append({
                     "tool": "python",
                     "params": {"code": code},
                     "summary": compact,
-                    "widget": "none",
+                    "widget": "table" if is_tabular else "none",
                 })
+                if is_tabular:
+                    # List[dict] → show as table widget
+                    last_result = {"results": sb_val}
+                    last_tool = "python"
+                    last_params = {"code": code}
+                else:
+                    # Scalar → suppress previous tool's widget (answer is in text)
+                    last_result = None
+                    last_tool = None
+
                 logger.info("Sandbox exec: %s", compact[:200])
                 await _emit("thinking")
                 continue

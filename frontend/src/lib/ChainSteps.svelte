@@ -2,7 +2,15 @@
 	let { chain } = $props();
 	let expanded = $state(false);
 
+	function isSandbox(step) {
+		return step.tool === 'python';
+	}
+
 	function fullCommand(step) {
+		if (isSandbox(step)) {
+			const code = step.params?.code || '';
+			return `python(code="${code}")`;
+		}
 		return `//${step.tool} ${JSON.stringify(step.params)}`;
 	}
 
@@ -37,9 +45,13 @@
 						<span class="step-tool">{step.tool}</span>
 						<span class="step-summary">{step.summary}</span>
 					</div>
-					<button type="button" class="step-cmd" onclick={() => copyCommand(step)} title="Click to copy full command">
-						{displayCommand(step)}
-					</button>
+					{#if isSandbox(step)}
+						<span class="step-cmd sandbox">{displayCommand(step)}</span>
+					{:else}
+						<button type="button" class="step-cmd" onclick={() => copyCommand(step)} title="Click to copy full command">
+							{displayCommand(step)}
+						</button>
+					{/if}
 				</div>
 			</div>
 		{/each}
@@ -142,9 +154,14 @@
 		white-space: nowrap;
 	}
 
-	.step-cmd:hover {
+	.step-cmd:not(.sandbox):hover {
 		background: var(--bg-hover);
 		border-color: var(--border);
 		color: var(--text);
+	}
+
+	.step-cmd.sandbox {
+		cursor: default;
+		user-select: none;
 	}
 </style>
