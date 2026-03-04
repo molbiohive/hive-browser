@@ -114,6 +114,13 @@
 		setPreference('theme', theme);
 	}
 
+	const plannerAvailable = $derived($appConfig.planner_available);
+	const plannerOn = $derived($currentUser?.preferences?.use_planner !== false);
+
+	function togglePlanner() {
+		setPreference('use_planner', !plannerOn);
+	}
+
 	function handleAddUser() {
 		previousUserSlug = $currentUser?.slug || null;
 		showAddUser = true;
@@ -464,6 +471,18 @@
 						</span>
 						<span class="status-sep"></span>
 						<ModelSelector />
+						{#if plannerAvailable}
+						<span class="status-sep"></span>
+						<button
+							class="planner-btn"
+							class:active={plannerOn}
+							onclick={togglePlanner}
+							title={plannerOn ? 'Planner on (click to disable)' : 'Planner off (click to enable)'}
+						>
+							<span class="planner-dot" class:on={plannerOn}></span>
+							Planner
+						</button>
+						{/if}
 						<span class="status-sep"></span>
 						<button class="feedback-btn" onclick={() => showFeedback = true} aria-label="Send feedback">Feedback</button>
 					</span>
@@ -872,6 +891,36 @@
 
 	.indicator.err {
 		color: var(--color-err);
+	}
+
+	.planner-btn {
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+		background: none;
+		border: none;
+		cursor: pointer;
+		color: var(--text-hint);
+		font-size: 0.7rem;
+		padding: 0.15rem 0.3rem;
+		border-radius: 4px;
+		font-family: inherit;
+	}
+
+	.planner-btn:hover {
+		color: var(--text-secondary);
+		background: var(--bg-hover);
+	}
+
+	.planner-dot {
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background: var(--text-placeholder);
+	}
+
+	.planner-dot.on {
+		background: var(--color-ok);
 	}
 
 	.feedback-btn {
