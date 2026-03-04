@@ -65,7 +65,7 @@ async def list_users(session: AsyncSession) -> list[User]:
     return list(result.scalars().all())
 
 
-_ALLOWED_PREF_KEYS = {"theme", "model_id"}
+_ALLOWED_PREF_KEYS = {"theme", "model_id", "use_planner"}
 
 
 async def update_preferences(session: AsyncSession, user_id: int, key: str, value) -> dict:

@@ -100,6 +100,9 @@ async def websocket_endpoint(websocket: WebSocket):
     if pref_model and model_pool and _resolve_model(model_pool, pref_model, config):
         current_model_id = pref_model
 
+    # Per-connection planner toggle — defaults to True when available
+    use_planner = bool((user.preferences or {}).get("use_planner", True))
+
     # Per-connection chat tracking (mutable dict so background tasks can update it)
     chat = {"id": None, "messages": [], "title_generated": False, "model": current_model_id}
 
@@ -120,6 +123,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     else ["name", "size_bp", "topology", "features"]
                 ),
                 "max_history_pairs": max_pairs,
+                "planner_available": tool_rag is not None,
             },
             "tools": registry.metadata() if registry else [],
             "status": init_status,
@@ -182,6 +186,8 @@ async def websocket_endpoint(websocket: WebSocket):
                     try:
                         async with db.async_session_factory() as s:
                             prefs = await update_preferences(s, user.id, key, value)
+                        if key == "use_planner":
+                            use_planner = bool(value)
                         await manager.send_json(conn_id, {
                             "type": "preferences_updated",
                             "preferences": prefs,
@@ -301,7 +307,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     max_pairs=max_pairs,
                     save_threshold=save_threshold,
                     config=config,
-                    tool_rag=tool_rag,
+                    tool_rag=tool_rag if use_planner else None,
                 )
             )
 
