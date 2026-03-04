@@ -43,7 +43,14 @@ Do NOT call the parts tool on individual sequences when search already returned 
 Prefer pid when the user asks about parts/features, sid when asking about whole sequences.
 - After tool results, write 1-2 sentences of interpretation. \
 NEVER list or restate individual items -- the user sees a rich widget.
-- Respond concisely."""
+- Respond concisely.
+
+## Sandbox
+- After tools return results, data is cached as r0, r1, etc.
+- Use python(code="...") to filter, aggregate, or transform cached data.
+- All cached variables (r0, r1...) are in scope. Assign output to `result`.
+- Available: len, sum, min, max, sorted, filter, map, comprehensions. No imports.
+- Use this to extract IDs, filter rows, count, aggregate before passing to other tools."""
 
 
 def build_system_prompt() -> str:
