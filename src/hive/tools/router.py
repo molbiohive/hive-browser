@@ -39,6 +39,7 @@ async def route_input(
     summary_token_limit: int = 1000,
     on_progress: Callable[[dict], Awaitable[None]] | None = None,
     tool_rag: ToolRAG | None = None,
+    use_planner: bool = True,
 ) -> dict[str, Any]:
     """
     Route user input → tool execution → response.
@@ -98,6 +99,7 @@ async def route_input(
             summary_token_limit=summary_token_limit,
             on_progress=on_progress,
             tool_rag=tool_rag,
+            use_planner=use_planner,
         )
 
     # ── Mode 3: Natural language — unified agentic loop ──
@@ -114,6 +116,7 @@ async def route_input(
         summary_token_limit=summary_token_limit,
         on_progress=on_progress,
         tool_rag=tool_rag,
+        use_planner=use_planner,
     )
 
 
@@ -130,6 +133,7 @@ async def _unified_loop(
     summary_token_limit: int = 1000,
     on_progress: Callable[[dict], Awaitable[None]] | None = None,
     tool_rag: ToolRAG | None = None,
+    use_planner: bool = True,
 ) -> dict[str, Any]:
     """Unified agentic loop — LLM converses and chains tools as needed.
 
@@ -137,19 +141,15 @@ async def _unified_loop(
     and pure conversation. Large data (sequences, etc.) is cached locally
     and auto-injected into subsequent tools — never sent through LLM context.
 
-    When tool_rag is provided, a cheap planning call decides intent first:
-    - ANSWER responses return directly (no agent loop)
-    - ACTION responses trigger RAG to narrow the tool set
+    Two-mode RAG pipeline (when tool_rag is provided):
+    - Planner ON:  planning call → RAG on plan → agent sees plan + selected tools
+    - Planner OFF: RAG on user input directly → agent sees user input + selected tools
+    Without tool_rag, all tools are used (backward compatible).
     """
 
     all_tools = registry.llm_tools()
     tool_map = {t.name: t for t in all_tools}
     all_schemas = build_multi_tool_schema(all_tools)
-
-    messages = [{"role": "system", "content": build_system_prompt()}]
-    if history:
-        messages.extend(history)
-    messages.append({"role": "user", "content": user_input})
 
     last_result = None
     last_tool = None
@@ -162,6 +162,7 @@ async def _unified_loop(
     tokens = {"in": 0, "out": 0}
     exceeded = False
     schemas = all_schemas
+    plan_text = None  # plan injected into agent context
 
     async def _emit(phase: str, tool: str | None = None):
         if on_progress:
@@ -172,20 +173,27 @@ async def _unified_loop(
 
     await _emit("thinking")
 
-    # ── Planning + RAG ──
+    # ── Tool Selection (RAG + optional planner) ──
     if tool_rag:
         try:
-            prefix, plan_content, plan_usage = await tool_rag.plan(
-                user_input, llm_client, history,
-            )
-            tokens["in"] += plan_usage.get("in", 0)
-            tokens["out"] += plan_usage.get("out", 0)
+            if use_planner:
+                # Mode 1: Planner ON — planning call decides intent, plan guides RAG + agent
+                prefix, plan_content, plan_usage = await tool_rag.plan(
+                    user_input, llm_client, history,
+                )
+                tokens["in"] += plan_usage.get("in", 0)
+                tokens["out"] += plan_usage.get("out", 0)
 
-            if prefix == "ANSWER":
-                return {"type": "message", "content": plan_content, "tokens": tokens}
+                if prefix == "ANSWER":
+                    return {"type": "message", "content": plan_content, "tokens": tokens}
 
-            selected = await tool_rag.select(plan_content)
-            all_tools = selected
+                # RAG on plan content (planner's description of steps)
+                selected = await tool_rag.select(plan_content)
+                plan_text = plan_content
+            else:
+                # Mode 2: No planner — RAG on raw user input
+                selected = await tool_rag.select(user_input)
+
             tool_map = {t.name: t for t in selected}
             schemas = build_multi_tool_schema(selected)
             logger.info(
@@ -193,7 +201,13 @@ async def _unified_loop(
                 len(selected), sorted(t.name for t in selected),
             )
         except Exception as e:
-            logger.warning("Planning failed, using all tools: %s", e)
+            logger.warning("Tool selection failed, using all tools: %s", e)
+
+    # Build message list — plan replaces user input when planner is active
+    messages = [{"role": "system", "content": build_system_prompt()}]
+    if history:
+        messages.extend(history)
+    messages.append({"role": "user", "content": plan_text or user_input})
 
     for turn in range(max_turns):
         turn_tools = schemas
