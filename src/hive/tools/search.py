@@ -35,7 +35,7 @@ def _parse_bool_query(query: str) -> tuple[list[str], str]:
 class SearchInput(BaseModel):
     query: str = Field(
         ...,
-        description="Keyword (name, feature, or description). Use && for AND, || for OR.",
+        description="Keyword (name, feature, or description). Use && for AND, || for OR. Use * to list all.",
     )
     tags: str | None = Field(
         default=None,
@@ -68,6 +68,7 @@ class SearchTool(Tool):
         "sequences (with SIDs) and matching parts (with PIDs and instance counts). "
         "IMPORTANT: When user says 'X and Y' or 'X with Y' or 'X that have Y', "
         "ALWAYS use && in query: 'X && Y'. Without && terms are single-term fuzzy. "
+        "Use query='*' to list ALL sequences (useful for 'show everything', 'list all'). "
         "If the user mentions a project, folder, or directory context, "
         "put it in the tags parameter. "
         "Use PIDs from the parts section for follow-up tools (align, blast, extract)."
@@ -85,7 +86,7 @@ class SearchTool(Tool):
         return {
             "type": "object",
             "properties": {
-                "query": {"type": "string", "description": "Keyword. Use && for AND, || for OR."},
+                "query": {"type": "string", "description": "Keyword. Use && for AND, || for OR. Use * to list all."},
                 "tags": {"type": "string", "description": "Directory/project context"},
             },
             "required": ["query"],
@@ -112,6 +113,10 @@ class SearchTool(Tool):
 
         if not db.async_session_factory:
             return {"results": [], "total": 0, "query": inp.query, "error": "Database unavailable"}
+
+        # Wildcard: list all sequences (respects filters/tags)
+        if inp.query.strip() == "*":
+            return await self._execute_all(inp)
 
         terms, op = _parse_bool_query(inp.query)
 
@@ -232,6 +237,62 @@ class SearchTool(Tool):
             "total": len(results),
             "parts": parts,
             "parts_total": len(parts),
+            "query": inp.query,
+        }
+
+    async def _execute_all(self, inp: SearchInput) -> dict[str, Any]:
+        """Return all sequences, ordered by name. Filters and tags still apply."""
+        async with db.async_session_factory() as session:
+            stmt = (
+                select(Sequence, IndexedFile.file_path)
+                .join(IndexedFile, Sequence.file_id == IndexedFile.id)
+                .options(
+                    selectinload(Sequence.part_instances)
+                    .selectinload(PartInstance.part)
+                    .selectinload(Part.names)
+                )
+                .where(IndexedFile.status == "active")
+                .order_by(Sequence.name)
+            )
+
+            if inp.tags:
+                stmt = stmt.where(
+                    func.similarity(cast(Sequence.meta["tags"], Text), inp.tags) > 0.1
+                )
+            if topo := inp.filters.get("topology"):
+                stmt = stmt.where(Sequence.topology == topo)
+            if size_min := inp.filters.get("size_min"):
+                stmt = stmt.where(Sequence.length >= int(size_min))
+            if size_max := inp.filters.get("size_max"):
+                stmt = stmt.where(Sequence.length <= int(size_max))
+
+            rows = (await session.execute(stmt)).all()
+
+            results = []
+            for seq, file_path in rows:
+                part_names = []
+                for pi in seq.part_instances:
+                    if pi.part and pi.part.names:
+                        part_names.append(pi.part.names[0].name)
+                meta = seq.meta or {}
+                results.append(
+                    SearchResultItem(
+                        sid=seq.id,
+                        name=seq.name,
+                        size_bp=seq.length,
+                        topology=seq.topology,
+                        features=part_names,
+                        tags=meta.get("tags", []),
+                        file_path=display_file_path(file_path),
+                        score=1.0,
+                    ).model_dump()
+                )
+
+        return {
+            "results": results,
+            "total": len(results),
+            "parts": [],
+            "parts_total": 0,
             "query": inp.query,
         }
 
