@@ -813,3 +813,59 @@ class TestSandboxIntegration:
         ]
         assert len(python_tool_msgs) == 1
         assert "Cached data:" in python_tool_msgs[0]["content"]
+
+    async def test_sandbox_retries_exhaust_drops_python_schema(self):
+        """After N consecutive sandbox errors, python schema is dropped."""
+
+        class SearchTool(Tool):
+            name = "search"
+            description = "Search"
+            widget = "table"
+            tags = {"llm", "test"}
+
+            def __init__(self, **_):
+                pass
+
+            async def execute(self, params, mode="direct"):
+                return {"results": [{"sid": 1, "name": "GFP"}]}
+
+        reg = ToolRegistry()
+        reg.register(SearchTool())
+
+        # Use code that triggers NameError in the sandbox (status: "error")
+        llm = self._mock_llm([
+            # Turn 0: search -> caches data
+            self._tool_call_response("search", {"query": "x"}, call_id="c1"),
+            # Turn 1: sandbox error #1
+            self._tool_call_response(
+                "python", {"code": "result = undefined_var_1"}, call_id="c2",
+            ),
+            # Turn 2: sandbox error #2
+            self._tool_call_response(
+                "python", {"code": "result = undefined_var_2"}, call_id="c3",
+            ),
+            # Turn 3: sandbox error #3
+            self._tool_call_response(
+                "python", {"code": "result = undefined_var_3"}, call_id="c4",
+            ),
+            # Turn 4: LLM gives up and responds with text
+            self._text_response("Could not process the data."),
+        ])
+        resp = await route_input(
+            "process data", reg, llm_client=llm,
+            sandbox_max_retries=3, max_turns=10,
+        )
+
+        # Verify the 5th LLM call (after 3 errors) has no python schema
+        # Calls: turn0(no python), turn1(+python), turn2(+python), turn3(+python),
+        #   turn4(python dropped)
+        assert llm.chat.call_count == 5
+        # Turn 4 (index 4): python schema should be gone
+        last_call_tools = llm.chat.call_args_list[4][1].get("tools", [])
+        tool_names = [t["function"]["name"] for t in last_call_tools]
+        assert "python" not in tool_names
+
+        # But turn 3 (index 3) still had python (only 2 errors at that point)
+        third_retry_tools = llm.chat.call_args_list[3][1].get("tools", [])
+        tool_names_3 = [t["function"]["name"] for t in third_retry_tools]
+        assert "python" in tool_names_3

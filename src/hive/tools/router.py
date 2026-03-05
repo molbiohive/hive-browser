@@ -46,6 +46,7 @@ async def route_input(
     on_progress: Callable[[dict], Awaitable[None]] | None = None,
     tool_rag: ToolRAG | None = None,
     use_planner: bool = True,
+    sandbox_max_retries: int = 3,
 ) -> dict[str, Any]:
     """
     Route user input → tool execution → response.
@@ -106,6 +107,7 @@ async def route_input(
             on_progress=on_progress,
             tool_rag=tool_rag,
             use_planner=use_planner,
+            sandbox_max_retries=sandbox_max_retries,
         )
 
     # ── Mode 3: Natural language — unified agentic loop ──
@@ -123,6 +125,7 @@ async def route_input(
         on_progress=on_progress,
         tool_rag=tool_rag,
         use_planner=use_planner,
+        sandbox_max_retries=sandbox_max_retries,
     )
 
 
@@ -140,6 +143,7 @@ async def _unified_loop(
     on_progress: Callable[[dict], Awaitable[None]] | None = None,
     tool_rag: ToolRAG | None = None,
     use_planner: bool = True,
+    sandbox_max_retries: int = 3,
 ) -> dict[str, Any]:
     """Unified agentic loop — LLM converses and chains tools as needed.
 
@@ -169,6 +173,7 @@ async def _unified_loop(
     exceeded = False
     schemas = all_schemas
     plan_text = None  # plan injected into agent context
+    sandbox_errors = 0  # consecutive sandbox errors (for retry limit)
 
     async def _emit(phase: str, tool: str | None = None):
         if on_progress:
@@ -222,8 +227,8 @@ async def _unified_loop(
 
     for turn in range(max_turns):
         turn_tools = schemas
-        # Inject python schema when cached data is available
-        if len(result_cache) > 0:
+        # Inject python schema when cached data is available (skip after too many errors)
+        if len(result_cache) > 0 and sandbox_errors < sandbox_max_retries:
             turn_tools = [*schemas, sandbox.tool_schema()]
 
         # Log payload sizes for token debugging
@@ -345,6 +350,12 @@ async def _unified_loop(
                     "summary": chain_summary,
                     "widget": "table" if is_tabular else "none",
                 })
+                # Track consecutive sandbox errors for retry limit
+                if sb_result["status"] != "ok":
+                    sandbox_errors += 1
+                else:
+                    sandbox_errors = 0
+
                 if is_tabular:
                     # List[dict] → show as table widget
                     last_result = {"results": sb_val}
@@ -385,6 +396,7 @@ async def _unified_loop(
 
             await _emit("tool", tool_name)
             result = await tool.execute(params, mode="natural")
+            sandbox_errors = 0  # regular tool success resets sandbox error budget
 
             # Hybrid auto-pipe: protect sensitive values, stash in cache
             protected = vault.scan_and_protect(result, min_length=pipe_min_length)

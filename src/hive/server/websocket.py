@@ -347,6 +347,7 @@ async def _handle_message(
             on_progress=_progress,
             tool_rag=tool_rag,
             use_planner=use_planner,
+            sandbox_max_retries=config.llm.sandbox_max_retries if config else 3,
         )
 
         # Track user message (skip bare commands that just show a form)

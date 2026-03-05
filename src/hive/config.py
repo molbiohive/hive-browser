@@ -38,6 +38,7 @@ class LLMConfig(BaseSettings):
     tool_rag_base_url: str = ""  # embedding API base URL (litellm api_base)
     tool_rag_threshold: float = 0.3  # min cosine similarity to include a tool
     tool_rag_top_k: int = 8  # max tools returned by RAG
+    sandbox_max_retries: int = 3  # max consecutive sandbox errors before dropping python schema
 
     model_config = {"env_prefix": "LLM_"}
 

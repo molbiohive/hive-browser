@@ -30,6 +30,7 @@ llm:
   tool_rag_base_url: ""         # embedding API base URL (litellm api_base)
   tool_rag_threshold: 0.3       # min cosine similarity to include a tool
   tool_rag_top_k: 8             # max tools returned by RAG
+  sandbox_max_retries: 3         # max consecutive sandbox errors before LLM gives up
 
 deps:
   blast:
