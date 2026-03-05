@@ -506,6 +506,8 @@ def _strip_large_widget_data(msg: dict, threshold: int) -> dict:
             "params": widget.get("params", {}),
             "stale": True,
         }
+        if widget.get("chain"):
+            stripped["widget"]["chain"] = widget["chain"]
         return stripped
     return msg
 
