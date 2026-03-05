@@ -7,10 +7,6 @@
 	}
 
 	function fullCommand(step) {
-		if (isSandbox(step)) {
-			const code = step.params?.code || '';
-			return `python(code="${code}")`;
-		}
 		return `//${step.tool} ${JSON.stringify(step.params)}`;
 	}
 
@@ -19,9 +15,10 @@
 		return cmd.length > 120 ? cmd.slice(0, 117) + '...' : cmd;
 	}
 
-	async function copyCommand(step) {
+	async function copyCode(step) {
 		try {
-			await navigator.clipboard.writeText(fullCommand(step));
+			const text = isSandbox(step) ? (step.params?.code || '') : fullCommand(step);
+			await navigator.clipboard.writeText(text);
 		} catch (e) {
 			console.error('Clipboard copy failed:', e);
 		}
@@ -45,10 +42,12 @@
 						<span class="step-tool">{step.tool}</span>
 						<span class="step-summary">{step.summary}</span>
 					</div>
-					{#if isSandbox(step)}
-						<span class="step-cmd sandbox">{displayCommand(step)}</span>
+					{#if isSandbox(step) && step.params?.code}
+						<button type="button" class="step-code-wrap" onclick={() => copyCode(step)} title="Click to copy code">
+							<pre class="step-code"><code>{step.params.code}</code></pre>
+						</button>
 					{:else}
-						<button type="button" class="step-cmd" onclick={() => copyCommand(step)} title="Click to copy full command">
+						<button type="button" class="step-cmd" onclick={() => copyCode(step)} title="Click to copy full command">
 							{displayCommand(step)}
 						</button>
 					{/if}
@@ -154,14 +153,41 @@
 		white-space: nowrap;
 	}
 
-	.step-cmd:not(.sandbox):hover {
+	.step-cmd:hover {
 		background: var(--bg-hover);
 		border-color: var(--border);
 		color: var(--text);
 	}
 
-	.step-cmd.sandbox {
-		cursor: default;
-		user-select: none;
+	.step-code-wrap {
+		display: block;
+		width: 100%;
+		margin-top: 0.2rem;
+		padding: 0;
+		background: none;
+		border: none;
+		cursor: pointer;
+		text-align: left;
+	}
+
+	.step-code {
+		margin: 0;
+		padding: 0.35rem 0.5rem;
+		background: var(--bg-code);
+		border: 1px solid var(--border-muted);
+		border-radius: 4px;
+		font-family: 'SF Mono', Monaco, monospace;
+		font-size: 0.72rem;
+		color: var(--text-muted);
+		white-space: pre;
+		overflow-x: auto;
+		max-height: 10rem;
+		overflow-y: auto;
+	}
+
+	.step-code-wrap:hover .step-code {
+		background: var(--bg-hover);
+		border-color: var(--border);
+		color: var(--text);
 	}
 </style>
