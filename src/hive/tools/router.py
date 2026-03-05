@@ -329,10 +329,20 @@ async def _unified_loop(
                     and sb_val
                     and isinstance(sb_val[0], dict)
                 )
+
+                # Human-readable chain summary (shown in UI, not sent to LLM)
+                if sb_result["status"] != "ok":
+                    chain_summary = f"Error: {sb_result.get('error', 'unknown')}"
+                elif is_tabular:
+                    chain_summary = f"Filtered to {len(sb_val)} row(s)"
+                else:
+                    short = str(sb_val)
+                    chain_summary = f"Result: {short[:80]}" if len(short) > 80 else f"Result: {short}"
+
                 chain.append({
                     "tool": "python",
                     "params": {"code": code},
-                    "summary": compact,
+                    "summary": chain_summary,
                     "widget": "table" if is_tabular else "none",
                 })
                 if is_tabular:
@@ -340,10 +350,7 @@ async def _unified_loop(
                     last_result = {"results": sb_val}
                     last_tool = "python"
                     last_params = {"code": code}
-                else:
-                    # Scalar → suppress previous tool's widget (answer is in text)
-                    last_result = None
-                    last_tool = None
+                # Scalar → don't touch last_result/last_tool; previous tool's widget stays
 
                 logger.info("Sandbox exec: %s", compact[:200])
                 await _emit("thinking")

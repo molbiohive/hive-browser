@@ -696,12 +696,16 @@ class TestSandboxIntegration:
             self._text_response("SIDs are 1 and 2."),
         ])
         resp = await route_input("find GFP sids", reg, llm_client=llm)
-        # Scalar sandbox clears last_tool → plain message (no search widget noise)
-        assert resp["type"] == "message"
+        # Scalar sandbox keeps previous tool's widget visible
+        assert resp["type"] == "tool_result"
+        assert resp["tool"] == "search"
         assert "SIDs are 1 and 2" in resp["content"]
+        assert len(resp["chain"]) == 2
+        assert resp["chain"][0]["tool"] == "search"
+        assert resp["chain"][1]["tool"] == "python"
 
-    async def test_sandbox_scalar_suppresses_widget(self):
-        """Scalar sandbox results suppress the previous tool's widget."""
+    async def test_sandbox_scalar_keeps_previous_widget(self):
+        """Scalar sandbox results keep the previous tool's widget visible."""
 
         class SearchTool(Tool):
             name = "search"
@@ -730,9 +734,14 @@ class TestSandboxIntegration:
             self._text_response("1 circular sequence."),
         ])
         resp = await route_input("count circular", reg, llm_client=llm)
-        # Scalar sandbox → no widget, just text
-        assert resp["type"] == "message"
+        # Scalar sandbox keeps previous tool's widget
+        assert resp["type"] == "tool_result"
+        assert resp["tool"] == "search"
         assert "1 circular" in resp["content"]
+        assert len(resp["chain"]) == 2
+        assert resp["chain"][0]["tool"] == "search"
+        assert resp["chain"][1]["tool"] == "python"
+        assert resp["chain"][1]["summary"].startswith("Result: ")
 
     async def test_python_schema_injected_when_cache_nonempty(self):
         """python schema only appears after first tool caches data."""
