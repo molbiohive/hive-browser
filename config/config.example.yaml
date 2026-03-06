@@ -2,7 +2,7 @@
 # Copy this file to config.local.yaml and adjust values.
 # Select config via: HIVE_CONFIG=config/config.local.yaml
 
-version: 3
+version: 4
 
 server:
   host: "0.0.0.0"
@@ -22,6 +22,9 @@ llm:
     # - provider: "openai"
     #   model: "gpt-4o"
     #   api_key: "sk-..."
+    # - provider: "openai"           # vLLM (OpenAI-compatible)
+    #   model: "Qwen/Qwen3-32B-AWQ"
+    #   base_url: "http://localhost:8000/v1"
   auto_discover: false          # auto-discover Ollama models at runtime
   agent_max_turns: 10           # max tool-call turns in agentic loop
   summary_token_limit: 1000     # max tokens for tool result summaries sent to LLM

@@ -97,7 +97,7 @@ class ServerConfig(BaseSettings):
     port: int = 8080
 
 
-CURRENT_CONFIG_VERSION = 3
+CURRENT_CONFIG_VERSION = 4
 
 
 class Settings(BaseSettings):
