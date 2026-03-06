@@ -65,6 +65,10 @@ class LLMClient:
 
         if self._config.api_key:
             kwargs["api_key"] = self._config.api_key
+        elif self._config.provider == "openai" and self._config.base_url:
+            # Local OpenAI-compatible endpoints (vLLM, etc.) don't need a real key
+            # but litellm requires one to be set
+            kwargs["api_key"] = "no-key"
 
         kwargs["timeout"] = 120  # seconds — prevent indefinite hangs
 
