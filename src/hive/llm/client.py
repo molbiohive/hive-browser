@@ -65,6 +65,8 @@ class LLMClient:
             if base.endswith("/v1"):
                 base = base[:-3]
             kwargs["api_base"] = base
+        elif self._config.base_url:
+            kwargs["api_base"] = self._config.base_url
 
         if self._config.api_key:
             kwargs["api_key"] = self._config.api_key
