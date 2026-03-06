@@ -22,13 +22,8 @@ class LLMClient:
     def __init__(self, config: ModelEntry):
         self._config = config
 
-        # Build litellm model identifier
-        if config.provider == "ollama":
-            self._model = f"ollama/{config.model}"
-        elif config.provider == "openai":
-            self._model = config.model
-        else:
-            self._model = f"{config.provider}/{config.model}"
+        # Build litellm model identifier — litellm always needs provider/ prefix
+        self._model = f"{config.provider}/{config.model}"
 
     @property
     def provider(self) -> str:
@@ -101,10 +96,14 @@ class LLMClient:
 
     async def health(self) -> bool:
         """Check if the LLM service is reachable."""
-        if self._config.provider == "ollama":
+        if self._config.base_url:
+            # Local providers (Ollama, vLLM, etc.) — ping the endpoint
             try:
+                base = self._config.base_url.rstrip("/")
+                if not base.endswith("/v1"):
+                    base += "/v1"
                 async with httpx.AsyncClient(
-                    base_url=self._config.base_url, timeout=5.0
+                    base_url=base, timeout=5.0
                 ) as client:
                     response = await client.get("/models")
                     return response.status_code == 200
