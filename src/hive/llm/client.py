@@ -55,12 +55,13 @@ class LLMClient:
 
         # Provider-specific config
         if self._config.provider == "ollama":
-            base = self._config.base_url
+            base = self._config.base_url or "http://localhost:11434"
             # litellm expects base URL without /v1 for Ollama
             if base.endswith("/v1"):
                 base = base[:-3]
             kwargs["api_base"] = base
         elif self._config.base_url:
+            # Custom endpoint (vLLM, etc.) — pass base URL to litellm
             kwargs["api_base"] = self._config.base_url
 
         if self._config.api_key:

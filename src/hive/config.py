@@ -19,7 +19,7 @@ class ModelEntry(BaseSettings):
 
     provider: str = "ollama"  # ollama, anthropic, openai
     model: str = "qwen2.5:7b"
-    base_url: str = "http://localhost:11434/v1"
+    base_url: str = ""  # local endpoints only (Ollama, vLLM); empty for cloud providers
     api_key: str | None = None  # required for cloud providers
 
     @property
