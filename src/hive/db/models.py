@@ -9,6 +9,7 @@ from datetime import datetime
 from sqlalchemy import (
     JSON,
     BigInteger,
+    Boolean,
     DateTime,
     ForeignKey,
     Index,
@@ -219,6 +220,23 @@ class Annotation(Base):
     __table_args__ = (
         Index("idx_annotation_part_key", "part_id", "key"),
     )
+
+
+# ── Enzymes ──────────────────────────────────────────────────────
+
+
+class Enzyme(Base):
+    __tablename__ = "enzymes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(Text, unique=True, index=True)
+    site: Mapped[str] = mapped_column(Text)       # IUPAC recognition sequence
+    cut5: Mapped[int] = mapped_column(Integer)     # sense strand cut offset
+    cut3: Mapped[int] = mapped_column(Integer)     # antisense cut offset
+    overhang: Mapped[int] = mapped_column(Integer) # neg=5', pos=3', 0=blunt
+    length: Mapped[int] = mapped_column(Integer)   # recognition site length
+    is_palindrome: Mapped[bool] = mapped_column(Boolean)
+    is_blunt: Mapped[bool] = mapped_column(Boolean)
 
 
 # ── Feedback & Tool Approvals ────────────────────────────────────
