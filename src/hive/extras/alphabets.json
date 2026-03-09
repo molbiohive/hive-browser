@@ -1,0 +1,192 @@
+{
+  "type": "alphabets",
+  "version": 1,
+  "source": "IUPAC nomenclature via Biopython Bio.Data.IUPACData",
+  "data": {
+    "dna": {
+      "unambiguous": "GATC",
+      "ambiguous": "GATCRYWSMKHBVDN",
+      "complement": {
+        "A": "T",
+        "B": "V",
+        "C": "G",
+        "D": "H",
+        "G": "C",
+        "H": "D",
+        "K": "M",
+        "M": "K",
+        "N": "N",
+        "R": "Y",
+        "S": "S",
+        "T": "A",
+        "V": "B",
+        "W": "W",
+        "X": "X",
+        "Y": "R"
+      },
+      "ambiguity": {
+        "B": [
+          "C",
+          "G",
+          "T"
+        ],
+        "D": [
+          "A",
+          "G",
+          "T"
+        ],
+        "H": [
+          "A",
+          "C",
+          "T"
+        ],
+        "K": [
+          "G",
+          "T"
+        ],
+        "M": [
+          "A",
+          "C"
+        ],
+        "N": [
+          "A",
+          "C",
+          "G",
+          "T"
+        ],
+        "R": [
+          "A",
+          "G"
+        ],
+        "S": [
+          "C",
+          "G"
+        ],
+        "V": [
+          "A",
+          "C",
+          "G"
+        ],
+        "W": [
+          "A",
+          "T"
+        ],
+        "X": [
+          "A",
+          "C",
+          "G",
+          "T"
+        ],
+        "Y": [
+          "C",
+          "T"
+        ]
+      }
+    },
+    "rna": {
+      "unambiguous": "GAUC",
+      "ambiguous": "GAUCRYWSMKHBVDN",
+      "complement": {
+        "A": "U",
+        "B": "V",
+        "C": "G",
+        "D": "H",
+        "G": "C",
+        "H": "D",
+        "K": "M",
+        "M": "K",
+        "N": "N",
+        "R": "Y",
+        "S": "S",
+        "U": "A",
+        "V": "B",
+        "W": "W",
+        "X": "X",
+        "Y": "R"
+      },
+      "ambiguity": {
+        "B": [
+          "C",
+          "G",
+          "U"
+        ],
+        "D": [
+          "A",
+          "G",
+          "U"
+        ],
+        "H": [
+          "A",
+          "C",
+          "U"
+        ],
+        "K": [
+          "G",
+          "U"
+        ],
+        "M": [
+          "A",
+          "C"
+        ],
+        "N": [
+          "A",
+          "C",
+          "G",
+          "U"
+        ],
+        "R": [
+          "A",
+          "G"
+        ],
+        "S": [
+          "C",
+          "G"
+        ],
+        "V": [
+          "A",
+          "C",
+          "G"
+        ],
+        "W": [
+          "A",
+          "U"
+        ],
+        "X": [
+          "A",
+          "C",
+          "G",
+          "U"
+        ],
+        "Y": [
+          "C",
+          "U"
+        ]
+      }
+    },
+    "protein": {
+      "standard": "ACDEFGHIKLMNPQRSTVWY",
+      "one_to_three": {
+        "A": "Ala",
+        "C": "Cys",
+        "D": "Asp",
+        "E": "Glu",
+        "F": "Phe",
+        "G": "Gly",
+        "H": "His",
+        "I": "Ile",
+        "K": "Lys",
+        "L": "Leu",
+        "M": "Met",
+        "N": "Asn",
+        "P": "Pro",
+        "Q": "Gln",
+        "R": "Arg",
+        "S": "Ser",
+        "T": "Thr",
+        "V": "Val",
+        "W": "Trp",
+        "Y": "Tyr"
+      }
+    }
+  }
+}
