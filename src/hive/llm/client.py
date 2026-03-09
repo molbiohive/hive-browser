@@ -42,6 +42,7 @@ class LLMClient:
         messages: list[dict],
         tools: list[dict] | None = None,
         tool_choice: str | None = None,
+        disable_thinking: bool = False,
     ) -> dict:
         """Send a chat completion request via litellm."""
         kwargs: dict = {
@@ -73,9 +74,8 @@ class LLMClient:
 
         kwargs["timeout"] = 120  # seconds — prevent indefinite hangs
 
-        # vLLM + thinking models (Qwen3): disable thinking for tool-calling turns
-        # to prevent unbounded <think> tokens consuming the KV cache budget
-        if self._config.base_url and tools:
+        # vLLM + thinking models (Qwen3): optionally disable thinking per call
+        if disable_thinking and self._config.base_url:
             kwargs.setdefault("extra_body", {})
             kwargs["extra_body"]["chat_template_kwargs"] = {"enable_thinking": False}
 

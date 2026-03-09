@@ -4,6 +4,7 @@ import asyncio
 import contextlib
 import json
 import logging
+import re
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -17,7 +18,18 @@ from hive.users.service import create_feedback, get_user_by_token, update_prefer
 
 logger = logging.getLogger(__name__)
 
+_THINK_RE = re.compile(r"<think>(.*?)</think>", re.DOTALL)
+
 ws_router = APIRouter()
+
+
+def _extract_thinking(content: str) -> tuple[str, str | None]:
+    """Strip <think>...</think> blocks from content, return (clean, thinking)."""
+    blocks = _THINK_RE.findall(content)
+    if not blocks:
+        return content, None
+    clean = _THINK_RE.sub("", content).strip()
+    return clean, "\n\n".join(b.strip() for b in blocks)
 
 
 class ConnectionManager:
@@ -364,14 +376,17 @@ async def _handle_message(
         if result.get("type") != "form":
             chat["messages"].append({"role": "user", "content": content, "ts": _now_iso()})
 
-        # Track assistant response
+        # Track assistant response — extract thinking blocks from content
         assistant_content = result.get("content", "")
+        assistant_content, thinking = _extract_thinking(assistant_content)
         if assistant_content:
             manager.append_history(conn_id, "assistant", assistant_content, max_pairs)
 
         # Build response — include model metadata and token counts
         result_tokens = result.get("tokens")
         response: dict = {"type": "message", "content": assistant_content, "model": model_id}
+        if thinking:
+            response["thinking"] = thinking
         if result_tokens:
             response["tokens"] = result_tokens
 
@@ -405,6 +420,8 @@ async def _handle_message(
                 "ts": _now_iso(),
                 "model": model_id,
             }
+            if thinking:
+                assistant_msg["thinking"] = thinking
             if result_tokens:
                 assistant_msg["tokens"] = result_tokens
             if response.get("widget"):
@@ -496,11 +513,17 @@ async def _generate_chat_title(llm_client, messages: list[dict]) -> str | None:
             "Generate a 2-word title for this chat. "
             "Reply with ONLY the title, no quotes, no punctuation."
         )
-        resp = await llm_client.chat([
-            {"role": "system", "content": title_prompt},
-            {"role": "user", "content": summary_input},
-        ])
-        title = resp["choices"][0]["message"].get("content", "").strip().strip('"\'')
+        resp = await llm_client.chat(
+            [
+                {"role": "system", "content": title_prompt},
+                {"role": "user", "content": summary_input},
+            ],
+            disable_thinking=True,
+        )
+        raw_title = resp["choices"][0]["message"].get("content", "").strip()
+        # Strip any leaked <think> blocks and surrounding quotes
+        title, _ = _extract_thinking(raw_title)
+        title = title.strip('"\'')
         if not title:
             return None
         # Enforce max 2 words

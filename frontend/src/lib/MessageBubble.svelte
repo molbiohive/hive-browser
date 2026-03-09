@@ -5,6 +5,7 @@
 	import ChainSteps from '$lib/ChainSteps.svelte';
 
 	let { message, messageIndex = -1 } = $props();
+	let thinkingExpanded = $state(false);
 
 	// Configure marked for inline rendering (no wrapping <p> for short responses)
 	marked.setOptions({ breaks: true, gfm: true });
@@ -30,6 +31,17 @@
 	<div class="msg-wrapper">
 		<div class="bubble {message.role}">
 			{#if message.role === 'assistant'}
+				{#if message.thinking}
+					<div class="thinking-block">
+						<button class="thinking-toggle" onclick={() => thinkingExpanded = !thinkingExpanded}>
+							Thinking
+							<span class="arrow">{thinkingExpanded ? '\u25B4' : '\u25BE'}</span>
+						</button>
+						{#if thinkingExpanded}
+							<pre class="thinking-content">{message.thinking}</pre>
+						{/if}
+					</div>
+				{/if}
 				<div class="content markdown">{@html rendered}</div>
 			{:else}
 				<div class="content">{message.content}</div>
@@ -148,6 +160,44 @@
 
 	.model {
 		opacity: 0.6;
+	}
+
+	/* Thinking block — collapsible reasoning */
+	.thinking-block {
+		margin-bottom: 0.5rem;
+	}
+
+	.thinking-toggle {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		padding: 0.2rem 0.5rem;
+		background: var(--bg-muted);
+		border: 1px solid var(--border);
+		border-radius: 4px;
+		cursor: pointer;
+		font-size: 0.75rem;
+		color: var(--text-muted);
+	}
+
+	.thinking-toggle:hover {
+		background: var(--bg-hover);
+	}
+
+	.thinking-content {
+		margin: 0.4rem 0 0;
+		padding: 0.5rem 0.75rem;
+		background: var(--bg-muted);
+		border-left: 3px solid var(--border);
+		border-radius: 0 4px 4px 0;
+		font-family: 'SF Mono', Monaco, monospace;
+		font-size: 0.78rem;
+		line-height: 1.5;
+		color: var(--text-muted);
+		white-space: pre-wrap;
+		overflow-x: auto;
+		max-height: 20rem;
+		overflow-y: auto;
 	}
 
 	/* Markdown styles for assistant messages */

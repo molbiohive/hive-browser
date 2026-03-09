@@ -24,6 +24,7 @@ interface Message {
 	ts: string;
 	model?: string;
 	tokens?: { in: number; out: number };
+	thinking?: string;
 }
 
 export interface ModelInfo {
@@ -207,6 +208,7 @@ export function connect() {
 				ts: new Date().toISOString(),
 				model: data.model,
 				tokens: data.tokens,
+				thinking: data.thinking,
 			};
 			const isForm = data.widget?.type === 'form';
 			chatStore.update(s => ({
