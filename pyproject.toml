@@ -24,7 +24,6 @@ dependencies = [
 
     # File parsing
     "sgffp>=0.1",
-    "biopython>=1.84",
 
     # Config
     "pyyaml>=6.0",
@@ -63,4 +62,4 @@ select = ["E", "F", "I", "N", "UP", "B", "SIM"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-filterwarnings = ["ignore::Bio.BiopythonParserWarning"]
+filterwarnings = []
