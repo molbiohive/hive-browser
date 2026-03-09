@@ -14,7 +14,6 @@ from hive.llm.prompts import (
     build_system_prompt,
 )
 from hive.sandbox import ResultCache, SandboxRunner
-from hive.secrets import SecretVault
 from hive.tools.base import ToolRegistry
 
 if TYPE_CHECKING:
@@ -165,8 +164,7 @@ async def _unified_loop(
     last_tool = None
     last_params = {}
     chain = []  # [{tool, params, summary, widget}]
-    cache = {}  # hybrid auto-pipe: field_name → large string value (may be SEC: tokens)
-    vault = SecretVault()  # per-loop vault for protecting sensitive data
+    cache = {}  # auto-pipe: field_name → large string value
     result_cache = ResultCache()  # per-loop cache for list[dict] results
     sandbox = SandboxRunner(result_cache)
     tokens = {"in": 0, "out": 0}
@@ -391,19 +389,13 @@ async def _unified_loop(
                     params[key] = cache[key]
                     logger.info("Cache inject: %s (%d chars)", key, len(str(cache[key])))
 
-            # Resolve SEC: tokens in params before execution
-            params = vault.scan_and_resolve(params)
-
             await _emit("tool", tool_name)
             result = await tool.execute(params, mode="natural")
             sandbox_errors = 0  # regular tool success resets sandbox error budget
 
-            # Hybrid auto-pipe: protect sensitive values, stash in cache
-            protected = vault.scan_and_protect(result, min_length=pipe_min_length)
-            for key, val in protected.items():
-                if isinstance(val, str) and (
-                    val.startswith("SEC:") or len(val) >= pipe_min_length
-                ):
+            # Auto-pipe: cache large string values for subsequent tools
+            for key, val in result.items():
+                if isinstance(val, str) and len(val) >= pipe_min_length:
                     cache[key] = val
 
             # Auto-cache list[dict] fields for sandbox access
