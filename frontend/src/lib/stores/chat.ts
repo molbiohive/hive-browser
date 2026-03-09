@@ -375,6 +375,9 @@ export function loadChat(chatId: string) {
 
 export function newChat() {
 	chatStore.set({ ...initialState, connected: true, isWaiting: false });
+	if (ws && ws.readyState === WebSocket.OPEN) {
+		ws.send(JSON.stringify({ type: 'new_chat' }));
+	}
 }
 
 export async function fetchChatList() {

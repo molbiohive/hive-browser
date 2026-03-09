@@ -21,7 +21,6 @@ class TestGroupedConfig:
     def test_chat_stays_top_level(self):
         s = Settings()
         assert s.chat.max_history_pairs == 20
-        assert s.chat.auto_save_after == 1
 
 
 class TestVersion:

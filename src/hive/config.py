@@ -79,7 +79,6 @@ class LogConfig(BaseSettings):
 
 class ChatConfig(BaseSettings):
     max_history_pairs: int = 20
-    auto_save_after: int = 1  # save chat after N user messages
     widget_data_threshold: int = 2048  # bytes — strip widget data above this size
 
 

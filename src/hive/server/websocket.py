@@ -92,7 +92,6 @@ async def websocket_endpoint(websocket: WebSocket):
     chat_storage = getattr(app.state, "chat_storage", None)
     tool_rag = getattr(app.state, "tool_rag", None)
     max_pairs = config.chat.max_history_pairs if config else 20
-    save_threshold = config.chat.auto_save_after if config else 2
 
     # Per-connection model selection — use user preference if valid, else default
     current_model_id = model_pool.default_id if model_pool else None
@@ -219,6 +218,16 @@ async def websocket_endpoint(websocket: WebSocket):
                         logger.warning("Feedback save failed: %s", e)
                 continue
 
+            # Handle new chat — reset server-side state
+            if data.get("type") == "new_chat":
+                chat["id"] = None
+                chat["messages"] = []
+                chat["title_generated"] = False
+                chat["title_sent"] = False
+                chat["model"] = current_model_id
+                manager.histories[conn_id] = []
+                continue
+
             # Handle chat resume
             if data.get("type") == "load_chat" and chat_storage:
                 requested_id = data.get("chatId")
@@ -305,7 +314,6 @@ async def websocket_endpoint(websocket: WebSocket):
                     chat_storage=chat_storage,
                     user_slug=user_slug,
                     max_pairs=max_pairs,
-                    save_threshold=save_threshold,
                     config=config,
                     tool_rag=tool_rag,
                     use_planner=use_planner,
@@ -326,7 +334,6 @@ async def _handle_message(
     chat_storage,
     user_slug: str | None,
     max_pairs: int,
-    save_threshold: int,
     config,
     tool_rag=None,
     use_planner: bool = True,
@@ -415,9 +422,10 @@ async def _handle_message(
             )
             await manager.send_json(conn_id, {"type": "status_update", "status": updated_status})
 
-        # Auto-save chat after threshold
-        if chat_storage and manager.count_user_messages(conn_id) >= save_threshold:
-            if chat["id"] is None:
+        # Save chat immediately on every message exchange
+        if chat_storage and result.get("type") != "form":
+            is_new = chat["id"] is None
+            if is_new:
                 chat["id"] = chat_storage.new_chat_id()
             threshold = config.chat.widget_data_threshold if config else 2048
             messages_to_save = [_strip_large_widget_data(m, threshold) for m in chat["messages"]]
@@ -425,17 +433,26 @@ async def _handle_message(
                 chat["id"], messages_to_save, user_slug=user_slug, model=chat.get("model"),
             )
 
-            # Generate title once via LLM
-            if not chat["title_generated"] and llm_client:
+            # Generate title once (LLM with fallback to first message words)
+            if not chat["title_generated"]:
                 chat["title_generated"] = True
-                title = await _generate_chat_title(llm_client, chat["messages"][:4])
+                title = None
+                if llm_client:
+                    title = await _generate_chat_title(llm_client, chat["messages"][:4])
+                if not title:
+                    title = _fallback_title(content)
                 if title:
                     chat_storage.update_title(chat["id"], title, user_slug=user_slug)
-                    await manager.send_json(conn_id, {
-                        "type": "chat_saved",
-                        "chatId": chat["id"],
-                        "title": title,
-                    })
+
+            # Notify frontend (always on new chat, or when title first generated)
+            if is_new or not chat.get("title_sent"):
+                chat["title_sent"] = True
+                saved_data = chat_storage.load(chat["id"], user_slug)
+                await manager.send_json(conn_id, {
+                    "type": "chat_saved",
+                    "chatId": chat["id"],
+                    "title": saved_data.get("title") if saved_data else None,
+                })
 
     except asyncio.CancelledError:
         await manager.send_json(conn_id, {"type": "message", "content": "Cancelled."})
@@ -492,6 +509,20 @@ async def _generate_chat_title(llm_client, messages: list[dict]) -> str | None:
     except Exception as e:
         logger.warning("Failed to generate chat title: %s", e)
         return None
+
+
+def _fallback_title(user_message: str) -> str:
+    """Generate a chat title from the first user message when LLM is unavailable."""
+    # Strip command prefixes
+    text = user_message.lstrip("/").strip()
+    if not text:
+        return "New Chat"
+    # Take first 4 words, cap at 40 chars
+    words = text.split()[:4]
+    title = " ".join(words)
+    if len(title) > 40:
+        title = title[:37] + "..."
+    return title
 
 
 def _strip_large_widget_data(msg: dict, threshold: int) -> dict:
