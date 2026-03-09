@@ -10,6 +10,7 @@ from hive.tools.gc import GCTool
 from hive.tools.resolve import resolve_input
 from hive.tools.revcomp import RevCompTool
 from hive.tools.search import _parse_bool_query
+from hive.tools.sites import SitesTool
 from hive.tools.transcribe import TranscribeTool
 from hive.tools.translate import TranslateTool
 
@@ -417,3 +418,58 @@ class TestUniversalInputNoDB:
         tool = TranscribeTool()
         result = await tool.execute({"sequence": "ATGC"})
         assert result["rna"] == "AUGC"
+
+
+# ── Sites (inverse digest) ──
+
+
+class TestSites:
+    @pytest.fixture()
+    def tool(self):
+        return SitesTool()
+
+    @pytest.fixture(autouse=True)
+    def _mock_db(self):
+        enzymes = _mock_enzymes()
+        mock_factory = MagicMock()
+        mock_session = AsyncMock()
+        mock_factory.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_factory.__aexit__ = AsyncMock(return_value=False)
+        mock_factory.return_value = mock_factory
+        with (
+            patch("hive.tools.sites.db.async_session_factory", mock_factory),
+            patch("hive.cloning.enzymes.load_enzymes", AsyncMock(return_value=enzymes)),
+        ):
+            yield
+
+    async def test_ecori_site(self, tool):
+        seq = "AAAGAATTCAAA"
+        result = await tool.execute({"sequence": seq, "circular": False})
+        assert result["cutters_found"] >= 1
+        names = [c["name"] for c in result["cutters"]]
+        assert "EcoRI" in names
+
+    async def test_no_cutters(self, tool):
+        seq = "AAAAAAAAAA"
+        result = await tool.execute({"sequence": seq, "circular": False})
+        assert result["cutters_found"] == 0
+        assert result["cutters"] == []
+
+    async def test_max_cuts_filter(self, tool):
+        # Two EcoRI sites -- max_cuts=1 should exclude it
+        seq = "GAATTCAAAAAAGAATTCAAAAAA"
+        result = await tool.execute(
+            {"sequence": seq, "circular": False, "max_cuts": 1}
+        )
+        ecori_hits = [c for c in result["cutters"] if c["name"] == "EcoRI"]
+        assert len(ecori_hits) == 0
+
+    async def test_unique_cutters(self, tool):
+        # One EcoRI site, one BamHI site -- both should appear with max_cuts=1
+        seq = "AAAGAATTCAAAGGATCCAAA"
+        result = await tool.execute(
+            {"sequence": seq, "circular": False, "max_cuts": 1}
+        )
+        names = {c["name"] for c in result["cutters"]}
+        assert "EcoRI" in names
+        assert "BamHI" in names

@@ -165,6 +165,60 @@ def find_cut_sites(
     }
 
 
+def find_all_cutters(
+    sequence: str,
+    enzymes: dict[str, Enzyme],
+    circular: bool = True,
+    max_cuts: int | None = None,
+) -> list[dict]:
+    """Scan sequence against ALL enzymes. Return those that cut.
+
+    If max_cuts is set, only return enzymes with <= max_cuts sites
+    (e.g. max_cuts=1 for unique cutters).
+    Returns list of {name, site, num_cuts, positions} sorted by num_cuts asc.
+    """
+    sequence = sequence.upper()
+    seq_len = len(sequence)
+    search_seq = sequence + sequence if circular else sequence
+
+    cutters = []
+    for enz in enzymes.values():
+        pattern = _site_to_regex(enz.site)
+        positions: list[int] = []
+
+        for m in pattern.finditer(search_seq):
+            pos = m.start()
+            if 0 <= pos < seq_len:
+                positions.append(pos)
+            elif circular and pos >= seq_len:
+                positions.append(pos % seq_len)
+
+        if not enz.is_palindrome:
+            rc_site = _reverse_complement(enz.site)
+            rc_pattern = _site_to_regex(rc_site)
+            for m in rc_pattern.finditer(search_seq):
+                pos = m.start()
+                if 0 <= pos < seq_len:
+                    positions.append(pos)
+                elif circular and pos >= seq_len:
+                    positions.append(pos % seq_len)
+
+        positions = sorted(set(positions))
+        if not positions:
+            continue
+        if max_cuts is not None and len(positions) > max_cuts:
+            continue
+        cutters.append({
+            "name": enz.name,
+            "site": enz.site,
+            "num_cuts": len(positions),
+            "positions": positions,
+        })
+
+    cutters.sort(key=lambda x: x["num_cuts"])
+    return cutters
+
+
 # ── Bootstrap ────────────────────────────────────────────────────────
 
 
