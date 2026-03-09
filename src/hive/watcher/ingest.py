@@ -10,29 +10,17 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from hive.db.models import (
-    Annotation,
     IndexedFile,
-    Library,
-    LibraryMember,
     Part,
     PartInstance,
     PartName,
     Sequence,
 )
+from hive.libs import annotate_part
 from hive.parsers import BIOPYTHON_PARSERS, PARSERS
 from hive.parsers.base import ParseResult
 from hive.utils import hash_sequence
 from hive.watcher.rules import MatchResult
-
-# Annotation type -> native library name
-NATIVE_LIBRARY_MAP = {
-    "CDS": "CDS",
-    "promoter": "Promoters",
-    "terminator": "Terminators",
-    "primer_bind": "Primers",
-    "rep_origin": "Origins",
-    "misc_feature": "Misc",
-}
 
 
 def extract_tags(file_path: Path, watcher_root: str) -> list[str]:
@@ -132,58 +120,6 @@ async def add_part_name(
             source=source,
             source_detail=source_detail,
         ))
-
-
-async def add_annotation(
-    session: AsyncSession, part_id: int, key: str, value: str, source: str,
-):
-    """Add annotation if not already present."""
-    existing = await session.execute(
-        select(Annotation).where(
-            Annotation.part_id == part_id,
-            Annotation.key == key,
-            Annotation.value == value,
-            Annotation.source == source,
-        )
-    )
-    if not existing.scalar_one_or_none():
-        session.add(Annotation(
-            part_id=part_id, key=key, value=value, source=source,
-        ))
-
-
-async def get_or_create_library(
-    session: AsyncSession, name: str, source: str = "native",
-) -> Library:
-    """Get or create a library by name."""
-    existing = await session.execute(
-        select(Library).where(Library.name == name)
-    )
-    lib = existing.scalar_one_or_none()
-    if lib:
-        return lib
-    lib = Library(name=name, source=source)
-    session.add(lib)
-    await session.flush()
-    return lib
-
-
-async def auto_library_tag(
-    session: AsyncSession, part_id: int, annotation_type: str,
-):
-    """Add part to native library matching its annotation type."""
-    lib_name = NATIVE_LIBRARY_MAP.get(annotation_type)
-    if not lib_name:
-        return
-    lib = await get_or_create_library(session, lib_name, source="native")
-    existing = await session.execute(
-        select(LibraryMember).where(
-            LibraryMember.library_id == lib.id,
-            LibraryMember.part_id == part_id,
-        )
-    )
-    if not existing.scalar_one_or_none():
-        session.add(LibraryMember(library_id=lib.id, part_id=part_id))
 
 
 async def ingest_file(
@@ -301,8 +237,7 @@ async def ingest_file(
             strand=f.strand,
             qualifiers=f.qualifiers or None,
         ))
-        await add_annotation(session, part.id, "type", f.type, source="native")
-        await auto_library_tag(session, part.id, f.type)
+        await annotate_part(session, part.id, f.type, subseq, result.molecule)
 
     # For each ParsedPrimer: create Part from oligo sequence
     for p in result.primers:
@@ -320,8 +255,7 @@ async def ingest_file(
             end=p.end,
             strand=p.strand,
         ))
-        await add_annotation(session, part.id, "type", "primer_bind", source="native")
-        await auto_library_tag(session, part.id, "primer_bind")
+        await annotate_part(session, part.id, "primer_bind", p.sequence, "DNA")
 
     if commit:
         await session.commit()
