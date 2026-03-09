@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from Bio.Seq import Seq
 from pydantic import BaseModel, Field
+
+from hive.cloning.seq import translate as seq_translate
 
 from hive.db import session as db
 from hive.tools.base import Tool
@@ -73,7 +74,7 @@ class TranslateTool(Tool):
         if len(cleaned) < 3:
             return {"error": "Sequence too short to translate (need at least 3 nucleotides)"}
 
-        protein = str(Seq(cleaned).translate(table=inp.table))
+        protein = seq_translate(cleaned, table=inp.table)
 
         stops = protein.count("*")
         return {

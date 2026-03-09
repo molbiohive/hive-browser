@@ -5,10 +5,10 @@ import logging
 from datetime import UTC, datetime
 from pathlib import Path
 
-from Bio.Seq import Seq
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from hive.cloning.seq import reverse_complement
 from hive.db.models import (
     IndexedFile,
     Part,
@@ -72,7 +72,7 @@ def _extract_subseq(
         subseq = parent_seq[start:end]
 
     if strand == -1:
-        subseq = str(Seq(subseq).reverse_complement())
+        subseq = reverse_complement(subseq)
     return subseq
 
 

@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from Bio.Seq import Seq
 from pydantic import BaseModel, Field
 from sqlalchemy import case, select
 from sqlalchemy.orm import selectinload
 
 from hive.db import session as db
 from hive.db.models import Part, PartInstance, PartName
+from hive.cloning.seq import reverse_complement
 from hive.tools.base import Tool
 from hive.tools.resolve import resolve_sequence
 
@@ -106,7 +106,7 @@ class ExtractTool(Tool):
 
                 subseq = _slice_sequence(parent_seq, pi.start, pi.end, topology)
                 if pi.strand == -1:
-                    subseq = str(Seq(subseq).reverse_complement())
+                    subseq = reverse_complement(subseq)
 
                 return {
                     "sequence": subseq,

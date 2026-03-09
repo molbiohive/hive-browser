@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from Bio.Seq import Seq
 from pydantic import BaseModel, Field
+
+from hive.cloning.seq import transcribe as seq_transcribe
 
 from hive.db import session as db
 from hive.tools.base import Tool
@@ -53,7 +54,7 @@ class TranscribeTool(Tool):
         if len(cleaned) < 1:
             return {"error": "Empty sequence"}
 
-        rna = str(Seq(cleaned).transcribe())
+        rna = seq_transcribe(cleaned)
 
         return {
             "rna": rna,

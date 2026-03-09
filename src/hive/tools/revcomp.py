@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from Bio.Seq import Seq
 from pydantic import BaseModel, Field
+
+from hive.cloning.seq import reverse_complement
 
 from hive.db import session as db
 from hive.tools.base import Tool
@@ -53,7 +54,7 @@ class RevCompTool(Tool):
         if len(cleaned) < 1:
             return {"error": "Empty sequence"}
 
-        rc = str(Seq(cleaned).reverse_complement())
+        rc = reverse_complement(cleaned)
 
         return {
             "sequence": rc,
