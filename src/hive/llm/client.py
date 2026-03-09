@@ -72,7 +72,6 @@ class LLMClient:
             kwargs["api_key"] = "no-key"
 
         kwargs["timeout"] = 120  # seconds — prevent indefinite hangs
-        kwargs["max_tokens"] = self._config.max_tokens
 
         # vLLM + thinking models (Qwen3): disable thinking for tool-calling turns
         # to prevent unbounded <think> tokens consuming the KV cache budget
