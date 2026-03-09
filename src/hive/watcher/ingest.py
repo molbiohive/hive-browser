@@ -237,7 +237,7 @@ async def ingest_file(
             strand=f.strand,
             qualifiers=f.qualifiers or None,
         ))
-        await annotate_part(session, part.id, f.type, subseq, result.molecule)
+        await annotate_part(session, part.id, f.type, subseq, result.molecule, name=f.name)
 
     # For each ParsedPrimer: create Part from oligo sequence
     for p in result.primers:
@@ -255,7 +255,7 @@ async def ingest_file(
             end=p.end,
             strand=p.strand,
         ))
-        await annotate_part(session, part.id, "primer_bind", p.sequence, "DNA")
+        await annotate_part(session, part.id, "primer_bind", p.sequence, "DNA", name=p.name)
 
     if commit:
         await session.commit()

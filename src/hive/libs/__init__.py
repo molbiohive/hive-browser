@@ -105,6 +105,7 @@ async def annotate_part(
     annotation_type: str,
     sequence: str,
     molecule: str = "DNA",
+    name: str | None = None,
 ):
     """Store type annotation and run classify_part() to add computed annotations."""
     await add_annotation(session, part_id, "type", annotation_type, source="native")
@@ -116,3 +117,11 @@ async def annotate_part(
 
     # Auto-tag into native libraries
     await tag_libraries(session, part_id, annotation_type)
+
+    # Variant detection on name collision
+    if name:
+        from hive.libs.match import detect_name_collision, flag_variant
+
+        colliding = await detect_name_collision(session, part_id, name)
+        if colliding:
+            await flag_variant(session, part_id, colliding)
