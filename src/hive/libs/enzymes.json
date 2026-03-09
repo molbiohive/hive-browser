@@ -1,0 +1,7546 @@
+{
+  "type": "enzymes",
+  "version": 1,
+  "data": [
+    {
+      "name": "AanI",
+      "site": "TTATAA",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "AarI",
+      "site": "CACCTGC",
+      "cut5": 11,
+      "cut3": 8,
+      "overhang": -4,
+      "length": 7,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "AasI",
+      "site": "GACNNNNNNGTC",
+      "cut5": 7,
+      "cut3": -7,
+      "overhang": 2,
+      "length": 12,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "AatII",
+      "site": "GACGTC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "AbaSI",
+      "site": "C",
+      "cut5": 12,
+      "cut3": 9,
+      "overhang": 2,
+      "length": 1,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "AbsI",
+      "site": "CCTCGAGG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -4,
+      "length": 8,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Acc16I",
+      "site": "TGCGCA",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "Acc36I",
+      "site": "ACCTGC",
+      "cut5": 10,
+      "cut3": 8,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "Acc65I",
+      "site": "GGTACC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "AccB1I",
+      "site": "GGYRCC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "AccB7I",
+      "site": "CCANNNNNTGG",
+      "cut5": 7,
+      "cut3": -7,
+      "overhang": 3,
+      "length": 11,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "AccBSI",
+      "site": "CCGCTC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": true
+    },
+    {
+      "name": "AccI",
+      "site": "GTMKAC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "AccII",
+      "site": "CGCG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": 0,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "AccIII",
+      "site": "TCCGGA",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "AceIII",
+      "site": "CAGCTC",
+      "cut5": 13,
+      "cut3": 11,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "AciI",
+      "site": "CCGC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -2,
+      "length": 4,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "AclI",
+      "site": "AACGTT",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "AclWI",
+      "site": "GGATC",
+      "cut5": 9,
+      "cut3": 5,
+      "overhang": -1,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "AcoI",
+      "site": "YGGCCR",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "AcsI",
+      "site": "RAATTY",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "AcuI",
+      "site": "CTGAAG",
+      "cut5": 22,
+      "cut3": 14,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "AcvI",
+      "site": "CACGTG",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "AcyI",
+      "site": "GRCGYC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "AdeI",
+      "site": "CACNNNGTG",
+      "cut5": 6,
+      "cut3": -6,
+      "overhang": 3,
+      "length": 9,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "AfaI",
+      "site": "GTAC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": 0,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "AfeI",
+      "site": "AGCGCT",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "AfiI",
+      "site": "CCNNNNNNNGG",
+      "cut5": 7,
+      "cut3": -7,
+      "overhang": 3,
+      "length": 11,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "AflII",
+      "site": "CTTAAG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "AflIII",
+      "site": "ACRYGT",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "AgeI",
+      "site": "ACCGGT",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "AgsI",
+      "site": "TTSAA",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 1,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "AhaIII",
+      "site": "TTTAAA",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "AhdI",
+      "site": "GACNNNNNGTC",
+      "cut5": 6,
+      "cut3": -6,
+      "overhang": 1,
+      "length": 11,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "AhlI",
+      "site": "ACTAGT",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "AjiI",
+      "site": "CACGTC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": true
+    },
+    {
+      "name": "AjnI",
+      "site": "CCWGG",
+      "cut5": 0,
+      "cut3": 0,
+      "overhang": -5,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "AjuI",
+      "site": "GAANNNNNNNTTGG",
+      "cut5": -7,
+      "cut3": -26,
+      "overhang": 5,
+      "length": 14,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "AleI",
+      "site": "CACNNNNGTG",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 0,
+      "length": 10,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "AlfI",
+      "site": "GCANNNNNNTGC",
+      "cut5": -10,
+      "cut3": -24,
+      "overhang": 2,
+      "length": 12,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "AloI",
+      "site": "GAACNNNNNNTCC",
+      "cut5": -7,
+      "cut3": -25,
+      "overhang": 5,
+      "length": 13,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "AluBI",
+      "site": "AGCT",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": 0,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "AluI",
+      "site": "AGCT",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": 0,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "Alw21I",
+      "site": "GWGCWC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Alw26I",
+      "site": "GTCTC",
+      "cut5": 6,
+      "cut3": 5,
+      "overhang": -4,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "Alw44I",
+      "site": "GTGCAC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "AlwI",
+      "site": "GGATC",
+      "cut5": 9,
+      "cut3": 5,
+      "overhang": -1,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "AlwNI",
+      "site": "CAGNNNCTG",
+      "cut5": 6,
+      "cut3": -6,
+      "overhang": 3,
+      "length": 9,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Ama87I",
+      "site": "CYCGRG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "AmaCSI",
+      "site": "GCTCCA",
+      "cut5": 17,
+      "cut3": 9,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "Aor13HI",
+      "site": "TCCGGA",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Aor51HI",
+      "site": "AGCGCT",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "AoxI",
+      "site": "GGCC",
+      "cut5": 0,
+      "cut3": 0,
+      "overhang": -4,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "ApaBI",
+      "site": "GCANNNNNTGC",
+      "cut5": 8,
+      "cut3": -8,
+      "overhang": 5,
+      "length": 11,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "ApaI",
+      "site": "GGGCCC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "ApaLI",
+      "site": "GTGCAC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "ApeKI",
+      "site": "GCWGC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -3,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "ApoI",
+      "site": "RAATTY",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "ApyPI",
+      "site": "ATCGAC",
+      "cut5": 26,
+      "cut3": 18,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "AquII",
+      "site": "GCCGNAC",
+      "cut5": 27,
+      "cut3": 18,
+      "overhang": 2,
+      "length": 7,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "AquIII",
+      "site": "GAGGAG",
+      "cut5": 26,
+      "cut3": 18,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "AquIV",
+      "site": "GRGGAAG",
+      "cut5": 26,
+      "cut3": 17,
+      "overhang": 2,
+      "length": 7,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "ArsI",
+      "site": "GACNNNNNNTTYG",
+      "cut5": -8,
+      "cut3": -26,
+      "overhang": 5,
+      "length": 13,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "AscI",
+      "site": "GGCGCGCC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -4,
+      "length": 8,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "AseI",
+      "site": "ATTAAT",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Asi256I",
+      "site": "GATC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -2,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "AsiGI",
+      "site": "ACCGGT",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "AsiSI",
+      "site": "GCGATCGC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 2,
+      "length": 8,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Asp700I",
+      "site": "GAANNNNTTC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 0,
+      "length": 10,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "Asp718I",
+      "site": "GGTACC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "AspA2I",
+      "site": "CCTAGG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "AspBHI",
+      "site": "YSCNS",
+      "cut5": 13,
+      "cut3": 12,
+      "overhang": -4,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "AspLEI",
+      "site": "GCGC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 2,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "AspS9I",
+      "site": "GGNCC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -3,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "AsuC2I",
+      "site": "CCSGG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -1,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "AsuHPI",
+      "site": "GGTGA",
+      "cut5": 13,
+      "cut3": 7,
+      "overhang": 1,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "AsuI",
+      "site": "GGNCC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -3,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "AsuII",
+      "site": "TTCGAA",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "AsuNHI",
+      "site": "GCTAGC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "AvaI",
+      "site": "CYCGRG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "AvaII",
+      "site": "GGWCC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -3,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "AvrII",
+      "site": "CCTAGG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "AxyI",
+      "site": "CCTNAGG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -3,
+      "length": 7,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BaeGI",
+      "site": "GKGCMC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BaeI",
+      "site": "ACNNNNGTAYC",
+      "cut5": -10,
+      "cut3": -26,
+      "overhang": 5,
+      "length": 11,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BalI",
+      "site": "TGGCCA",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "BamHI",
+      "site": "GGATCC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BanI",
+      "site": "GGYRCC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BanII",
+      "site": "GRGCYC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BarI",
+      "site": "GAAGNNNNNNTAC",
+      "cut5": -7,
+      "cut3": -25,
+      "overhang": 5,
+      "length": 13,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BauI",
+      "site": "CACGAG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BbrPI",
+      "site": "CACGTG",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "BbsI",
+      "site": "GAAGAC",
+      "cut5": 8,
+      "cut3": 6,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "Bbv12I",
+      "site": "GWGCWC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BbvCI",
+      "site": "CCTCAGC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -3,
+      "length": 7,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BbvI",
+      "site": "GCAGC",
+      "cut5": 13,
+      "cut3": 12,
+      "overhang": -4,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BbvII",
+      "site": "GAAGAC",
+      "cut5": 8,
+      "cut3": 6,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BccI",
+      "site": "CCATC",
+      "cut5": 9,
+      "cut3": 5,
+      "overhang": -1,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "Bce83I",
+      "site": "CTTGAG",
+      "cut5": 22,
+      "cut3": 14,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BceAI",
+      "site": "ACGGC",
+      "cut5": 17,
+      "cut3": 14,
+      "overhang": -2,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BceSIV",
+      "site": "GCAGC",
+      "cut5": -7,
+      "cut3": -10,
+      "overhang": -2,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BcefI",
+      "site": "ACGGC",
+      "cut5": 17,
+      "cut3": 13,
+      "overhang": -1,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BcgI",
+      "site": "CGANNNNNNTGC",
+      "cut5": -10,
+      "cut3": -24,
+      "overhang": 2,
+      "length": 12,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BciT130I",
+      "site": "CCWGG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -1,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BciVI",
+      "site": "GTATCC",
+      "cut5": 12,
+      "cut3": 5,
+      "overhang": 1,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BclI",
+      "site": "TGATCA",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BcnI",
+      "site": "CCSGG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -1,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BcoDI",
+      "site": "GTCTC",
+      "cut5": 6,
+      "cut3": 5,
+      "overhang": -4,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BcuI",
+      "site": "ACTAGT",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BdaI",
+      "site": "TGANNNNNNTCA",
+      "cut5": -10,
+      "cut3": -24,
+      "overhang": 2,
+      "length": 12,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BetI",
+      "site": "WCCGGW",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BfaI",
+      "site": "CTAG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -2,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BfiI",
+      "site": "ACTGGG",
+      "cut5": 11,
+      "cut3": 4,
+      "overhang": 1,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BfmI",
+      "site": "CTRYAG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BfoI",
+      "site": "RGCGCY",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BfrI",
+      "site": "CTTAAG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BfuAI",
+      "site": "ACCTGC",
+      "cut5": 10,
+      "cut3": 8,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BfuI",
+      "site": "GTATCC",
+      "cut5": 12,
+      "cut3": 5,
+      "overhang": 1,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BglI",
+      "site": "GCCNNNNNGGC",
+      "cut5": 7,
+      "cut3": -7,
+      "overhang": 3,
+      "length": 11,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BglII",
+      "site": "AGATCT",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BinI",
+      "site": "GGATC",
+      "cut5": 9,
+      "cut3": 5,
+      "overhang": -1,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BisI",
+      "site": "GCNGC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -1,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BlnI",
+      "site": "CCTAGG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BlpI",
+      "site": "GCTNAGC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -3,
+      "length": 7,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BlsI",
+      "site": "GCNGC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 1,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BmcAI",
+      "site": "AGTACT",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "Bme1390I",
+      "site": "CCNGG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -1,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Bme18I",
+      "site": "GGWCC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -3,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BmeDI",
+      "site": "C",
+      "cut5": 3,
+      "cut3": 0,
+      "overhang": 2,
+      "length": 1,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BmeRI",
+      "site": "GACNNNNNGTC",
+      "cut5": 6,
+      "cut3": -6,
+      "overhang": 1,
+      "length": 11,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BmeT110I",
+      "site": "CYCGRG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BmgBI",
+      "site": "CACGTC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": true
+    },
+    {
+      "name": "BmgT120I",
+      "site": "GGNCC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -3,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BmiI",
+      "site": "GGNNCC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "BmrFI",
+      "site": "CCNGG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -1,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BmrI",
+      "site": "ACTGGG",
+      "cut5": 11,
+      "cut3": 4,
+      "overhang": 1,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BmsI",
+      "site": "GCATC",
+      "cut5": 10,
+      "cut3": 9,
+      "overhang": -4,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BmtI",
+      "site": "GCTAGC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BmuI",
+      "site": "ACTGGG",
+      "cut5": 11,
+      "cut3": 4,
+      "overhang": 1,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BoxI",
+      "site": "GACNNNNGTC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 0,
+      "length": 10,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "BpiI",
+      "site": "GAAGAC",
+      "cut5": 8,
+      "cut3": 6,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BplI",
+      "site": "GAGNNNNNCTC",
+      "cut5": -8,
+      "cut3": -24,
+      "overhang": 5,
+      "length": 11,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BpmI",
+      "site": "CTGGAG",
+      "cut5": 22,
+      "cut3": 14,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "Bpu10I",
+      "site": "CCTNAGC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -3,
+      "length": 7,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "Bpu1102I",
+      "site": "GCTNAGC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -3,
+      "length": 7,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Bpu14I",
+      "site": "TTCGAA",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BpuEI",
+      "site": "CTTGAG",
+      "cut5": 22,
+      "cut3": 14,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BpuMI",
+      "site": "CCSGG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -1,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Bsa29I",
+      "site": "ATCGAT",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BsaAI",
+      "site": "YACGTR",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "BsaBI",
+      "site": "GATNNNNATC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 0,
+      "length": 10,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "BsaHI",
+      "site": "GRCGYC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BsaI",
+      "site": "GGTCTC",
+      "cut5": 7,
+      "cut3": 5,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BsaJI",
+      "site": "CCNNGG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BsaWI",
+      "site": "WCCGGW",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BsaXI",
+      "site": "ACNNNNNCTCC",
+      "cut5": -9,
+      "cut3": -23,
+      "overhang": 3,
+      "length": 11,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BsbI",
+      "site": "CAACAC",
+      "cut5": 27,
+      "cut3": 19,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "Bsc4I",
+      "site": "CCNNNNNNNGG",
+      "cut5": 7,
+      "cut3": -7,
+      "overhang": 3,
+      "length": 11,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BscAI",
+      "site": "GCATC",
+      "cut5": 9,
+      "cut3": 6,
+      "overhang": -2,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BscXI",
+      "site": "GCAGGC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "Bse118I",
+      "site": "RCCGGY",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Bse1I",
+      "site": "ACTGG",
+      "cut5": 6,
+      "cut3": -1,
+      "overhang": 2,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "Bse21I",
+      "site": "CCTNAGG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -3,
+      "length": 7,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Bse3DI",
+      "site": "GCAATG",
+      "cut5": 8,
+      "cut3": 0,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "Bse8I",
+      "site": "GATNNNNATC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 0,
+      "length": 10,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "BseAI",
+      "site": "TCCGGA",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BseBI",
+      "site": "CCWGG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -1,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BseCI",
+      "site": "ATCGAT",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BseDI",
+      "site": "CCNNGG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BseGI",
+      "site": "GGATG",
+      "cut5": 7,
+      "cut3": 0,
+      "overhang": 2,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BseJI",
+      "site": "GATNNNNATC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 0,
+      "length": 10,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "BseLI",
+      "site": "CCNNNNNNNGG",
+      "cut5": 7,
+      "cut3": -7,
+      "overhang": 3,
+      "length": 11,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BseMI",
+      "site": "GCAATG",
+      "cut5": 8,
+      "cut3": 0,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BseMII",
+      "site": "CTCAG",
+      "cut5": 15,
+      "cut3": 8,
+      "overhang": 2,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BseNI",
+      "site": "ACTGG",
+      "cut5": 6,
+      "cut3": -1,
+      "overhang": 2,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BsePI",
+      "site": "GCGCGC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BseRI",
+      "site": "GAGGAG",
+      "cut5": 16,
+      "cut3": 8,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BseSI",
+      "site": "GKGCMC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BseX3I",
+      "site": "CGGCCG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BseXI",
+      "site": "GCAGC",
+      "cut5": 13,
+      "cut3": 12,
+      "overhang": -4,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BseYI",
+      "site": "CCCAGC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BsgI",
+      "site": "GTGCAG",
+      "cut5": 22,
+      "cut3": 14,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "Bsh1236I",
+      "site": "CGCG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": 0,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "Bsh1285I",
+      "site": "CGRYCG",
+      "cut5": 4,
+      "cut3": -4,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BshFI",
+      "site": "GGCC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": 0,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "BshNI",
+      "site": "GGYRCC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BshTI",
+      "site": "ACCGGT",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BshVI",
+      "site": "ATCGAT",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BsiEI",
+      "site": "CGRYCG",
+      "cut5": 4,
+      "cut3": -4,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BsiHKAI",
+      "site": "GWGCWC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BsiHKCI",
+      "site": "CYCGRG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BsiI",
+      "site": "CACGAG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BsiSI",
+      "site": "CCGG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -2,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BsiWI",
+      "site": "CGTACG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BsiYI",
+      "site": "CCNNNNNNNGG",
+      "cut5": 7,
+      "cut3": -7,
+      "overhang": 3,
+      "length": 11,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BslFI",
+      "site": "GGGAC",
+      "cut5": 15,
+      "cut3": 14,
+      "overhang": -4,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BslI",
+      "site": "CCNNNNNNNGG",
+      "cut5": 7,
+      "cut3": -7,
+      "overhang": 3,
+      "length": 11,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BsmAI",
+      "site": "GTCTC",
+      "cut5": 6,
+      "cut3": 5,
+      "overhang": -4,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BsmBI",
+      "site": "CGTCTC",
+      "cut5": 7,
+      "cut3": 5,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BsmFI",
+      "site": "GGGAC",
+      "cut5": 15,
+      "cut3": 14,
+      "overhang": -4,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BsmI",
+      "site": "GAATGC",
+      "cut5": 7,
+      "cut3": -1,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BsnI",
+      "site": "GGCC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": 0,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "Bso31I",
+      "site": "GGTCTC",
+      "cut5": 7,
+      "cut3": 5,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BsoBI",
+      "site": "CYCGRG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Bsp119I",
+      "site": "TTCGAA",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Bsp120I",
+      "site": "GGGCCC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Bsp1286I",
+      "site": "GDGCHC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Bsp13I",
+      "site": "TCCGGA",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Bsp1407I",
+      "site": "TGTACA",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Bsp143I",
+      "site": "GATC",
+      "cut5": 0,
+      "cut3": 0,
+      "overhang": -4,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Bsp1720I",
+      "site": "GCTNAGC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -3,
+      "length": 7,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Bsp19I",
+      "site": "CCATGG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Bsp24I",
+      "site": "GACNNNNNNTGG",
+      "cut5": -8,
+      "cut3": -25,
+      "overhang": 5,
+      "length": 12,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "Bsp68I",
+      "site": "TCGCGA",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "BspACI",
+      "site": "CCGC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -2,
+      "length": 4,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BspANI",
+      "site": "GGCC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": 0,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "BspCNI",
+      "site": "CTCAG",
+      "cut5": 14,
+      "cut3": 7,
+      "overhang": 2,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BspD6I",
+      "site": "GAGTC",
+      "cut5": 9,
+      "cut3": 6,
+      "overhang": -2,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BspDI",
+      "site": "ATCGAT",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BspEI",
+      "site": "TCCGGA",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BspFNI",
+      "site": "CGCG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": 0,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "BspHI",
+      "site": "TCATGA",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BspLI",
+      "site": "GGNNCC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "BspLU11I",
+      "site": "ACATGT",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BspMAI",
+      "site": "CTGCAG",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BspMI",
+      "site": "ACCTGC",
+      "cut5": 10,
+      "cut3": 8,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BspMII",
+      "site": "TCCGGA",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BspOI",
+      "site": "GCTAGC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BspPI",
+      "site": "GGATC",
+      "cut5": 9,
+      "cut3": 5,
+      "overhang": -1,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BspQI",
+      "site": "GCTCTTC",
+      "cut5": 8,
+      "cut3": 4,
+      "overhang": -3,
+      "length": 7,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BspT104I",
+      "site": "TTCGAA",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BspT107I",
+      "site": "GGYRCC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BspTI",
+      "site": "CTTAAG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BspTNI",
+      "site": "GGTCTC",
+      "cut5": 7,
+      "cut3": 5,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BsrBI",
+      "site": "CCGCTC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": true
+    },
+    {
+      "name": "BsrDI",
+      "site": "GCAATG",
+      "cut5": 8,
+      "cut3": 0,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BsrFI",
+      "site": "RCCGGY",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BsrGI",
+      "site": "TGTACA",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BsrI",
+      "site": "ACTGG",
+      "cut5": 6,
+      "cut3": -1,
+      "overhang": 2,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BssAI",
+      "site": "RCCGGY",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BssECI",
+      "site": "CCNNGG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BssHII",
+      "site": "GCGCGC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BssMI",
+      "site": "GATC",
+      "cut5": 0,
+      "cut3": 0,
+      "overhang": -4,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BssNAI",
+      "site": "GTATAC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "BssNI",
+      "site": "GRCGYC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BssSI",
+      "site": "CACGAG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BssT1I",
+      "site": "CCWWGG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Bst1107I",
+      "site": "GTATAC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "Bst2BI",
+      "site": "CACGAG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "Bst2UI",
+      "site": "CCWGG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -1,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Bst4CI",
+      "site": "ACNGT",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 1,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Bst6I",
+      "site": "CTCTTC",
+      "cut5": 7,
+      "cut3": 4,
+      "overhang": -3,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BstACI",
+      "site": "GRCGYC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BstAFI",
+      "site": "CTTAAG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BstAPI",
+      "site": "GCANNNNNTGC",
+      "cut5": 7,
+      "cut3": -7,
+      "overhang": 3,
+      "length": 11,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BstAUI",
+      "site": "TGTACA",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BstBAI",
+      "site": "YACGTR",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "BstBI",
+      "site": "TTCGAA",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BstC8I",
+      "site": "GCNNGC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "BstDEI",
+      "site": "CTNAG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -3,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BstDSI",
+      "site": "CCRYGG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BstEII",
+      "site": "GGTNACC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -5,
+      "length": 7,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BstENI",
+      "site": "CCTNNNNNAGG",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": -1,
+      "length": 11,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BstF5I",
+      "site": "GGATG",
+      "cut5": 7,
+      "cut3": 0,
+      "overhang": 2,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BstFNI",
+      "site": "CGCG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": 0,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "BstH2I",
+      "site": "RGCGCY",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BstHHI",
+      "site": "GCGC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 2,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BstKTI",
+      "site": "GATC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 2,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BstMAI",
+      "site": "GTCTC",
+      "cut5": 6,
+      "cut3": 5,
+      "overhang": -4,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BstMBI",
+      "site": "GATC",
+      "cut5": 0,
+      "cut3": 0,
+      "overhang": -4,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BstMCI",
+      "site": "CGRYCG",
+      "cut5": 4,
+      "cut3": -4,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BstMWI",
+      "site": "GCNNNNNNNGC",
+      "cut5": 7,
+      "cut3": -7,
+      "overhang": 3,
+      "length": 11,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BstNI",
+      "site": "CCWGG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -1,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BstNSI",
+      "site": "RCATGY",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BstPAI",
+      "site": "GACNNNNGTC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 0,
+      "length": 10,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "BstPI",
+      "site": "GGTNACC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -5,
+      "length": 7,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BstSCI",
+      "site": "CCNGG",
+      "cut5": 0,
+      "cut3": 0,
+      "overhang": -5,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BstSFI",
+      "site": "CTRYAG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BstSLI",
+      "site": "GKGCMC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BstSNI",
+      "site": "TACGTA",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "BstUI",
+      "site": "CGCG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": 0,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "BstV1I",
+      "site": "GCAGC",
+      "cut5": 13,
+      "cut3": 12,
+      "overhang": -4,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BstV2I",
+      "site": "GAAGAC",
+      "cut5": 8,
+      "cut3": 6,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BstX2I",
+      "site": "RGATCY",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BstXI",
+      "site": "CCANNNNNNTGG",
+      "cut5": 8,
+      "cut3": -8,
+      "overhang": 4,
+      "length": 12,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BstYI",
+      "site": "RGATCY",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BstZ17I",
+      "site": "GTATAC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "BstZI",
+      "site": "CGGCCG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Bsu15I",
+      "site": "ATCGAT",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Bsu36I",
+      "site": "CCTNAGG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -3,
+      "length": 7,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BsuI",
+      "site": "GTATCC",
+      "cut5": 12,
+      "cut3": 5,
+      "overhang": 1,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BsuRI",
+      "site": "GGCC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": 0,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "BsuTUI",
+      "site": "ATCGAT",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BtgI",
+      "site": "CCRYGG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BtgZI",
+      "site": "GCGATG",
+      "cut5": 16,
+      "cut3": 14,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BthCI",
+      "site": "GCNGC",
+      "cut5": 4,
+      "cut3": -4,
+      "overhang": 3,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "BtrI",
+      "site": "CACGTC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": true
+    },
+    {
+      "name": "BtsCI",
+      "site": "GGATG",
+      "cut5": 7,
+      "cut3": 0,
+      "overhang": 2,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BtsI",
+      "site": "GCAGTG",
+      "cut5": 8,
+      "cut3": 0,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BtsIMutI",
+      "site": "CAGTG",
+      "cut5": 7,
+      "cut3": 0,
+      "overhang": 2,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "BtuMI",
+      "site": "TCGCGA",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "BveI",
+      "site": "ACCTGC",
+      "cut5": 10,
+      "cut3": 8,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "Cac8I",
+      "site": "GCNNGC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "CaiI",
+      "site": "CAGNNNCTG",
+      "cut5": 6,
+      "cut3": -6,
+      "overhang": 3,
+      "length": 9,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "CauII",
+      "site": "CCSGG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -1,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "CchII",
+      "site": "GGARGA",
+      "cut5": 17,
+      "cut3": 9,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "CchIII",
+      "site": "CCCAAG",
+      "cut5": 26,
+      "cut3": 18,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "CciI",
+      "site": "TCATGA",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "CciNI",
+      "site": "GCGGCCGC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -4,
+      "length": 8,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "CdiI",
+      "site": "CATCG",
+      "cut5": 4,
+      "cut3": -1,
+      "overhang": 0,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": true
+    },
+    {
+      "name": "CdpI",
+      "site": "GCGGAG",
+      "cut5": 26,
+      "cut3": 18,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "CfoI",
+      "site": "GCGC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 2,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Cfr10I",
+      "site": "RCCGGY",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Cfr13I",
+      "site": "GGNCC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -3,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Cfr42I",
+      "site": "CCGCGG",
+      "cut5": 4,
+      "cut3": -4,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Cfr9I",
+      "site": "CCCGGG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "CfrI",
+      "site": "YGGCCR",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "ChaI",
+      "site": "GATC",
+      "cut5": 4,
+      "cut3": -4,
+      "overhang": 4,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "CjeI",
+      "site": "CCANNNNNNGT",
+      "cut5": -8,
+      "cut3": -25,
+      "overhang": 6,
+      "length": 11,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "CjeNIII",
+      "site": "GKAAYG",
+      "cut5": 25,
+      "cut3": 17,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "CjePI",
+      "site": "CCANNNNNNNTC",
+      "cut5": -7,
+      "cut3": -25,
+      "overhang": 6,
+      "length": 12,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "ClaI",
+      "site": "ATCGAT",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "CpoI",
+      "site": "CGGWCCG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -3,
+      "length": 7,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "CseI",
+      "site": "GACGC",
+      "cut5": 10,
+      "cut3": 10,
+      "overhang": -5,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "CsiI",
+      "site": "ACCWGGT",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -5,
+      "length": 7,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Csp6I",
+      "site": "GTAC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -2,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "CspAI",
+      "site": "ACCGGT",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "CspCI",
+      "site": "CAANNNNNGTGG",
+      "cut5": -11,
+      "cut3": -25,
+      "overhang": 2,
+      "length": 12,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "CspI",
+      "site": "CGGWCCG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -3,
+      "length": 7,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "CstMI",
+      "site": "AAGGAG",
+      "cut5": 26,
+      "cut3": 18,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "CviAII",
+      "site": "CATG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -2,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "CviJI",
+      "site": "RGCY",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": 0,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "CviKI_1",
+      "site": "RGCY",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": 0,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "CviQI",
+      "site": "GTAC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -2,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "CviRI",
+      "site": "TGCA",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": 0,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "DdeI",
+      "site": "CTNAG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -3,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "DinI",
+      "site": "GGCGCC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "DpnI",
+      "site": "GATC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": 0,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "DpnII",
+      "site": "GATC",
+      "cut5": 0,
+      "cut3": 0,
+      "overhang": -4,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "DraI",
+      "site": "TTTAAA",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "DraII",
+      "site": "RGGNCCY",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -3,
+      "length": 7,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "DraIII",
+      "site": "CACNNNGTG",
+      "cut5": 6,
+      "cut3": -6,
+      "overhang": 3,
+      "length": 9,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "DraRI",
+      "site": "CAAGNAC",
+      "cut5": 27,
+      "cut3": 18,
+      "overhang": 2,
+      "length": 7,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "DrdI",
+      "site": "GACNNNNNNGTC",
+      "cut5": 7,
+      "cut3": -7,
+      "overhang": 2,
+      "length": 12,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "DrdIV",
+      "site": "TACGAC",
+      "cut5": 26,
+      "cut3": 18,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "DrdV",
+      "site": "CATGNAC",
+      "cut5": 17,
+      "cut3": 8,
+      "overhang": 2,
+      "length": 7,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "DriI",
+      "site": "GACNNNNNGTC",
+      "cut5": 6,
+      "cut3": -6,
+      "overhang": 1,
+      "length": 11,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "DsaI",
+      "site": "CCRYGG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "DseDI",
+      "site": "GACNNNNNNGTC",
+      "cut5": 7,
+      "cut3": -7,
+      "overhang": 2,
+      "length": 12,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "EaeI",
+      "site": "YGGCCR",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "EagI",
+      "site": "CGGCCG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Eam1104I",
+      "site": "CTCTTC",
+      "cut5": 7,
+      "cut3": 4,
+      "overhang": -3,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "Eam1105I",
+      "site": "GACNNNNNGTC",
+      "cut5": 6,
+      "cut3": -6,
+      "overhang": 1,
+      "length": 11,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "EarI",
+      "site": "CTCTTC",
+      "cut5": 7,
+      "cut3": 4,
+      "overhang": -3,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "EciI",
+      "site": "GGCGGA",
+      "cut5": 17,
+      "cut3": 9,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "Ecl136II",
+      "site": "GAGCTC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "EclXI",
+      "site": "CGGCCG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Eco105I",
+      "site": "TACGTA",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "Eco130I",
+      "site": "CCWWGG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Eco147I",
+      "site": "AGGCCT",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "Eco24I",
+      "site": "GRGCYC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Eco31I",
+      "site": "GGTCTC",
+      "cut5": 7,
+      "cut3": 5,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "Eco32I",
+      "site": "GATATC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "Eco47I",
+      "site": "GGWCC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -3,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Eco47III",
+      "site": "AGCGCT",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "Eco52I",
+      "site": "CGGCCG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Eco53kI",
+      "site": "GAGCTC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "Eco57I",
+      "site": "CTGAAG",
+      "cut5": 22,
+      "cut3": 14,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "Eco57MI",
+      "site": "CTGRAG",
+      "cut5": 22,
+      "cut3": 14,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "Eco72I",
+      "site": "CACGTG",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "Eco81I",
+      "site": "CCTNAGG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -3,
+      "length": 7,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Eco88I",
+      "site": "CYCGRG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Eco91I",
+      "site": "GGTNACC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -5,
+      "length": 7,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "EcoBLMcrX",
+      "site": "RCSRC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -1,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "EcoHI",
+      "site": "CCSGG",
+      "cut5": 0,
+      "cut3": 0,
+      "overhang": -5,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "EcoICRI",
+      "site": "GAGCTC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "EcoNI",
+      "site": "CCTNNNNNAGG",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": -1,
+      "length": 11,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "EcoO109I",
+      "site": "RGGNCCY",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -3,
+      "length": 7,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "EcoO157SI",
+      "site": "C",
+      "cut5": 15,
+      "cut3": 12,
+      "overhang": 2,
+      "length": 1,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "EcoO65I",
+      "site": "GGTNACC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -5,
+      "length": 7,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "EcoRI",
+      "site": "GAATTC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "EcoRII",
+      "site": "CCWGG",
+      "cut5": 0,
+      "cut3": 0,
+      "overhang": -5,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "EcoRV",
+      "site": "GATATC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "EcoT14I",
+      "site": "CCWWGG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "EcoT22I",
+      "site": "ATGCAT",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "EcoT38I",
+      "site": "GRGCYC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "EgeI",
+      "site": "GGCGCC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "EheI",
+      "site": "GGCGCC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "ErhI",
+      "site": "CCWWGG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "EsaBC3I",
+      "site": "TCGA",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": 0,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "Esp3I",
+      "site": "CGTCTC",
+      "cut5": 7,
+      "cut3": 5,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "EspI",
+      "site": "GCTNAGC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -3,
+      "length": 7,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "FaeI",
+      "site": "CATG",
+      "cut5": 4,
+      "cut3": -4,
+      "overhang": 4,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "FaiI",
+      "site": "YATR",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": 0,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "FalI",
+      "site": "AAGNNNNNCTT",
+      "cut5": -8,
+      "cut3": -24,
+      "overhang": 5,
+      "length": 11,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "FaqI",
+      "site": "GGGAC",
+      "cut5": 15,
+      "cut3": 14,
+      "overhang": -4,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "FatI",
+      "site": "CATG",
+      "cut5": 0,
+      "cut3": 0,
+      "overhang": -4,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "FauI",
+      "site": "CCCGC",
+      "cut5": 9,
+      "cut3": 6,
+      "overhang": -2,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "FauNDI",
+      "site": "CATATG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "FbaI",
+      "site": "TGATCA",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "FblI",
+      "site": "GTMKAC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "FmuI",
+      "site": "GGNCC",
+      "cut5": 4,
+      "cut3": -4,
+      "overhang": 3,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Fnu4HI",
+      "site": "GCNGC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -1,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "FnuDII",
+      "site": "CGCG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": 0,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "FokI",
+      "site": "GGATG",
+      "cut5": 14,
+      "cut3": 13,
+      "overhang": -4,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "FriOI",
+      "site": "GRGCYC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "FseI",
+      "site": "GGCCGGCC",
+      "cut5": 6,
+      "cut3": -6,
+      "overhang": 4,
+      "length": 8,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Fsp4HI",
+      "site": "GCNGC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -1,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "FspAI",
+      "site": "RTGCGCAY",
+      "cut5": 4,
+      "cut3": -4,
+      "overhang": 0,
+      "length": 8,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "FspBI",
+      "site": "CTAG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -2,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "FspEI",
+      "site": "CC",
+      "cut5": 14,
+      "cut3": 16,
+      "overhang": -4,
+      "length": 2,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "FspI",
+      "site": "TGCGCA",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "GdiII",
+      "site": "CGGCCR",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "GlaI",
+      "site": "GCGC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": 0,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "GluI",
+      "site": "GCNGC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -1,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "GsaI",
+      "site": "CCCAGC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "GsuI",
+      "site": "CTGGAG",
+      "cut5": 22,
+      "cut3": 14,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "HaeI",
+      "site": "WGGCCW",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "HaeII",
+      "site": "RGCGCY",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "HaeIII",
+      "site": "GGCC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": 0,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "HapII",
+      "site": "CCGG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -2,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "HauII",
+      "site": "TGGCCA",
+      "cut5": 17,
+      "cut3": 9,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "HgaI",
+      "site": "GACGC",
+      "cut5": 10,
+      "cut3": 10,
+      "overhang": -5,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "HgiAI",
+      "site": "GWGCWC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "HgiCI",
+      "site": "GGYRCC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "HgiJII",
+      "site": "GRGCYC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "HhaI",
+      "site": "GCGC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 2,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Hin1I",
+      "site": "GRCGYC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Hin1II",
+      "site": "CATG",
+      "cut5": 4,
+      "cut3": -4,
+      "overhang": 4,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Hin4I",
+      "site": "GAYNNNNNVTC",
+      "cut5": -8,
+      "cut3": -24,
+      "overhang": 5,
+      "length": 11,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "Hin4II",
+      "site": "CCTTC",
+      "cut5": 11,
+      "cut3": 5,
+      "overhang": 1,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "Hin6I",
+      "site": "GCGC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -2,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "HinP1I",
+      "site": "GCGC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -2,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "HincII",
+      "site": "GTYRAC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "HindII",
+      "site": "GTYRAC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "HindIII",
+      "site": "AAGCTT",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "HinfI",
+      "site": "GANTC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -3,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "HpaI",
+      "site": "GTTAAC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "HpaII",
+      "site": "CCGG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -2,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "HphI",
+      "site": "GGTGA",
+      "cut5": 13,
+      "cut3": 7,
+      "overhang": 1,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "Hpy166II",
+      "site": "GTNNAC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "Hpy178III",
+      "site": "TCNNGA",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Hpy188I",
+      "site": "TCNGA",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 1,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Hpy188III",
+      "site": "TCNNGA",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Hpy8I",
+      "site": "GTNNAC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "Hpy99I",
+      "site": "CGWCG",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 5,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "HpyAV",
+      "site": "CCTTC",
+      "cut5": 11,
+      "cut3": 5,
+      "overhang": 1,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "HpyCH4III",
+      "site": "ACNGT",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 1,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "HpyCH4IV",
+      "site": "ACGT",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -2,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "HpyCH4V",
+      "site": "TGCA",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": 0,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "HpyF10VI",
+      "site": "GCNNNNNNNGC",
+      "cut5": 7,
+      "cut3": -7,
+      "overhang": 3,
+      "length": 11,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "HpyF3I",
+      "site": "CTNAG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -3,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "HpySE526I",
+      "site": "ACGT",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -2,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Hsp92I",
+      "site": "GRCGYC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Hsp92II",
+      "site": "CATG",
+      "cut5": 4,
+      "cut3": -4,
+      "overhang": 4,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "HspAI",
+      "site": "GCGC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -2,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "KasI",
+      "site": "GGCGCC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "KflI",
+      "site": "GGGWCCC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -3,
+      "length": 7,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Kpn2I",
+      "site": "TCCGGA",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "KpnI",
+      "site": "GGTACC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "KroI",
+      "site": "GCCGGC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "KroNI",
+      "site": "GCCGGC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "Ksp22I",
+      "site": "TGATCA",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Ksp632I",
+      "site": "CTCTTC",
+      "cut5": 7,
+      "cut3": 4,
+      "overhang": -3,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "KspAI",
+      "site": "GTTAAC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "KspI",
+      "site": "CCGCGG",
+      "cut5": 4,
+      "cut3": -4,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Kzo9I",
+      "site": "GATC",
+      "cut5": 0,
+      "cut3": 0,
+      "overhang": -4,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "LguI",
+      "site": "GCTCTTC",
+      "cut5": 8,
+      "cut3": 4,
+      "overhang": -3,
+      "length": 7,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "LmnI",
+      "site": "GCTCC",
+      "cut5": 6,
+      "cut3": -1,
+      "overhang": 2,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "LpnI",
+      "site": "RGCGCY",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "LpnPI",
+      "site": "CCDG",
+      "cut5": 14,
+      "cut3": 14,
+      "overhang": -4,
+      "length": 4,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "Lsp1109I",
+      "site": "GCAGC",
+      "cut5": 13,
+      "cut3": 12,
+      "overhang": -4,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "LweI",
+      "site": "GCATC",
+      "cut5": 10,
+      "cut3": 9,
+      "overhang": -4,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "MabI",
+      "site": "ACCWGGT",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -5,
+      "length": 7,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "MaeI",
+      "site": "CTAG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -2,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "MaeII",
+      "site": "ACGT",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -2,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "MaeIII",
+      "site": "GTNAC",
+      "cut5": 0,
+      "cut3": 0,
+      "overhang": -5,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "MalI",
+      "site": "GATC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": 0,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "MaqI",
+      "site": "CRTTGAC",
+      "cut5": 28,
+      "cut3": 19,
+      "overhang": 2,
+      "length": 7,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "MauBI",
+      "site": "CGCGCGCG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -4,
+      "length": 8,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "MbiI",
+      "site": "CCGCTC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": true
+    },
+    {
+      "name": "MboI",
+      "site": "GATC",
+      "cut5": 0,
+      "cut3": 0,
+      "overhang": -4,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "MboII",
+      "site": "GAAGA",
+      "cut5": 13,
+      "cut3": 7,
+      "overhang": 1,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "McaTI",
+      "site": "GCGCGC",
+      "cut5": 4,
+      "cut3": -4,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "McrI",
+      "site": "CGRYCG",
+      "cut5": 4,
+      "cut3": -4,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "MfeI",
+      "site": "CAATTG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "MflI",
+      "site": "RGATCY",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "MhlI",
+      "site": "GDGCHC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "MlsI",
+      "site": "TGGCCA",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "MluCI",
+      "site": "AATT",
+      "cut5": 0,
+      "cut3": 0,
+      "overhang": -4,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "MluI",
+      "site": "ACGCGT",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "MluNI",
+      "site": "TGGCCA",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "Mly113I",
+      "site": "GGCGCC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "MlyI",
+      "site": "GAGTC",
+      "cut5": 10,
+      "cut3": 5,
+      "overhang": 0,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": true
+    },
+    {
+      "name": "MmeI",
+      "site": "TCCRAC",
+      "cut5": 26,
+      "cut3": 18,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "MnlI",
+      "site": "CCTC",
+      "cut5": 11,
+      "cut3": 6,
+      "overhang": 1,
+      "length": 4,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "Mox20I",
+      "site": "TGGCCA",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "Mph1103I",
+      "site": "ATGCAT",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "MreI",
+      "site": "CGCCGGCG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -4,
+      "length": 8,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "MroI",
+      "site": "TCCGGA",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "MroNI",
+      "site": "GCCGGC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "MroXI",
+      "site": "GAANNNNTTC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 0,
+      "length": 10,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "MscI",
+      "site": "TGGCCA",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "MseI",
+      "site": "TTAA",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -2,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "MslI",
+      "site": "CAYNNNNRTG",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 0,
+      "length": 10,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "Msp20I",
+      "site": "TGGCCA",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "MspA1I",
+      "site": "CMGCKG",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "MspCI",
+      "site": "CTTAAG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "MspGI",
+      "site": "GCCGGC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "MspI",
+      "site": "CCGG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -2,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "MspJI",
+      "site": "CNNR",
+      "cut5": 13,
+      "cut3": 13,
+      "overhang": -4,
+      "length": 4,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "MspR9I",
+      "site": "CCNGG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -1,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "MssI",
+      "site": "GTTTAAAC",
+      "cut5": 4,
+      "cut3": -4,
+      "overhang": 0,
+      "length": 8,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "MstI",
+      "site": "TGCGCA",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "MteI",
+      "site": "GCGCNGCGC",
+      "cut5": 4,
+      "cut3": -4,
+      "overhang": -1,
+      "length": 9,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "MunI",
+      "site": "CAATTG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Mva1269I",
+      "site": "GAATGC",
+      "cut5": 7,
+      "cut3": -1,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "MvaI",
+      "site": "CCWGG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -1,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "MvnI",
+      "site": "CGCG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": 0,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "MwoI",
+      "site": "GCNNNNNNNGC",
+      "cut5": 7,
+      "cut3": -7,
+      "overhang": 3,
+      "length": 11,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "NaeI",
+      "site": "GCCGGC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "NarI",
+      "site": "GGCGCC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "NciI",
+      "site": "CCSGG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -1,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "NcoI",
+      "site": "CCATGG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "NdeI",
+      "site": "CATATG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "NdeII",
+      "site": "GATC",
+      "cut5": 0,
+      "cut3": 0,
+      "overhang": -4,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "NgoAVII",
+      "site": "GCCGC",
+      "cut5": 12,
+      "cut3": 7,
+      "overhang": 0,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": true
+    },
+    {
+      "name": "NgoAVIII",
+      "site": "GACNNNNNTGA",
+      "cut5": -12,
+      "cut3": -25,
+      "overhang": 2,
+      "length": 11,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "NgoMIV",
+      "site": "GCCGGC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "NheI",
+      "site": "GCTAGC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "NlaCI",
+      "site": "CATCAC",
+      "cut5": 25,
+      "cut3": 17,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "NlaIII",
+      "site": "CATG",
+      "cut5": 4,
+      "cut3": -4,
+      "overhang": 4,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "NlaIV",
+      "site": "GGNNCC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "Nli3877I",
+      "site": "CYCGRG",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "NmeA6CIII",
+      "site": "GCCGAC",
+      "cut5": 27,
+      "cut3": 19,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "NmeAIII",
+      "site": "GCCGAG",
+      "cut5": 27,
+      "cut3": 19,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "NmeDI",
+      "site": "RCCGGY",
+      "cut5": -12,
+      "cut3": -13,
+      "overhang": -5,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "NmuCI",
+      "site": "GTSAC",
+      "cut5": 0,
+      "cut3": 0,
+      "overhang": -5,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "NotI",
+      "site": "GCGGCCGC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -4,
+      "length": 8,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "NruI",
+      "site": "TCGCGA",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "NsbI",
+      "site": "TGCGCA",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "NsiI",
+      "site": "ATGCAT",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "NspBII",
+      "site": "CMGCKG",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "NspI",
+      "site": "RCATGY",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "NspV",
+      "site": "TTCGAA",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "OliI",
+      "site": "CACNNNNGTG",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 0,
+      "length": 10,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "PabI",
+      "site": "GTAC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 2,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "PacI",
+      "site": "TTAATTAA",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 2,
+      "length": 8,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "PaeI",
+      "site": "GCATGC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "PaeR7I",
+      "site": "CTCGAG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "PagI",
+      "site": "TCATGA",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "PalAI",
+      "site": "GGCGCGCC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -4,
+      "length": 8,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "PaqCI",
+      "site": "CACCTGC",
+      "cut5": 11,
+      "cut3": 8,
+      "overhang": -4,
+      "length": 7,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "PasI",
+      "site": "CCCWGGG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -3,
+      "length": 7,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "PauI",
+      "site": "GCGCGC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "PceI",
+      "site": "AGGCCT",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "PciI",
+      "site": "ACATGT",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "PciSI",
+      "site": "GCTCTTC",
+      "cut5": 8,
+      "cut3": 4,
+      "overhang": -3,
+      "length": 7,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "PcsI",
+      "site": "WCGNNNNNNNCGW",
+      "cut5": 7,
+      "cut3": -7,
+      "overhang": 1,
+      "length": 13,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "PctI",
+      "site": "GAATGC",
+      "cut5": 7,
+      "cut3": -1,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "PdiI",
+      "site": "GCCGGC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "PdmI",
+      "site": "GAANNNNTTC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 0,
+      "length": 10,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "PfeI",
+      "site": "GAWTC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -3,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Pfl23II",
+      "site": "CGTACG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Pfl8569I",
+      "site": "GCNNGC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "PflFI",
+      "site": "GACNNNGTC",
+      "cut5": 4,
+      "cut3": -4,
+      "overhang": -1,
+      "length": 9,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "PflMI",
+      "site": "CCANNNNNTGG",
+      "cut5": 7,
+      "cut3": -7,
+      "overhang": 3,
+      "length": 11,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "PfoI",
+      "site": "TCCNGGA",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -5,
+      "length": 7,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "PinAI",
+      "site": "ACCGGT",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "PkrI",
+      "site": "GCNGC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 1,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "PlaDI",
+      "site": "CATCAG",
+      "cut5": 27,
+      "cut3": 19,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "Ple19I",
+      "site": "CGATCG",
+      "cut5": 4,
+      "cut3": -4,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "PleI",
+      "site": "GAGTC",
+      "cut5": 9,
+      "cut3": 5,
+      "overhang": -1,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "PluTI",
+      "site": "GGCGCC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "PmaCI",
+      "site": "CACGTG",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "PmeI",
+      "site": "GTTTAAAC",
+      "cut5": 4,
+      "cut3": -4,
+      "overhang": 0,
+      "length": 8,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "PmlI",
+      "site": "CACGTG",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "PpiI",
+      "site": "GAACNNNNNCTC",
+      "cut5": -7,
+      "cut3": -24,
+      "overhang": 5,
+      "length": 12,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "PpsI",
+      "site": "GAGTC",
+      "cut5": 9,
+      "cut3": 5,
+      "overhang": -1,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "Ppu10I",
+      "site": "ATGCAT",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Ppu21I",
+      "site": "YACGTR",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "PpuMI",
+      "site": "RGGWCCY",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -3,
+      "length": 7,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "PscI",
+      "site": "ACATGT",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "PshAI",
+      "site": "GACNNNNGTC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 0,
+      "length": 10,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "PshBI",
+      "site": "ATTAAT",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "PsiI",
+      "site": "TTATAA",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "Psp03I",
+      "site": "GGWCC",
+      "cut5": 4,
+      "cut3": -4,
+      "overhang": 3,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Psp124BI",
+      "site": "GAGCTC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Psp1406I",
+      "site": "AACGTT",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Psp5II",
+      "site": "RGGWCCY",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -3,
+      "length": 7,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Psp6I",
+      "site": "CCWGG",
+      "cut5": 0,
+      "cut3": 0,
+      "overhang": -5,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "PspCI",
+      "site": "CACGTG",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "PspEI",
+      "site": "GGTNACC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -5,
+      "length": 7,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "PspFI",
+      "site": "CCCAGC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "PspGI",
+      "site": "CCWGG",
+      "cut5": 0,
+      "cut3": 0,
+      "overhang": -5,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "PspLI",
+      "site": "CGTACG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "PspN4I",
+      "site": "GGNNCC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "PspOMI",
+      "site": "GGGCCC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "PspOMII",
+      "site": "CGCCCAR",
+      "cut5": 27,
+      "cut3": 18,
+      "overhang": 2,
+      "length": 7,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "PspPI",
+      "site": "GGNCC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -3,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "PspPPI",
+      "site": "RGGWCCY",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -3,
+      "length": 7,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "PspPRI",
+      "site": "CCYCAG",
+      "cut5": 21,
+      "cut3": 13,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "PspXI",
+      "site": "VCTCGAGB",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -4,
+      "length": 8,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "PsrI",
+      "site": "GAACNNNNNNTAC",
+      "cut5": -7,
+      "cut3": -25,
+      "overhang": 5,
+      "length": 13,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "PssI",
+      "site": "RGGNCCY",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 3,
+      "length": 7,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "PstI",
+      "site": "CTGCAG",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "PstNI",
+      "site": "CAGNNNCTG",
+      "cut5": 6,
+      "cut3": -6,
+      "overhang": 3,
+      "length": 9,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "PsuI",
+      "site": "RGATCY",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "PsyI",
+      "site": "GACNNNGTC",
+      "cut5": 4,
+      "cut3": -4,
+      "overhang": -1,
+      "length": 9,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "PteI",
+      "site": "GCGCGC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "PvuI",
+      "site": "CGATCG",
+      "cut5": 4,
+      "cut3": -4,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "PvuII",
+      "site": "CAGCTG",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "RceI",
+      "site": "CATCGAC",
+      "cut5": 27,
+      "cut3": 18,
+      "overhang": 2,
+      "length": 7,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "RdeGBII",
+      "site": "ACCCAG",
+      "cut5": 26,
+      "cut3": 18,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "RdeGBIII",
+      "site": "TGRYCA",
+      "cut5": -9,
+      "cut3": -17,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "RgaI",
+      "site": "GCGATCGC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 2,
+      "length": 8,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "RigI",
+      "site": "GGCCGGCC",
+      "cut5": 6,
+      "cut3": -6,
+      "overhang": 4,
+      "length": 8,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "RlaII",
+      "site": "ACACAG",
+      "cut5": 26,
+      "cut3": 18,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "RleAI",
+      "site": "CCCACA",
+      "cut5": 18,
+      "cut3": 9,
+      "overhang": 3,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "RpaB5I",
+      "site": "CGRGGAC",
+      "cut5": 27,
+      "cut3": 18,
+      "overhang": 2,
+      "length": 7,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "RpaBI",
+      "site": "CCCGCAG",
+      "cut5": 27,
+      "cut3": 18,
+      "overhang": 2,
+      "length": 7,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "RpaI",
+      "site": "GTYGGAG",
+      "cut5": 18,
+      "cut3": 9,
+      "overhang": 2,
+      "length": 7,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "RruI",
+      "site": "TCGCGA",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "RsaI",
+      "site": "GTAC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": 0,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "RsaNI",
+      "site": "GTAC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -2,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "RseI",
+      "site": "CAYNNNNRTG",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 0,
+      "length": 10,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "Rsr2I",
+      "site": "CGGWCCG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -3,
+      "length": 7,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "RsrII",
+      "site": "CGGWCCG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -3,
+      "length": 7,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SacI",
+      "site": "GAGCTC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SacII",
+      "site": "CCGCGG",
+      "cut5": 4,
+      "cut3": -4,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SalI",
+      "site": "GTCGAC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SanDI",
+      "site": "GGGWCCC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -3,
+      "length": 7,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SapI",
+      "site": "GCTCTTC",
+      "cut5": 8,
+      "cut3": 4,
+      "overhang": -3,
+      "length": 7,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "SaqAI",
+      "site": "TTAA",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -2,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SatI",
+      "site": "GCNGC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -1,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Sau3AI",
+      "site": "GATC",
+      "cut5": 0,
+      "cut3": 0,
+      "overhang": -4,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Sau96I",
+      "site": "GGNCC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -3,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SauI",
+      "site": "CCTNAGG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -3,
+      "length": 7,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SbfI",
+      "site": "CCTGCAGG",
+      "cut5": 6,
+      "cut3": -6,
+      "overhang": 4,
+      "length": 8,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "ScaI",
+      "site": "AGTACT",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "SchI",
+      "site": "GAGTC",
+      "cut5": 10,
+      "cut3": 5,
+      "overhang": 0,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": true
+    },
+    {
+      "name": "SciI",
+      "site": "CTCGAG",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "ScrFI",
+      "site": "CCNGG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -1,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SdaI",
+      "site": "CCTGCAGG",
+      "cut5": 6,
+      "cut3": -6,
+      "overhang": 4,
+      "length": 8,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SdeAI",
+      "site": "CAGRAG",
+      "cut5": 27,
+      "cut3": 19,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "SdeOSI",
+      "site": "GACNNNNRTGA",
+      "cut5": -11,
+      "cut3": -24,
+      "overhang": 2,
+      "length": 11,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "SduI",
+      "site": "GDGCHC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SecI",
+      "site": "CCNNGG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SelI",
+      "site": "CGCG",
+      "cut5": 0,
+      "cut3": 0,
+      "overhang": -4,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SetI",
+      "site": "ASST",
+      "cut5": 4,
+      "cut3": -4,
+      "overhang": 4,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SexAI",
+      "site": "ACCWGGT",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -5,
+      "length": 7,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SfaAI",
+      "site": "GCGATCGC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 2,
+      "length": 8,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SfaNI",
+      "site": "GCATC",
+      "cut5": 10,
+      "cut3": 9,
+      "overhang": -4,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "SfcI",
+      "site": "CTRYAG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SfeI",
+      "site": "CTRYAG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SfiI",
+      "site": "GGCCNNNNNGGCC",
+      "cut5": 8,
+      "cut3": -8,
+      "overhang": 3,
+      "length": 13,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SfoI",
+      "site": "GGCGCC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "Sfr274I",
+      "site": "CTCGAG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Sfr303I",
+      "site": "CCGCGG",
+      "cut5": 4,
+      "cut3": -4,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SfuI",
+      "site": "TTCGAA",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SgeI",
+      "site": "CNNG",
+      "cut5": 13,
+      "cut3": 13,
+      "overhang": -4,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SgfI",
+      "site": "GCGATCGC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 2,
+      "length": 8,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SgrAI",
+      "site": "CRCCGGYG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -4,
+      "length": 8,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SgrBI",
+      "site": "CCGCGG",
+      "cut5": 4,
+      "cut3": -4,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SgrDI",
+      "site": "CGTCGACG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -4,
+      "length": 8,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SgrTI",
+      "site": "CCDS",
+      "cut5": 14,
+      "cut3": 14,
+      "overhang": -4,
+      "length": 4,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "SgsI",
+      "site": "GGCGCGCC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -4,
+      "length": 8,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SimI",
+      "site": "GGGTC",
+      "cut5": 2,
+      "cut3": 0,
+      "overhang": -3,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "SinI",
+      "site": "GGWCC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -3,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SlaI",
+      "site": "CTCGAG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SmaI",
+      "site": "CCCGGG",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "SmiI",
+      "site": "ATTTAAAT",
+      "cut5": 4,
+      "cut3": -4,
+      "overhang": 0,
+      "length": 8,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "SmiMI",
+      "site": "CAYNNNNRTG",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 0,
+      "length": 10,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "SmlI",
+      "site": "CTYRAG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SmoI",
+      "site": "CTYRAG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SnaBI",
+      "site": "TACGTA",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "SpeI",
+      "site": "ACTAGT",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SphI",
+      "site": "GCATGC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SplI",
+      "site": "CGTACG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SrfI",
+      "site": "GCCCGGGC",
+      "cut5": 4,
+      "cut3": -4,
+      "overhang": 0,
+      "length": 8,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "Sse232I",
+      "site": "CGCCGGCG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -4,
+      "length": 8,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Sse8387I",
+      "site": "CCTGCAGG",
+      "cut5": 6,
+      "cut3": -6,
+      "overhang": 4,
+      "length": 8,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Sse8647I",
+      "site": "AGGWCCT",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -3,
+      "length": 7,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Sse9I",
+      "site": "AATT",
+      "cut5": 0,
+      "cut3": 0,
+      "overhang": -4,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SseBI",
+      "site": "AGGCCT",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "SsiI",
+      "site": "CCGC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -2,
+      "length": 4,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "SspD5I",
+      "site": "GGTGA",
+      "cut5": 13,
+      "cut3": 8,
+      "overhang": 0,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": true
+    },
+    {
+      "name": "SspDI",
+      "site": "GGCGCC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SspI",
+      "site": "AATATT",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "SspMI",
+      "site": "CTAG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -2,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SstE37I",
+      "site": "CGAAGAC",
+      "cut5": 27,
+      "cut3": 18,
+      "overhang": 2,
+      "length": 7,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "SstI",
+      "site": "GAGCTC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Sth132I",
+      "site": "CCCG",
+      "cut5": 8,
+      "cut3": 8,
+      "overhang": -4,
+      "length": 4,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "Sth302II",
+      "site": "CCGG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": 0,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "StsI",
+      "site": "GGATG",
+      "cut5": 15,
+      "cut3": 14,
+      "overhang": -4,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "StuI",
+      "site": "AGGCCT",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "StyD4I",
+      "site": "CCNGG",
+      "cut5": 0,
+      "cut3": 0,
+      "overhang": -5,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "StyI",
+      "site": "CCWWGG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "SwaI",
+      "site": "ATTTAAAT",
+      "cut5": 4,
+      "cut3": -4,
+      "overhang": 0,
+      "length": 8,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "TaaI",
+      "site": "ACNGT",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 1,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "TagI",
+      "site": "ACGT",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": 0,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "TaiI",
+      "site": "ACGT",
+      "cut5": 4,
+      "cut3": -4,
+      "overhang": 4,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "TaqI",
+      "site": "TCGA",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -2,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "TaqII",
+      "site": "GACCGA",
+      "cut5": 17,
+      "cut3": 9,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "TaqIII",
+      "site": "CACCCA",
+      "cut5": 17,
+      "cut3": 9,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "TasI",
+      "site": "AATT",
+      "cut5": 0,
+      "cut3": 0,
+      "overhang": -4,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "TatI",
+      "site": "WGTACW",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "TauI",
+      "site": "GCSGC",
+      "cut5": 4,
+      "cut3": -4,
+      "overhang": 3,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "TfiI",
+      "site": "GAWTC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -3,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "TkoI",
+      "site": "GTGAAG",
+      "cut5": 26,
+      "cut3": 18,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "TkoII",
+      "site": "TTCAAG",
+      "cut5": 16,
+      "cut3": 8,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "Tru1I",
+      "site": "TTAA",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -2,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Tru9I",
+      "site": "TTAA",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -2,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "TscAI",
+      "site": "CASTG",
+      "cut5": 7,
+      "cut3": -7,
+      "overhang": 10,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "TseFI",
+      "site": "GTSAC",
+      "cut5": 0,
+      "cut3": 0,
+      "overhang": -5,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "TseI",
+      "site": "GCWGC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -3,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "TsoI",
+      "site": "TARCCA",
+      "cut5": 17,
+      "cut3": 9,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "Tsp45I",
+      "site": "GTSAC",
+      "cut5": 0,
+      "cut3": 0,
+      "overhang": -5,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Tsp4CI",
+      "site": "ACNGT",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 1,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "TspDTI",
+      "site": "ATGAA",
+      "cut5": 16,
+      "cut3": 9,
+      "overhang": 2,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "TspEI",
+      "site": "AATT",
+      "cut5": 0,
+      "cut3": 0,
+      "overhang": -4,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "TspGWI",
+      "site": "ACGGA",
+      "cut5": 16,
+      "cut3": 9,
+      "overhang": 2,
+      "length": 5,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "TspMI",
+      "site": "CCCGGG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "TspRI",
+      "site": "CASTG",
+      "cut5": 7,
+      "cut3": -7,
+      "overhang": 10,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "TstI",
+      "site": "CACNNNNNNTCC",
+      "cut5": -8,
+      "cut3": -25,
+      "overhang": 5,
+      "length": 12,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "Tth111I",
+      "site": "GACNNNGTC",
+      "cut5": 4,
+      "cut3": -4,
+      "overhang": -1,
+      "length": 9,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Tth111II",
+      "site": "CAARCA",
+      "cut5": 17,
+      "cut3": 9,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "UcoMSI",
+      "site": "GAGCTC",
+      "cut5": -7,
+      "cut3": -11,
+      "overhang": -2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "UnbI",
+      "site": "GGNCC",
+      "cut5": 0,
+      "cut3": 0,
+      "overhang": -5,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "UpaP162I",
+      "site": "CATG",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": 0,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "Van91I",
+      "site": "CCANNNNNTGG",
+      "cut5": 7,
+      "cut3": -7,
+      "overhang": 3,
+      "length": 11,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "Vha464I",
+      "site": "CTTAAG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "VneI",
+      "site": "GTGCAC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "VpaK11AI",
+      "site": "GGWCC",
+      "cut5": 0,
+      "cut3": 0,
+      "overhang": -5,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "VpaK11BI",
+      "site": "GGWCC",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -3,
+      "length": 5,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "VspI",
+      "site": "ATTAAT",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "WviI",
+      "site": "CACRAG",
+      "cut5": 27,
+      "cut3": 19,
+      "overhang": 2,
+      "length": 6,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "XagI",
+      "site": "CCTNNNNNAGG",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": -1,
+      "length": 11,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "XapI",
+      "site": "RAATTY",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "XbaI",
+      "site": "TCTAGA",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "XceI",
+      "site": "RCATGY",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "XcmI",
+      "site": "CCANNNNNNNNNTGG",
+      "cut5": 8,
+      "cut3": -8,
+      "overhang": 1,
+      "length": 15,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "XhoI",
+      "site": "CTCGAG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "XhoII",
+      "site": "RGATCY",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "XmaI",
+      "site": "CCCGGG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "XmaIII",
+      "site": "CGGCCG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "XmaJI",
+      "site": "CCTAGG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "XmiI",
+      "site": "GTMKAC",
+      "cut5": 2,
+      "cut3": -2,
+      "overhang": -2,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "XmnI",
+      "site": "GAANNNNTTC",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 0,
+      "length": 10,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "XspI",
+      "site": "CTAG",
+      "cut5": 1,
+      "cut3": -1,
+      "overhang": -2,
+      "length": 4,
+      "is_palindrome": true,
+      "is_blunt": false
+    },
+    {
+      "name": "YkrI",
+      "site": "C",
+      "cut5": 11,
+      "cut3": 9,
+      "overhang": 1,
+      "length": 1,
+      "is_palindrome": false,
+      "is_blunt": false
+    },
+    {
+      "name": "ZraI",
+      "site": "GACGTC",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "ZrmI",
+      "site": "AGTACT",
+      "cut5": 3,
+      "cut3": -3,
+      "overhang": 0,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": true
+    },
+    {
+      "name": "Zsp2I",
+      "site": "ATGCAT",
+      "cut5": 5,
+      "cut3": -5,
+      "overhang": 4,
+      "length": 6,
+      "is_palindrome": true,
+      "is_blunt": false
+    }
+  ]
+}
