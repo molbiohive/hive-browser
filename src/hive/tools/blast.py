@@ -274,42 +274,43 @@ async def _resolve_by_name(name: str) -> str | None:
 async def _resolve_hit_metadata(names: set[str]) -> dict[str, dict]:
     """Look up SID/PID and file path for hit subject names.
 
-    Sequence hits have plain names. Part hits have 'pid_N_name' format.
+    Both sequence and part hits use prefixed format: sid_N_name / pid_N_name.
     """
-    if not db.async_session_factory or not names:
+    if not names:
         return {}
 
-    # Separate part hits (pid_N_*) from sequence hits
-    part_names = {n for n in names if n.startswith("pid_")}
-    seq_names = names - part_names
-
     result: dict[str, dict] = {}
+    sid_map: dict[int, str] = {}  # sid -> subject_name
 
-    async with db.async_session_factory() as session:
-        # Resolve sequence hits
-        if seq_names:
+    for n in names:
+        if n.startswith("sid_"):
+            parts = n.split("_", 2)
+            if len(parts) >= 2:
+                try:
+                    sid_map[int(parts[1])] = n
+                except ValueError:
+                    pass
+        elif n.startswith("pid_"):
+            parts = n.split("_", 2)
+            if len(parts) >= 2:
+                try:
+                    result[n] = {"pid": int(parts[1])}
+                except ValueError:
+                    pass
+
+    # Batch-resolve SIDs to file paths
+    if sid_map and db.async_session_factory:
+        async with db.async_session_factory() as session:
             rows = (await session.execute(
-                select(Sequence.id, Sequence.name, IndexedFile.file_path)
+                select(Sequence.id, IndexedFile.file_path)
                 .join(IndexedFile, Sequence.file_id == IndexedFile.id)
-                .where(IndexedFile.status == "active")
+                .where(Sequence.id.in_(list(sid_map.keys())))
             )).all()
-            for sid, seq_name, file_path in rows:
-                safe_name = seq_name.replace(" ", "_")
-                if safe_name in seq_names:
-                    result[safe_name] = {
-                        "sid": sid,
-                        "file_path": display_file_path(file_path),
-                    }
-
-    # Resolve part hits by parsing pid_N from subject name
-    for pname in part_names:
-        # Format: pid_N_name
-        parts = pname.split("_", 2)
-        if len(parts) >= 2:
-            try:
-                pid = int(parts[1])
-                result[pname] = {"pid": pid}
-            except ValueError:
-                pass
+            for sid, file_path in rows:
+                subject = sid_map[sid]
+                result[subject] = {
+                    "sid": sid,
+                    "file_path": display_file_path(file_path),
+                }
 
     return result

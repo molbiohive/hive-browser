@@ -17,6 +17,12 @@ from hive.deps import Dep
 
 logger = logging.getLogger(__name__)
 
+
+def _sanitize_fasta_name(name: str) -> str:
+    """Strip non-ASCII and replace spaces for FASTA headers."""
+    safe = name.encode("ascii", "ignore").decode("ascii")
+    return safe.replace(" ", "_") or "unnamed"
+
 # Program -> database type mapping
 PROGRAM_DB = {
     "blastn": "nucl",
@@ -102,7 +108,7 @@ class BlastDep(Dep):
         async with db.async_session_factory() as session:
             # Full sequences
             seq_rows = (await session.execute(
-                select(Sequence.name, Sequence.sequence, Sequence.molecule)
+                select(Sequence.id, Sequence.name, Sequence.sequence, Sequence.molecule)
                 .join(IndexedFile, Sequence.file_id == IndexedFile.id)
                 .where(IndexedFile.status == "active")
             )).all()
@@ -127,9 +133,9 @@ class BlastDep(Dep):
         seen_pids: set[int] = set()
 
         with open(nucl_fasta, "w") as nf, open(prot_fasta, "w") as pf:
-            # Write full sequences
-            for name, seq, molecule in seq_rows:
-                safe_name = name.replace(" ", "_")
+            # Write full sequences with sid_ prefix
+            for sid, name, seq, molecule in seq_rows:
+                safe_name = f"sid_{sid}_{_sanitize_fasta_name(name)}"
                 if molecule == "protein":
                     pf.write(f">{safe_name}\n{seq}\n")
                     prot_count += 1
@@ -143,7 +149,7 @@ class BlastDep(Dep):
                 if pid in seen_pids:
                     continue
                 seen_pids.add(pid)
-                safe_name = f"pid_{pid}_{pname.replace(' ', '_')}"
+                safe_name = f"pid_{pid}_{_sanitize_fasta_name(pname)}"
                 if molecule == "AA":
                     pf.write(f">{safe_name}\n{seq}\n")
                     prot_count += 1
