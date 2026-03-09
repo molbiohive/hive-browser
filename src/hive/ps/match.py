@@ -150,6 +150,7 @@ class MatchProcess(Process):
                     self._min_identity, self._min_coverage,
                 )
 
+                n_hits = len(result.get("hits", []))
                 if matches:
                     async with db.async_session_factory() as session:
                         for m in matches:
@@ -164,8 +165,11 @@ class MatchProcess(Process):
                     variants_found += len(matches)
 
                 scanned += 1
-
-            logger.info("Match progress: %d parts scanned, %d variants so far", scanned, variants_found)
+                logger.debug("pid %d: %s %dbp, %d hits, %d matches",
+                             pid, program, len(sequence), n_hits, len(matches))
+                if scanned % 100 == 0:
+                    logger.info("Match progress: %d parts scanned, %d variants so far",
+                                scanned, variants_found)
             await ctx.check()
 
         logger.info("Match complete: %d parts scanned, %d variants found", scanned, variants_found)
