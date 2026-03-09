@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import tempfile
 import time
 from pathlib import Path
@@ -22,6 +23,14 @@ def _sanitize_fasta_name(name: str) -> str:
     """Strip non-ASCII and replace spaces for FASTA headers."""
     safe = name.encode("ascii", "ignore").decode("ascii")
     return safe.replace(" ", "_") or "unnamed"
+
+
+_NUCL_RE = re.compile(r"[^ACGTNRYSWKMBDHVacgtnryswkmbdhv]")
+
+
+def _clean_nucl_seq(seq: str) -> str:
+    """Strip non-nucleotide characters and newlines from a sequence."""
+    return _NUCL_RE.sub("", seq.replace("\n", "").replace("\r", ""))
 
 # Program -> database type mapping
 PROGRAM_DB = {
@@ -141,6 +150,9 @@ class BlastDep(Dep):
                     prot_count += 1
                 else:
                     nucl_seq = seq.replace("U", "T").replace("u", "t") if molecule == "RNA" else seq
+                    nucl_seq = _clean_nucl_seq(nucl_seq)
+                    if not nucl_seq:
+                        continue
                     nf.write(f">{safe_name}\n{nucl_seq}\n")
                     nucl_count += 1
 
@@ -155,6 +167,9 @@ class BlastDep(Dep):
                     prot_count += 1
                 else:
                     nucl_seq = seq.replace("U", "T").replace("u", "t") if molecule == "RNA" else seq
+                    nucl_seq = _clean_nucl_seq(nucl_seq)
+                    if not nucl_seq:
+                        continue
                     nf.write(f">{safe_name}\n{nucl_seq}\n")
                     nucl_count += 1
 
