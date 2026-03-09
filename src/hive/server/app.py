@@ -105,6 +105,7 @@ async def lifespan(app: FastAPI):
 
     # --- Process registry ---
     from hive.ps import ProcessRegistry
+    from hive.ps.match import MatchProcess
     from hive.ps.scan import ReindexProcess, RescanProcess, ScanProcess
     from hive.ps.watcher import WatcherProcess
 
@@ -113,6 +114,7 @@ async def lifespan(app: FastAPI):
     ps.register(WatcherProcess(config.watcher, dep_registry))
     ps.register(RescanProcess(config.watcher, dep_registry))
     ps.register(ReindexProcess(config.watcher, dep_registry))
+    ps.register(MatchProcess(config, dep_registry))
     app.state.ps = ps
 
     if app.state.db_ready and config.watcher.rules:
