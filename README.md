@@ -18,9 +18,14 @@ A bee hive is a model of organized collective work — thousands of workers buil
 
 - **Natural language search** — ask "find all GFP plasmids" or "show me ampicillin-resistant constructs"
 - **BLAST integration** — paste a sequence to find similar constructs in your collection
+- **Parts & libraries** — canonical parts with annotations, library membership, variant detection, and BLAST-based relative discovery
 - **Agentic tool chaining** — complex queries like "blast the AmpR promoter from pUC19" are automatically broken into extract → blast steps
+- **Python sandbox** — LLM can write and execute Python snippets to filter, transform, and analyze tool results in-context
+- **Sequence analysis** — translate, transcribe, digest, align (MAFFT), GC content, reverse complement
+- **Restriction digestion** — IUPAC-aware enzyme scanner with fragment calculation for circular and linear DNA
+- **Multiple sequence alignment** — MAFFT integration with configurable algorithms (auto, L-INSi, G-INSi, E-INSi)
 - **Search panel** — always-available right-side panel with real-time text search and BLAST, no LLM round-trips
-- **Sequence analysis** — translate, transcribe, digest, GC content, reverse complement
+- **Background processes** — managed process framework for batch operations (variant detection, library annotation)
 - **Click-to-copy sequences** — sequence areas are clickable, copies full sequence to clipboard (with fallback for non-HTTPS/RDP contexts)
 - **Inline paste tokens** — long pastes are collapsed into compact tokens in the input area, multiple pastes supported
 - **Multi-user sessions** — lightweight user system with token-based auth, per-user chat history, switchable accounts
@@ -28,7 +33,8 @@ A bee hive is a model of organized collective work — thousands of workers buil
 - **File watching** — automatically indexes new and changed files
 - **Multiple formats** — SnapGene (.dna, .rna, .prot), GenBank (.gb), FASTA (.fasta)
 - **Fuzzy matching** — finds results even with approximate names (pg_trgm)
-- **LLM data redaction** — sensitive data (sequence names, file paths, raw sequences) is automatically stripped from LLM context while remaining visible in the UI
+- **LLM data redaction** — configurable field redaction strips proprietary data from LLM context (scoped: parts stay visible, sequence data is redacted)
+- **Context size guard** — automatic trimming of oldest tool results when conversation exceeds configured character limit
 - **Local-first** — your data stays on your machine, LLM runs locally via Ollama
 - **Cloud LLM support** — optionally use Anthropic, OpenAI, or any provider via litellm
 - **Extensible tools** — add custom tools by dropping a Python file in the tools directory
@@ -136,16 +142,16 @@ make docker-logs    # tail app logs
 ```
 Browser  <-->  Svelte 5 frontend  <-->  FastAPI + WebSocket  <-->  PostgreSQL
                   |                         |
-             Search Panel            Tool Router + SecretVault
+             Search Panel            Tool Router
              (REST API)            /     |      \
                               Guided   Agentic    Direct
                              (/cmd)    (free text) (//cmd)
                                 \        |
                              Unified agentic loop
                                      |
-                           Tool System (12 tools)
+                           Tool System (11 tools)
                           /    |    |    |    \
-                      Search BLAST Extract Parts ...
+                      Search BLAST Extract Parts Align ...
                                      |
                               Ollama / litellm
 ```
@@ -164,20 +170,19 @@ Tools are self-describing and auto-discovered. Each tool declares its name, sche
 |------|------|-------------|
 | search | llm, search | Fuzzy name/feature/description search (sequences + parts) |
 | blast | llm, search | BLAST sequence similarity search (sequences + parts) |
-| profile | llm, info | Sequence detail view |
-| parts | llm, info | Part detail view (annotations, instances, library membership) |
-| extract | llm, analysis | Get subsequence by feature, primer, or region |
-| translate | llm, analysis | DNA/RNA to protein translation |
+| profile | llm, info | Sequence detail view with features and primers |
+| parts | llm, info | Part lookup with annotations, instances, library membership, BLAST relatives |
+| extract | llm, analysis | Subsequence by feature name, primer name, or coordinate region |
+| translate | llm, analysis | DNA/RNA to protein translation (configurable codon tables) |
 | transcribe | llm, analysis | DNA to mRNA transcription |
-| digest | llm, analysis | Restriction enzyme cut sites and fragments |
+| digest | llm, analysis | IUPAC-aware restriction enzyme digestion with fragment calculation |
+| align | llm, analysis | Multiple sequence alignment via MAFFT |
 | gc | llm, analysis | GC content and nucleotide composition |
 | revcomp | llm, analysis | Reverse complement |
-| features | llm, info | List features on a sequence |
-| primers | llm, info | List primers on a sequence |
 
 ### Agentic Loop
 
-A single unified loop handles all LLM interactions. The LLM picks tools, chains them as needed, and uses a hybrid auto-pipe cache to pass large data (sequences, etc.) between tools without sending it through LLM context. A per-loop SecretVault replaces sensitive values with opaque tokens (SEC:...) in the cache, preventing data leakage into LLM context while keeping it available for downstream tools.
+A single unified loop handles all LLM interactions. The LLM picks tools, chains them as needed, and uses an auto-pipe cache to pass large data (sequences, etc.) between tools without sending it through LLM context. A context size guard trims oldest tool results when the conversation exceeds the configured character limit.
 
 - **Single query** — LLM selects tool, extracts params, summarizes. E.g. "search GFP".
 - **Multi-step chain** — LLM chains multiple tools when needed. E.g. "translate the GFP CDS from pEGFP-N1" automatically runs extract → translate.
@@ -272,12 +277,15 @@ src/hive/
 ├── db/                  # SQLAlchemy models + async session
 ├── parsers/             # File parsers (snapgene, genbank, fasta)
 ├── watcher/             # File system watcher + ingestion
-├── tools/               # Tool system (12 tools + router + factory)
-│   ├── base.py          # Tool ABC, ToolRegistry, redact_keys
+├── tools/               # Tool system (11 tools + router + factory)
+│   ├── base.py          # Tool ABC, ToolRegistry
 │   ├── factory.py       # Auto-discovery (internal + external)
-│   ├── router.py        # Dispatch: direct / guided / agentic loop + SecretVault
+│   ├── router.py        # Dispatch: direct / guided / agentic loop + context guard
 │   └── *.py             # Individual tools
-├── secrets/             # SecretVault — opaque token system for data protection
+├── sandbox/             # Python sandbox (safe exec, result cache, LLM-driven filtering)
+├── cloning/             # Restriction enzymes (IUPAC-aware scanner, fragment calc)
+├── libs/                # Part libraries (import/export, classification, variant detection)
+├── ps/                  # Background process framework (match, batch operations)
 ├── sdk/                 # Public SDK for external tools
 ├── llm/                 # LLM client + prompts (pool for multiple models)
 ├── users/               # User system (token auth, preferences)
