@@ -399,11 +399,12 @@ class TestAgenticLoop:
         assert resp["tool"] == "echo"
 
     async def test_llm_error_graceful(self, registry):
-        """LLM raises exception -> loop breaks gracefully."""
+        """LLM raises exception -> loop breaks gracefully with error message."""
         llm = self._mock_llm([Exception("Connection failed")])
         resp = await route_input("test error", registry, llm_client=llm)
         assert resp["type"] == "message"
-        assert "No tools were called" in resp["content"]
+        assert "LLM error" in resp["content"]
+        assert "Connection failed" in resp["content"]
 
 
 # ── Tool RAG Integration ──

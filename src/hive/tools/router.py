@@ -177,6 +177,7 @@ async def _unified_loop(
     sandbox = SandboxRunner(result_cache)
     tokens = {"in": 0, "out": 0}
     exceeded = False
+    error_msg = ""  # LLM error message (vs max_turns exhaustion)
     schemas = all_schemas
     plan_text = None  # plan injected into agent context
     sandbox_errors = 0  # consecutive sandbox errors (for retry limit)
@@ -252,7 +253,8 @@ async def _unified_loop(
         try:
             response = await llm_client.chat(messages, tools=turn_tools)
         except Exception as e:
-            logger.error("Unified loop LLM call failed (turn %d): %s", turn, e)
+            logger.error("LLM call failed (turn %d): %s", turn, e)
+            error_msg = str(e)
             exceeded = True
             break
 
@@ -464,12 +466,17 @@ async def _unified_loop(
         )
 
     if not chain:
+        if error_msg:
+            return _error(f"LLM error: {error_msg}")
         return _error("No tools were called during reasoning.")
 
     # Max turns exceeded — use last step's summary as fallback
     fallback = chain[-1]["summary"] if chain else ""
     if exceeded:
-        fallback += " (reached maximum reasoning steps)"
+        if error_msg:
+            fallback += f" (LLM error: {error_msg})"
+        else:
+            fallback += " (reached maximum reasoning steps)"
 
     if last_result and last_tool:
         resp = _tool_response(last_tool, last_result, last_params, fallback)
