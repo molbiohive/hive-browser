@@ -348,6 +348,8 @@ async def _handle_message(
             tool_rag=tool_rag,
             use_planner=use_planner,
             sandbox_max_retries=config.llm.sandbox_max_retries if config else 3,
+            context_char_limit=config.llm.context_char_limit if config else 0,
+            redact_keys=frozenset(config.llm.redact_keys) if config else None,
         )
 
         # Track user message (skip bare commands that just show a form)

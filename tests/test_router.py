@@ -14,7 +14,9 @@ from hive.tools.router import (
     _form_response,
     _help_response,
     _parse_args,
+    _summarize_for_llm,
     _tool_response,
+    _trim_context,
     route_input,
 )
 
@@ -869,3 +871,105 @@ class TestSandboxIntegration:
         third_retry_tools = llm.chat.call_args_list[3][1].get("tools", [])
         tool_names_3 = [t["function"]["name"] for t in third_retry_tools]
         assert "python" in tool_names_3
+
+
+# ── Context Trimming ──
+
+
+class TestContextTrim:
+    def test_no_trim_under_limit(self):
+        msgs = [
+            {"role": "system", "content": "sys"},
+            {"role": "user", "content": "hi"},
+            {"role": "tool", "content": "result data"},
+        ]
+        _trim_context(msgs, 10000)
+        assert msgs[2]["content"] == "result data"
+
+    def test_trim_oldest_tool_message(self):
+        msgs = [
+            {"role": "system", "content": "sys"},
+            {"role": "user", "content": "hi"},
+            {"role": "tool", "content": "A" * 5000},
+            {"role": "tool", "content": "B" * 5000},
+        ]
+        _trim_context(msgs, 6000)
+        # Oldest tool msg trimmed, newest preserved
+        assert msgs[2]["content"] == "[trimmed]"
+        assert msgs[3]["content"] == "B" * 5000
+
+    def test_trim_preserves_last_tool(self):
+        """The last tool message is never trimmed."""
+        msgs = [
+            {"role": "system", "content": "sys"},
+            {"role": "tool", "content": "X" * 10000},
+        ]
+        _trim_context(msgs, 100)
+        # Only one tool message -- can't trim it
+        assert msgs[1]["content"] == "X" * 10000
+
+    def test_trim_multiple_until_under_limit(self):
+        msgs = [
+            {"role": "system", "content": "s"},
+            {"role": "tool", "content": "A" * 3000},
+            {"role": "tool", "content": "B" * 3000},
+            {"role": "tool", "content": "C" * 3000},
+        ]
+        _trim_context(msgs, 4000)
+        assert msgs[1]["content"] == "[trimmed]"
+        assert msgs[2]["content"] == "[trimmed]"
+        assert msgs[3]["content"] == "C" * 3000
+
+
+# ── Scoped Redaction ──
+
+
+class TestScopedRedaction:
+    def test_redact_skips_parts(self):
+        """Items with ``pid`` key (parts) keep all fields visible."""
+        result = {
+            "results": [
+                {"pid": 1, "name": "pUC19", "sequence": "ATCG"},
+                {"pid": 2, "name": "pBR322", "sequence": "GCTA"},
+            ],
+        }
+        summary = _summarize_for_llm(result, redact_keys=frozenset({"name", "sequence"}))
+        data = json.loads(summary)
+        for item in data["results_sample"]:
+            assert "name" in item
+            assert "sequence" in item
+
+    def test_redact_applies_to_sequences(self):
+        """Items with ``sid`` (no ``pid``) get redacted fields stripped."""
+        result = {
+            "results": [
+                {"sid": 1, "name": "GFP", "sequence": "ATCG" * 10},
+            ],
+        }
+        summary = _summarize_for_llm(result, redact_keys=frozenset({"name", "sequence"}))
+        data = json.loads(summary)
+        item = data["results_sample"][0]
+        assert "name" not in item
+        assert "sequence" not in item
+        assert "sid" in item
+
+    def test_custom_redact_keys_empty_disables(self):
+        """Empty redact_keys disables all redaction."""
+        result = {
+            "results": [{"sid": 1, "name": "GFP", "file_path": "/data/gfp.dna"}],
+            "file_path": "/root/file.dna",
+        }
+        summary = _summarize_for_llm(result, redact_keys=frozenset())
+        data = json.loads(summary)
+        # Top-level file_path preserved
+        assert "file_path" in data
+        # Nested file_path preserved
+        assert "file_path" in data["results_sample"][0]
+
+    def test_top_level_keys_always_redacted(self):
+        """Top-level keys in redact set are always stripped."""
+        result = {"sequence": "ATCGATCG", "count": 42}
+        summary = _summarize_for_llm(result)
+        data = json.loads(summary)
+        assert "sequence" not in data
+        assert data["count"] == 42

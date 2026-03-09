@@ -46,6 +46,8 @@ async def route_input(
     tool_rag: ToolRAG | None = None,
     use_planner: bool = True,
     sandbox_max_retries: int = 3,
+    context_char_limit: int = 0,
+    redact_keys: frozenset[str] | None = None,
 ) -> dict[str, Any]:
     """
     Route user input → tool execution → response.
@@ -107,6 +109,8 @@ async def route_input(
             tool_rag=tool_rag,
             use_planner=use_planner,
             sandbox_max_retries=sandbox_max_retries,
+            context_char_limit=context_char_limit,
+            redact_keys=redact_keys,
         )
 
     # ── Mode 3: Natural language — unified agentic loop ──
@@ -125,6 +129,8 @@ async def route_input(
         tool_rag=tool_rag,
         use_planner=use_planner,
         sandbox_max_retries=sandbox_max_retries,
+        context_char_limit=context_char_limit,
+        redact_keys=redact_keys,
     )
 
 
@@ -143,6 +149,8 @@ async def _unified_loop(
     tool_rag: ToolRAG | None = None,
     use_planner: bool = True,
     sandbox_max_retries: int = 3,
+    context_char_limit: int = 0,
+    redact_keys: frozenset[str] | None = None,
 ) -> dict[str, Any]:
     """Unified agentic loop — LLM converses and chains tools as needed.
 
@@ -238,6 +246,9 @@ async def _unified_loop(
             "PAYLOAD turn %d: %d msgs (%d chars) + %d tool schemas (%d chars)",
             turn, len(messages), msg_chars, len(turn_tools) if turn_tools else 0, schema_chars,
         )
+        if context_char_limit > 0:
+            _trim_context(messages, context_char_limit)
+
         try:
             response = await llm_client.chat(messages, tools=turn_tools)
         except Exception as e:
@@ -411,7 +422,10 @@ async def _unified_loop(
                         tool_name, key, handle, len(val),
                     )
 
-            compact = _summarize_for_llm(result, token_limit=summary_token_limit)
+            compact = _summarize_for_llm(
+                result, token_limit=summary_token_limit,
+                redact_keys=redact_keys if redact_keys is not None else _REDACT_KEYS,
+            )
             # Append cache descriptions so LLM knows what data is available
             cache_info = result_cache.describe_all()
             if cache_info:
@@ -466,6 +480,36 @@ async def _unified_loop(
     return {"type": "message", "content": fallback, "tokens": tokens, "chain": chain}
 
 
+# ── Context Trimmer ──
+
+
+def _trim_context(messages: list[dict], limit: int) -> None:
+    """Trim oldest tool-result messages when context exceeds char limit.
+
+    Replaces content of the oldest ``role="tool"`` messages with ``[trimmed]``
+    until total chars are within *limit*. Never trims the last tool message
+    (the LLM needs it for the current turn). Modifies *messages* in-place.
+    """
+    total = sum(len(str(m.get("content", ""))) for m in messages)
+    if total <= limit:
+        return
+
+    # Indices of tool messages, excluding the very last one
+    tool_indices = [i for i, m in enumerate(messages) if m.get("role") == "tool"]
+    if len(tool_indices) > 1:
+        tool_indices = tool_indices[:-1]  # protect the last tool msg
+    else:
+        return  # nothing safe to trim
+
+    for idx in tool_indices:
+        old_len = len(str(messages[idx].get("content", "")))
+        messages[idx] = {**messages[idx], "content": "[trimmed]"}
+        total -= old_len - len("[trimmed]")
+        logger.warning("Context trimmed: msg %d (%d chars removed)", idx, old_len)
+        if total <= limit:
+            break
+
+
 # ── Result Summarizer ──
 
 _ID_KEYS = frozenset({"sid", "pid", "id"})
@@ -474,6 +518,7 @@ _ID_KEYS = frozenset({"sid", "pid", "id"})
 def _summarize_for_llm(
     result: dict[str, Any],
     token_limit: int = 1000,
+    redact_keys: frozenset[str] = _REDACT_KEYS,
 ) -> str:
     """Unified result summarizer for LLM context.
 
@@ -482,13 +527,13 @@ def _summarize_for_llm(
     - Numbers/booleans → include directly
     - Short strings → include, long strings → truncate
     - Nested dicts → shallow scalar fields
-    - Keys in _REDACT_KEYS stripped entirely
+    - Keys in *redact_keys* stripped (scoped: parts with ``pid`` skip redaction)
 
     For list[dict] fields with more items than the sample, ALL values
     of ID-like keys (sid, pid, id) are collected and appended as compact
     arrays so the LLM can reference them in subsequent tool calls.
     """
-    redact = _REDACT_KEYS
+    redact = redact_keys
     max_chars = token_limit * 4
     max_items = max(5, token_limit // 50)
     max_ids = 200
@@ -502,9 +547,10 @@ def _summarize_for_llm(
             if value and isinstance(value[0], dict):
                 sample = []
                 for item in value[:max_items]:
+                    is_part = "pid" in item
                     trimmed = {}
                     for k, v in item.items():
-                        if k in redact:
+                        if not is_part and k in redact:
                             continue
                         if isinstance(v, (str, int, float, bool, type(None))):
                             if not isinstance(v, str) or len(v) < 200:

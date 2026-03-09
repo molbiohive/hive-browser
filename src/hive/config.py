@@ -39,6 +39,11 @@ class LLMConfig(BaseSettings):
     tool_rag_threshold: float = 0.3  # min cosine similarity to include a tool
     tool_rag_top_k: int = 8  # max tools returned by RAG
     sandbox_max_retries: int = 3  # max consecutive sandbox errors before dropping python schema
+    context_char_limit: int = 24000  # max chars in LLM context (0 = no limit)
+    redact_keys: list[str] = Field(default_factory=lambda: [
+        "file_path", "path", "file_name", "filename",
+        "name", "sequence", "raw_sequence", "subject",
+    ])
 
     model_config = {"env_prefix": "LLM_"}
 
