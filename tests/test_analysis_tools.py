@@ -96,10 +96,39 @@ class TestTranscribe:
 # ── Digest ──
 
 
+def _mock_enzymes():
+    """Build mock enzyme dict for digest tests."""
+    from types import SimpleNamespace
+
+    ecori = SimpleNamespace(
+        name="EcoRI", site="GAATTC", cut5=1, cut3=-1,
+        overhang=-4, length=6, is_palindrome=True, is_blunt=False,
+    )
+    bamhi = SimpleNamespace(
+        name="BamHI", site="GGATCC", cut5=1, cut3=-1,
+        overhang=-4, length=6, is_palindrome=True, is_blunt=False,
+    )
+    return {"ECORI": ecori, "BAMHI": bamhi}
+
+
 class TestDigest:
     @pytest.fixture()
     def tool(self):
         return DigestTool()
+
+    @pytest.fixture(autouse=True)
+    def _mock_db(self):
+        enzymes = _mock_enzymes()
+        mock_factory = MagicMock()
+        mock_session = AsyncMock()
+        mock_factory.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_factory.__aexit__ = AsyncMock(return_value=False)
+        mock_factory.return_value = mock_factory
+        with (
+            patch("hive.tools.digest.db.async_session_factory", mock_factory),
+            patch("hive.cloning.enzymes.load_enzymes", AsyncMock(return_value=enzymes)),
+        ):
+            yield
 
     async def test_ecori_single_site(self, tool):
         # EcoRI recognizes GAATTC
@@ -367,12 +396,12 @@ class TestUniversalInputNoDB:
         result = await tool.execute({"sequence": "ATGAAATTTGCCTGA"})
         assert result["protein"] == "MKFA*"
 
-    async def test_digest_raw_still_works(self):
+    async def test_digest_no_db_returns_error(self):
         tool = DigestTool()
         result = await tool.execute(
             {"sequence": "AAAGAATTCAAA", "enzymes": ["EcoRI"], "circular": False}
         )
-        assert result["total_cuts"] == 1
+        assert "error" in result
 
     async def test_gc_raw_still_works(self):
         tool = GCTool()
