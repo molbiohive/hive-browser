@@ -97,12 +97,17 @@ class MatchProcess(Process):
 
         db_path = Path(self._config.dep_data_dir("blast"))
 
+        logger.info("Starting BLAST variant detection (identity>=%.0f%%, coverage>=%.0f%%)",
+                    self._min_identity, self._min_coverage)
+
         # Clear previous blast annotations
         async with db.async_session_factory() as session:
-            await session.execute(
+            result = await session.execute(
                 delete(Annotation).where(Annotation.source == "blast")
             )
             await session.commit()
+            if result.rowcount:
+                logger.info("Cleared %d previous blast annotations", result.rowcount)
 
         # Paginate parts
         batch_size = 50
@@ -137,7 +142,7 @@ class MatchProcess(Process):
                     program, query_seq, db_path,
                 )
                 if result.get("error"):
-                    logger.debug("BLAST error for pid %d: %s", pid, result["error"])
+                    logger.warning("BLAST error for pid %d: %s", pid, result["error"])
                     continue
 
                 matches = _process_hits(
@@ -160,6 +165,8 @@ class MatchProcess(Process):
 
                 scanned += 1
 
+            logger.info("Match progress: %d parts scanned, %d variants so far", scanned, variants_found)
             await ctx.check()
 
+        logger.info("Match complete: %d parts scanned, %d variants found", scanned, variants_found)
         return f"{scanned} parts scanned, {variants_found} variants found"
