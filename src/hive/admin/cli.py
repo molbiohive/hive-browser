@@ -339,10 +339,10 @@ def cmd_feedback_report(args):
     asyncio.run(_run_db(_report))
 
 
-# ── library ───────────────────────────────────────────────────────────
+# ── lib ──────────────────────────────────────────────────────────────
 
 
-def cmd_library_list(args):
+def cmd_lib_list(args):
     data = _get(args, "/admin/libraries")
     libs = data.get("libraries", [])
     if not libs:
@@ -357,7 +357,7 @@ def cmd_library_list(args):
         )
 
 
-def cmd_library_create(args):
+def cmd_lib_create(args):
     data = _post_json(
         args,
         "/admin/libraries",
@@ -369,18 +369,8 @@ def cmd_library_create(args):
     print(f"Created library: {data['name']} (id: {data['id']})")
 
 
-def cmd_library_add(args):
-    # Resolve library id by name
-    libs = _get(args, "/admin/libraries").get("libraries", [])
-    lib = next((lib_ for lib_ in libs if lib_["name"] == args.library_name), None)
-    if not lib:
-        print(f"Library not found: {args.library_name}", file=sys.stderr)
-        sys.exit(1)
-    data = _post_json(args, f"/admin/libraries/{lib['id']}/add", {"pid": args.pid})
-    print(f"{data.get('status', 'done')}: PID {args.pid} -> {args.library_name}")
 
-
-def cmd_library_show(args):
+def cmd_lib_show(args):
     libs = _get(args, "/admin/libraries").get("libraries", [])
     lib = next((lib_ for lib_ in libs if lib_["name"] == args.library_name), None)
     if not lib:
@@ -391,6 +381,40 @@ def cmd_library_show(args):
     print(f"  Parts:  {lib['member_count']}")
     if lib.get("description"):
         print(f"  Desc:   {lib['description']}")
+
+
+def cmd_lib_import(args):
+    async def _import(s):
+        from hive.libs.loader import import_lib
+
+        path = Path(args.path)
+        if not path.is_file():
+            print(f"File not found: {path}", file=sys.stderr)
+            sys.exit(1)
+        try:
+            result = await import_lib(s, path)
+            await s.commit()
+        except ValueError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+        _pp(result)
+
+    asyncio.run(_run_db(_import))
+
+
+def cmd_lib_export(args):
+    async def _export(s):
+        from hive.libs.loader import export_lib
+
+        path = Path(args.path)
+        try:
+            await export_lib(s, args.name, path)
+        except ValueError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+        print(f"Exported to {path}")
+
+    asyncio.run(_run_db(_export))
 
 
 # ── tools ─────────────────────────────────────────────────────────────
@@ -642,37 +666,45 @@ def main():
         ],
     )
 
-    # admin library <list|create|add|show>
+    # admin lib <list|create|show|import|export>
     _add_group(
         sub,
-        "library",
+        "lib",
         "Part library management",
         [
-            ("list", "List all libraries", cmd_library_list, []),
+            ("list", "List all libraries", cmd_lib_list, []),
             (
                 "create",
-                "Create a manual library",
-                cmd_library_create,
+                "Create a library",
+                cmd_lib_create,
                 [
                     (["name"], {"help": "Library name"}),
                     (["--description"], {"default": None, "help": "Library description"}),
                 ],
             ),
             (
-                "add",
-                "Add a part to a library",
-                cmd_library_add,
+                "show",
+                "Show library details",
+                cmd_lib_show,
                 [
                     (["library_name"], {"help": "Library name"}),
-                    (["pid"], {"type": int, "help": "Part ID (PID)"}),
                 ],
             ),
             (
-                "show",
-                "Show library details",
-                cmd_library_show,
+                "import",
+                "Import library from JSON file",
+                cmd_lib_import,
                 [
-                    (["library_name"], {"help": "Library name"}),
+                    (["path"], {"help": "Path to library JSON file"}),
+                ],
+            ),
+            (
+                "export",
+                "Export library to JSON file",
+                cmd_lib_export,
+                [
+                    (["name"], {"help": "Library name"}),
+                    (["path"], {"help": "Output JSON file path"}),
                 ],
             ),
         ],

@@ -1,4 +1,4 @@
-"""Import/export typed JSON envelopes to/from database."""
+"""Import/export part libraries as JSON envelopes."""
 
 import json
 import logging
@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from hive.db.models import (
     Annotation,
-    Enzyme,
     Library,
     LibraryMember,
     Part,
@@ -43,52 +42,13 @@ def validate_envelope(data: dict) -> tuple[str, int, list]:
 
 
 async def import_lib(session: AsyncSession, path: Path) -> dict:
-    """Read JSON envelope from path and import into database."""
+    """Import a part library from a JSON envelope file."""
     raw = json.loads(path.read_text())
     typ, version, items = validate_envelope(raw)
+    if typ != "library":
+        raise ValueError(f"Expected type 'library', got '{typ}'")
 
-    if typ == "enzymes":
-        return await _import_enzymes(session, items)
-    if typ == "library":
-        return await _import_library(session, items, raw)
-
-    raise ValueError(f"Unknown envelope type: {typ}")
-
-
-async def _import_enzymes(session: AsyncSession, items: list) -> dict:
-    """Upsert enzyme rows from JSON data."""
-    created = 0
-    updated = 0
-
-    for entry in items:
-        name = entry.get("name")
-        if not name:
-            continue
-
-        existing = await session.execute(
-            select(Enzyme).where(Enzyme.name == name)
-        )
-        enzyme = existing.scalar_one_or_none()
-
-        fields = ("site", "cut5", "cut3", "overhang", "length", "is_palindrome", "is_blunt")
-        if enzyme:
-            for field in fields:
-                if field in entry:
-                    setattr(enzyme, field, entry[field])
-            updated += 1
-        else:
-            enzyme = Enzyme(**{k: entry[k] for k in ("name", *fields)})
-            session.add(enzyme)
-            created += 1
-
-    await session.flush()
-    logger.info("Enzymes: %d created, %d updated", created, updated)
-    return {"type": "enzymes", "created": created, "updated": updated}
-
-
-async def _import_library(session: AsyncSession, items: list, envelope: dict) -> dict:
-    """Import a part library with full part data."""
-    lib_name = envelope.get("name")
+    lib_name = raw.get("name")
     if not lib_name:
         raise ValueError("Library envelope requires a 'name' field")
 
@@ -99,7 +59,7 @@ async def _import_library(session: AsyncSession, items: list, envelope: dict) ->
         lib = Library(
             name=lib_name,
             source="native",
-            description=envelope.get("description"),
+            description=raw.get("description"),
         )
         session.add(lib)
         await session.flush()
@@ -180,31 +140,7 @@ async def _import_library(session: AsyncSession, items: list, envelope: dict) ->
 
 
 async def export_lib(session: AsyncSession, name: str, path: Path):
-    """Export by name. 'enzymes' -> Enzyme table, otherwise -> Library."""
-    if name == "enzymes":
-        return await _export_enzymes(session, path)
-    return await _export_library(session, name, path)
-
-
-async def _export_enzymes(session: AsyncSession, path: Path):
-    rows = (await session.execute(
-        select(Enzyme).order_by(Enzyme.name)
-    )).scalars().all()
-    data = [
-        {
-            "name": e.name, "site": e.site,
-            "cut5": e.cut5, "cut3": e.cut3,
-            "overhang": e.overhang, "length": e.length,
-            "is_palindrome": e.is_palindrome, "is_blunt": e.is_blunt,
-        }
-        for e in rows
-    ]
-    envelope = {"type": "enzymes", "version": 1, "data": data}
-    path.write_text(json.dumps(envelope, indent=2) + "\n")
-    logger.info("Exported %d enzymes to %s", len(data), path)
-
-
-async def _export_library(session: AsyncSession, name: str, path: Path):
+    """Export a part library by name to JSON envelope."""
     row = await session.execute(select(Library).where(Library.name == name))
     lib = row.scalar_one_or_none()
     if not lib:

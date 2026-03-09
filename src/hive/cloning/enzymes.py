@@ -1,12 +1,19 @@
 """IUPAC cut site scanner -- no Biopython dependency."""
 
+import json
+import logging
 import re
 from dataclasses import dataclass
+from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from hive.db.models import Enzyme
+
+logger = logging.getLogger(__name__)
+
+_EXTRAS_DIR = Path(__file__).resolve().parent.parent / "extras"
 
 # IUPAC ambiguity codes -> regex character classes
 IUPAC_MAP = {
@@ -156,3 +163,47 @@ def find_cut_sites(
         "seq_len": seq_len,
         "circular": circular,
     }
+
+
+# ── Bootstrap ────────────────────────────────────────────────────────
+
+
+async def bootstrap_enzymes(session: AsyncSession) -> int:
+    """Load enzymes from extras/enzymes.json if DB is empty.
+
+    Returns the number of enzymes loaded (0 if already populated).
+    """
+    count = (await session.execute(
+        select(func.count()).select_from(Enzyme)
+    )).scalar() or 0
+    if count > 0:
+        logger.debug("Enzymes already loaded: %d", count)
+        return 0
+
+    path = _EXTRAS_DIR / "enzymes.json"
+    if not path.is_file():
+        logger.warning("Enzyme data not found: %s", path)
+        return 0
+
+    raw = json.loads(path.read_text())
+    items = raw.get("data", [])
+
+    for entry in items:
+        name = entry.get("name")
+        if not name:
+            continue
+        session.add(Enzyme(
+            name=entry["name"],
+            site=entry["site"],
+            cut5=entry["cut5"],
+            cut3=entry["cut3"],
+            overhang=entry["overhang"],
+            length=entry["length"],
+            is_palindrome=entry["is_palindrome"],
+            is_blunt=entry["is_blunt"],
+        ))
+
+    await session.flush()
+    loaded = len(items)
+    logger.info("Bootstrapped %d enzymes from %s", loaded, path.name)
+    return loaded

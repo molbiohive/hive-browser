@@ -46,6 +46,19 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("Database init skipped: %s", e)
 
+    # --- Bootstrap enzymes ---
+    if app.state.db_ready:
+        try:
+            from hive.cloning.enzymes import bootstrap_enzymes
+            from hive.db.session import async_session_factory
+
+            async with async_session_factory() as session:
+                loaded = await bootstrap_enzymes(session)
+                if loaded:
+                    await session.commit()
+        except Exception as e:
+            logger.warning("Enzyme bootstrap failed: %s", e)
+
     # --- Model pool ---
     pool = ModelPool(config.llm.models)
     app.state.model_pool = pool
