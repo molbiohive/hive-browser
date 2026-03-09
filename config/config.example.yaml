@@ -2,7 +2,7 @@
 # Copy this file to config.local.yaml and adjust values.
 # Select config via: HIVE_CONFIG=config/config.local.yaml
 
-version: 4
+version: 5
 
 server:
   host: "0.0.0.0"
@@ -34,6 +34,16 @@ llm:
   tool_rag_threshold: 0.3       # min cosine similarity to include a tool
   tool_rag_top_k: 8             # max tools returned by RAG
   sandbox_max_retries: 3         # max consecutive sandbox errors before LLM gives up
+  context_char_limit: 24000      # max chars in LLM context (0 = no limit)
+  redact_keys:                   # fields stripped from LLM summaries (set to [] to disable)
+    - file_path
+    - path
+    - file_name
+    - filename
+    - name
+    - sequence
+    - raw_sequence
+    - subject
 
 deps:
   blast:
