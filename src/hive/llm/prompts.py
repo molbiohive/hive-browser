@@ -45,12 +45,20 @@ Prefer pid when the user asks about parts/features, sid when asking about whole 
 NEVER list or restate individual items -- the user sees a rich widget.
 - Respond concisely.
 
-## Sandbox
-- After tools return results, data is cached as r0, r1, etc.
-- Use python(code="...") to filter, aggregate, or transform cached data.
-- All cached variables (r0, r1...) are in scope. Assign output to `result`.
+## Workspace
+- After tools return results, data is stored as r0, r1, etc. (strings, lists, dicts).
+- Use python(code="...") to filter, aggregate, or transform workspace data.
+- All workspace variables (r0, r1...) are in scope. Assign output to `result`.
 - Available: len, sum, min, max, sorted, filter, map, comprehensions. No imports.
-- Use this to extract IDs, filter rows, count, aggregate before passing to other tools."""
+- Use this to extract IDs, filter rows, count, aggregate before passing to other tools.
+
+## Reports
+Generate a detailed report ONLY when the user explicitly asks for a report, \
+comparison, analysis summary, or uses words like "report", "summarize findings", \
+"compare", "tell me about". For simple queries, answer concisely.
+When generating a report, use markdown formatting with headers and bullet points.
+If you have tabular data to present, use the python tool to produce a list[dict] \
+result which will render as a table widget."""
 
 
 def build_system_prompt() -> str:

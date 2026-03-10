@@ -1,12 +1,12 @@
-"""SandboxRunner -- orchestrates cache + exec, provides tool schema."""
+"""SandboxRunner -- orchestrates workspace + exec, provides tool schema."""
 
 from __future__ import annotations
 
 import json
 from typing import Any
 
-from hive.sandbox.cache import ResultCache
 from hive.sandbox.exec import safe_exec
+from hive.sandbox.workspace import Workspace
 
 
 class SandboxRunner:
@@ -16,14 +16,14 @@ class SandboxRunner:
     by the router alongside regular tool schemas.
     """
 
-    def __init__(self, cache: ResultCache):
-        self.cache = cache
+    def __init__(self, workspace: Workspace):
+        self.workspace = workspace
 
     def tool_schema(self) -> dict:
-        """OpenAI-format function schema with dynamic cache description."""
+        """OpenAI-format function schema with dynamic workspace description."""
         desc = (
             "Execute Python on cached data. Variables in scope:\n"
-            + self.cache.describe_all()
+            + self.workspace.describe_all()
             + "\nMust assign to `result`."
         )
         return {
@@ -45,8 +45,8 @@ class SandboxRunner:
         }
 
     def execute(self, code: str) -> dict[str, Any]:
-        """Run *code* with all cached handles as variables."""
-        variables = self.cache.namespace()
+        """Run *code* with all workspace handles as variables."""
+        variables = self.workspace.namespace()
         return safe_exec(code, variables)
 
     def summary_for_llm(self, result: dict[str, Any], token_limit: int = 500) -> str:

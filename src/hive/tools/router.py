@@ -13,7 +13,7 @@ from hive.llm.prompts import (
     build_multi_tool_schema,
     build_system_prompt,
 )
-from hive.sandbox import ResultCache, SandboxRunner
+from hive.sandbox import SandboxRunner, Workspace
 from hive.tools.base import ToolRegistry
 
 if TYPE_CHECKING:
@@ -172,9 +172,8 @@ async def _unified_loop(
     last_tool = None
     last_params = {}
     chain = []  # [{tool, params, summary, widget}]
-    cache = {}  # auto-pipe: field_name → large string value
-    result_cache = ResultCache()  # per-loop cache for list[dict] results
-    sandbox = SandboxRunner(result_cache)
+    workspace = Workspace()
+    sandbox = SandboxRunner(workspace)
     tokens = {"in": 0, "out": 0}
     exceeded = False
     error_msg = ""  # LLM error message (vs max_turns exhaustion)
@@ -235,7 +234,7 @@ async def _unified_loop(
     for turn in range(max_turns):
         turn_tools = schemas
         # Inject python schema when cached data is available (skip after too many errors)
-        if len(result_cache) > 0 and sandbox_errors < sandbox_max_retries:
+        if len(workspace) > 0 and sandbox_errors < sandbox_max_retries:
             turn_tools = [*schemas, sandbox.tool_schema()]
 
         # Log payload sizes for token debugging
@@ -324,13 +323,13 @@ async def _unified_loop(
             )
 
             # Built-in sandbox -- not a registered tool
-            if tool_name == "python" and len(result_cache) > 0:
+            if tool_name == "python" and len(workspace) > 0:
                 code = params.get("code", "")
                 sb_result = sandbox.execute(code)
                 compact = sandbox.summary_for_llm(sb_result)
-                cache_info = result_cache.describe_all()
-                if cache_info:
-                    compact += f"\n\nCached data:\n{cache_info}"
+                ws_info = workspace.describe_all()
+                if ws_info:
+                    compact += f"\n\nWorkspace:\n{ws_info}"
                 messages.append({
                     "role": "tool",
                     "tool_call_id": tc["id"],
@@ -388,41 +387,36 @@ async def _unified_loop(
                 })
                 continue
 
-            # Hybrid auto-pipe: inject cached values into matching params
-            # Override if param is missing, empty, or shorter than the cached
-            # value (LLM sometimes puts placeholder text like "injected")
+            # Auto-fill from workspace: inject stored values into matching params
+            # Override if param is missing, empty, or shorter than the stored value
             schema_props = tool.input_schema().get("properties", {})
             for key in schema_props:
-                if key not in cache:
-                    continue
                 provided = params.get(key)
                 if not provided or (
                     isinstance(provided, str) and len(provided) < pipe_min_length
                 ):
-                    params[key] = cache[key]
-                    logger.info("Cache inject: %s (%d chars)", key, len(str(cache[key])))
+                    cached = workspace.find_by_field(key, pipe_min_length)
+                    if cached is not None:
+                        params[key] = cached
+                        logger.info("Workspace inject: %s (%d chars)", key, len(str(cached)))
 
             await _emit("tool", tool_name)
             result = await tool.execute(params, mode="natural")
             sandbox_errors = 0  # regular tool success resets sandbox error budget
 
-            # Auto-pipe: cache large string values for subsequent tools
+            # Store significant fields in workspace for auto-fill and sandbox
             for key, val in result.items():
+                if key == "error":
+                    continue
                 if isinstance(val, str) and len(val) >= pipe_min_length:
-                    cache[key] = val
-
-            # Auto-cache list[dict] fields for sandbox access
-            for key, val in result.items():
-                if (
-                    isinstance(val, list)
-                    and val
-                    and isinstance(val[0], dict)
-                ):
-                    handle = result_cache.store(val, tool_name, params)
-                    logger.info(
-                        "Cached %s.%s as %s (%d rows)",
-                        tool_name, key, handle, len(val),
-                    )
+                    handle = workspace.store(key, val, tool_name, params)
+                    logger.info("Stored %s.%s as %s (%d chars)", tool_name, key, handle, len(val))
+                elif isinstance(val, list) and val:
+                    handle = workspace.store(key, val, tool_name, params)
+                    logger.info("Stored %s.%s as %s (%d items)", tool_name, key, handle, len(val))
+                elif isinstance(val, dict) and len(val) > 2:
+                    handle = workspace.store(key, val, tool_name, params)
+                    logger.info("Stored %s.%s as %s (%d keys)", tool_name, key, handle, len(val))
 
             # Use tool's custom summary if provided, else standard summarizer
             compact = tool.llm_summary(result)
@@ -431,10 +425,10 @@ async def _unified_loop(
                     result, token_limit=summary_token_limit,
                     redact_keys=redact_keys if redact_keys is not None else _REDACT_KEYS,
                 )
-            # Append cache descriptions so LLM knows what data is available
-            cache_info = result_cache.describe_all()
-            if cache_info:
-                compact += f"\n\nCached data (use python tool to filter/transform):\n{cache_info}"
+            # Append workspace descriptions so LLM knows what data is available
+            ws_info = workspace.describe_all()
+            if ws_info:
+                compact += f"\n\nWorkspace (use python tool to filter/transform):\n{ws_info}"
             logger.debug(
                 "SUMMARY %s: %d chars | result keys: %s",
                 tool_name, len(compact),

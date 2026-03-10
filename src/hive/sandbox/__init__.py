@@ -1,6 +1,6 @@
-"""Sandbox module -- result caching and restricted Python execution."""
+"""Sandbox module -- workspace data store and restricted Python execution."""
 
-from hive.sandbox.cache import ResultCache
 from hive.sandbox.runner import SandboxRunner
+from hive.sandbox.workspace import Workspace
 
-__all__ = ["ResultCache", "SandboxRunner"]
+__all__ = ["SandboxRunner", "Workspace"]

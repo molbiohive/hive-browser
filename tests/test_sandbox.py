@@ -1,90 +1,150 @@
-"""Tests for sandbox: ResultCache, safe_exec, and SandboxRunner."""
+"""Tests for sandbox: Workspace, safe_exec, and SandboxRunner."""
 
 import pytest
 
-from hive.sandbox.cache import ResultCache
 from hive.sandbox.exec import safe_exec
 from hive.sandbox.runner import SandboxRunner
+from hive.sandbox.workspace import Workspace
 
 
-# ── ResultCache ──
+# ── Workspace ──
 
 
-class TestResultCache:
+class TestWorkspace:
     def test_store_and_get(self):
-        cache = ResultCache()
+        ws = Workspace()
         rows = [{"id": 1, "name": "GFP"}]
-        handle = cache.store(rows, "search", {"query": "GFP"})
+        handle = ws.store("results", rows, "search", {"query": "GFP"})
         assert handle == "r0"
-        assert cache.get("r0") == rows
+        assert ws.get("r0") == rows
 
     def test_sequential_handles(self):
-        cache = ResultCache()
-        h0 = cache.store([{"a": 1}], "search")
-        h1 = cache.store([{"b": 2}], "blast")
-        h2 = cache.store([{"c": 3}], "parts")
+        ws = Workspace()
+        h0 = ws.store("results", [{"a": 1}], "search")
+        h1 = ws.store("hits", [{"b": 2}], "blast")
+        h2 = ws.store("parts", [{"c": 3}], "parts")
         assert (h0, h1, h2) == ("r0", "r1", "r2")
 
     def test_get_missing(self):
-        cache = ResultCache()
-        assert cache.get("r0") is None
-        assert cache.get("r99") is None
-        assert cache.get("invalid") is None
+        ws = Workspace()
+        assert ws.get("r0") is None
+        assert ws.get("r99") is None
+        assert ws.get("invalid") is None
 
-    def test_describe(self):
-        cache = ResultCache()
-        cache.store([{"sid": 1, "name": "GFP", "size": 720}], "search", {"query": "GFP"})
-        desc = cache.describe("r0")
+    def test_describe_list_dict(self):
+        ws = Workspace()
+        ws.store("results", [{"sid": 1, "name": "GFP", "size": 720}], "search", {"query": "GFP"})
+        desc = ws.describe("r0")
         assert "r0:" in desc
+        assert "results" in desc
+        assert "list[dict]" in desc
         assert "1 rows" in desc
         assert "search" in desc
         assert "sid" in desc
 
+    def test_describe_string(self):
+        ws = Workspace()
+        ws.store("sequence_data", "ATGC" * 100, "profile")
+        desc = ws.describe("r0")
+        assert "str" in desc
+        assert "400 chars" in desc
+        assert "profile" in desc
+
+    def test_describe_list_int(self):
+        ws = Workspace()
+        ws.store("fragments", [4521, 2100, 800], "digest")
+        desc = ws.describe("r0")
+        assert "list[int]" in desc
+        assert "3 items" in desc
+
+    def test_describe_dict(self):
+        ws = Workspace()
+        ws.store("gel_data", {"lanes": [], "gelType": "agarose", "stain": "ethidium"}, "digest")
+        desc = ws.describe("r0")
+        assert "dict" in desc
+        assert "3 keys" in desc
+
     def test_describe_all(self):
-        cache = ResultCache()
-        cache.store([{"a": 1}], "search")
-        cache.store([{"b": 2}], "blast")
-        text = cache.describe_all()
+        ws = Workspace()
+        ws.store("results", [{"a": 1}], "search")
+        ws.store("sequence_data", "ATGC" * 100, "profile")
+        text = ws.describe_all()
         assert "r0:" in text
         assert "r1:" in text
         assert text.count("\n") == 1  # two lines, one newline
 
     def test_namespace(self):
-        cache = ResultCache()
+        ws = Workspace()
         rows0 = [{"x": 1}]
-        rows1 = [{"y": 2}]
-        cache.store(rows0, "search")
-        cache.store(rows1, "blast")
-        ns = cache.namespace()
+        seq = "ATGCATGC"
+        ws.store("results", rows0, "search")
+        ws.store("sequence_data", seq, "profile")
+        ns = ws.namespace()
         assert ns["r0"] is rows0
-        assert ns["r1"] is rows1
+        assert ns["r1"] is seq
         assert len(ns) == 2
 
+    def test_find_by_field(self):
+        ws = Workspace()
+        ws.store("sequence_data", "ATGC" * 100, "profile")
+        ws.store("results", [{"a": 1}], "search")
+        # Should find the string by field name
+        found = ws.find_by_field("sequence_data", min_length=10)
+        assert found == "ATGC" * 100
+
+    def test_find_by_field_min_length(self):
+        ws = Workspace()
+        ws.store("sequence_data", "ATG", "profile")
+        # Too short
+        assert ws.find_by_field("sequence_data", min_length=100) is None
+        # No min_length requirement
+        assert ws.find_by_field("sequence_data") == "ATG"
+
+    def test_find_by_field_most_recent(self):
+        ws = Workspace()
+        ws.store("sequence_data", "FIRST", "profile")
+        ws.store("sequence_data", "SECOND", "profile")
+        assert ws.find_by_field("sequence_data") == "SECOND"
+
+    def test_find_by_field_skips_non_strings(self):
+        ws = Workspace()
+        ws.store("sequence", {"sid": 1, "name": "GFP"}, "search")
+        # Dict with matching field name should NOT be returned
+        assert ws.find_by_field("sequence") is None
+        # But a string with the same field name should be found
+        ws.store("sequence", "ATGCATGC", "profile")
+        assert ws.find_by_field("sequence") == "ATGCATGC"
+
+    def test_find_by_field_not_found(self):
+        ws = Workspace()
+        ws.store("results", [{"a": 1}], "search")
+        assert ws.find_by_field("sequence_data") is None
+
     def test_contains(self):
-        cache = ResultCache()
-        cache.store([{"a": 1}], "search")
-        assert "r0" in cache
-        assert "r1" not in cache
-        assert "invalid" not in cache
+        ws = Workspace()
+        ws.store("results", [{"a": 1}], "search")
+        assert "r0" in ws
+        assert "r1" not in ws
+        assert "invalid" not in ws
 
     def test_len(self):
-        cache = ResultCache()
-        assert len(cache) == 0
-        cache.store([{"a": 1}], "search")
-        assert len(cache) == 1
-        cache.store([{"b": 2}], "blast")
-        assert len(cache) == 2
+        ws = Workspace()
+        assert len(ws) == 0
+        ws.store("results", [{"a": 1}], "search")
+        assert len(ws) == 1
+        ws.store("hits", [{"b": 2}], "blast")
+        assert len(ws) == 2
 
     def test_describe_missing_handle(self):
-        cache = ResultCache()
-        assert cache.describe("r0") == ""
+        ws = Workspace()
+        assert ws.describe("r0") == ""
 
     def test_column_names_capped(self):
         """Columns beyond max_cols show '...'."""
-        cache = ResultCache()
+        ws = Workspace()
         row = {f"col{i}": i for i in range(12)}
-        cache.store([row], "wide_tool")
-        desc = cache.describe("r0")
+        ws.store("results", [row], "wide_tool")
+        desc = ws.describe("r0")
         assert "..." in desc
 
 
@@ -219,7 +279,7 @@ class TestSafeExec:
         assert result["result"] == 45
 
     def test_cached_variables_in_scope(self):
-        """Variables from cache namespace are accessible."""
+        """Variables from workspace namespace are accessible."""
         result = safe_exec(
             'result = len(r0) + len(r1)',
             {"r0": [1, 2, 3], "r1": [4, 5]},
@@ -232,10 +292,10 @@ class TestSafeExec:
 
 
 class TestSandboxRunner:
-    def test_tool_schema_includes_cache(self):
-        cache = ResultCache()
-        cache.store([{"sid": 1, "name": "GFP"}], "search")
-        runner = SandboxRunner(cache)
+    def test_tool_schema_includes_workspace(self):
+        ws = Workspace()
+        ws.store("results", [{"sid": 1, "name": "GFP"}], "search")
+        runner = SandboxRunner(ws)
         schema = runner.tool_schema()
         assert schema["type"] == "function"
         assert schema["function"]["name"] == "python"
@@ -243,50 +303,58 @@ class TestSandboxRunner:
         assert "search" in schema["function"]["description"]
 
     def test_execute_dispatches(self):
-        cache = ResultCache()
+        ws = Workspace()
         data = [{"id": 1}, {"id": 2}, {"id": 3}]
-        cache.store(data, "search")
-        runner = SandboxRunner(cache)
+        ws.store("results", data, "search")
+        runner = SandboxRunner(ws)
         result = runner.execute('result = [r["id"] for r in r0]')
         assert result["status"] == "ok"
         assert result["result"] == [1, 2, 3]
 
+    def test_execute_with_string_handle(self):
+        ws = Workspace()
+        ws.store("sequence_data", "ATGCATGC", "profile")
+        runner = SandboxRunner(ws)
+        result = runner.execute('result = len(r0)')
+        assert result["status"] == "ok"
+        assert result["result"] == 8
+
     def test_summary_for_llm_ok(self):
-        cache = ResultCache()
-        runner = SandboxRunner(cache)
+        ws = Workspace()
+        runner = SandboxRunner(ws)
         result = {"status": "ok", "result": [1, 2, 3], "stdout": "", "type": "list"}
         summary = runner.summary_for_llm(result)
         assert "result = " in summary
         assert "[1, 2, 3]" in summary
 
     def test_summary_for_llm_error(self):
-        cache = ResultCache()
-        runner = SandboxRunner(cache)
+        ws = Workspace()
+        runner = SandboxRunner(ws)
         result = {"status": "error", "error": "NameError: x", "stdout": ""}
         summary = runner.summary_for_llm(result)
         assert "Error:" in summary
         assert "NameError" in summary
 
     def test_summary_for_llm_with_stdout(self):
-        cache = ResultCache()
-        runner = SandboxRunner(cache)
+        ws = Workspace()
+        runner = SandboxRunner(ws)
         result = {"status": "ok", "result": 42, "stdout": "debug\n", "type": "scalar"}
         summary = runner.summary_for_llm(result)
         assert "result = 42" in summary
         assert "stdout: debug" in summary
 
     def test_summary_for_llm_truncates(self):
-        cache = ResultCache()
-        runner = SandboxRunner(cache)
+        ws = Workspace()
+        runner = SandboxRunner(ws)
         big_list = list(range(1000))
         result = {"status": "ok", "result": big_list, "stdout": "", "type": "list"}
         summary = runner.summary_for_llm(result, token_limit=10)
         assert len(summary) <= 10 * 4 + 50  # some overhead for "result = " prefix
 
-    def test_tool_schema_empty_cache(self):
-        cache = ResultCache()
-        runner = SandboxRunner(cache)
+    def test_tool_schema_empty_workspace(self):
+        ws = Workspace()
+        runner = SandboxRunner(ws)
         schema = runner.tool_schema()
         assert schema["function"]["name"] == "python"
-        # Description still valid, just no cache entries listed
+        # Description still valid, just no workspace entries listed
         assert "result" in schema["function"]["description"]
