@@ -1,5 +1,6 @@
 <script>
 	import DataTable from '$lib/DataTable.svelte';
+	import TabBar from '$lib/TabBar.svelte';
 	import CopyableSequence from '$lib/CopyableSequence.svelte';
 	import { mapToParts, mapToCutSites } from '$lib/hatchlings.ts';
 	import { PlasmidViewer, Tooltip } from '@molbiohive/hatchlings';
@@ -148,15 +149,7 @@
 
 	<!-- Tabbed table section -->
 	{#if tabs.length}
-	<div class="tab-bar">
-		{#each tabs as tab}
-			<button
-				class="tab-btn"
-				class:active={activeTab === tab.id}
-				onclick={() => activeTab = tab.id}
-			>{tab.label}</button>
-		{/each}
-	</div>
+	<TabBar {tabs} active={activeTab} onchange={(id) => activeTab = id} />
 
 	<div class="tab-content">
 		{#if activeTab === 'features' && data.features?.length}
@@ -193,27 +186,6 @@
 	.empty { color: var(--text-placeholder); font-size: 0.85rem; }
 	.cap-note { font-size: 0.72rem; color: var(--text-faint); margin: 0.2rem 0 0; text-align: center; }
 
-	.tab-bar {
-		display: flex;
-		gap: 0;
-		margin-top: 0.75rem;
-		border-bottom: 1px solid var(--border-muted);
-	}
-	.tab-btn {
-		padding: 0.4rem 0.75rem;
-		background: none;
-		border: none;
-		border-bottom: 2px solid transparent;
-		cursor: pointer;
-		font-size: 0.78rem;
-		color: var(--text-faint);
-		font-weight: 500;
-	}
-	.tab-btn:hover { color: var(--text-muted); }
-	.tab-btn.active {
-		color: var(--text-secondary);
-		border-bottom-color: var(--color-accent);
-	}
 	.tab-content { margin-top: 0.25rem; }
 
 	@media (max-width: 640px) {

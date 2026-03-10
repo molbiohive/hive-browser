@@ -1,6 +1,7 @@
 <script>
 	import { sendMessage } from '$lib/stores/chat.ts';
 	import DataTable from '$lib/DataTable.svelte';
+	import TabBar from '$lib/TabBar.svelte';
 
 	let searchQuery = $state('');
 	let blastQuery = $state('');
@@ -173,22 +174,15 @@
 		<!-- Search results with tab toggle -->
 		{#if searchResults && !searchResults.error}
 			<div class="results-section">
-				<div class="tab-bar">
-					<button
-						class="tab-btn"
-						class:active={searchTab === 'sequences'}
-						onclick={() => searchTab = 'sequences'}
-					>
-						Sequences ({seqCount})
-					</button>
-					<button
-						class="tab-btn"
-						class:active={searchTab === 'parts'}
-						onclick={() => searchTab = 'parts'}
-					>
-						Parts ({partsCount})
-					</button>
-				</div>
+				<TabBar
+					tabs={[
+						{ id: 'sequences', label: `Sequences (${seqCount})` },
+						{ id: 'parts', label: `Parts (${partsCount})` },
+					]}
+					active={searchTab}
+					onchange={(id) => searchTab = id}
+					variant="pill"
+				/>
 
 				{#if searchTab === 'sequences'}
 					{#if seqRows.length > 0}
@@ -232,22 +226,15 @@
 			<div class="results-section">
 				{#if blastResults.hits?.length > 0}
 					<div class="blast-heading">{blastResults.program} -- {blastResults.total} hit(s)</div>
-					<div class="tab-bar">
-						<button
-							class="tab-btn"
-							class:active={blastTab === 'sequences'}
-							onclick={() => blastTab = 'sequences'}
-						>
-							Sequences ({blastSeqHits.length})
-						</button>
-						<button
-							class="tab-btn"
-							class:active={blastTab === 'parts'}
-							onclick={() => blastTab = 'parts'}
-						>
-							Parts ({blastPartHits.length})
-						</button>
-					</div>
+					<TabBar
+						tabs={[
+							{ id: 'sequences', label: `Sequences (${blastSeqHits.length})` },
+							{ id: 'parts', label: `Parts (${blastPartHits.length})` },
+						]}
+						active={blastTab}
+						onchange={(id) => blastTab = id}
+						variant="pill"
+					/>
 					{#if blastTab === 'sequences'}
 						{#if blastSeqHits.length > 0}
 							<DataTable rows={blastSeqHits} columns={blastSeqColumns} actions={blastSeqActions} defaultPageSize={10} />
@@ -335,38 +322,6 @@
 		font-size: 0.75rem;
 		color: var(--text-faint);
 		padding: 0.25rem 0;
-	}
-
-	/* Tab toggle */
-	.tab-bar {
-		display: flex;
-		gap: 2px;
-		background: var(--bg-app);
-		border-radius: 6px;
-		padding: 2px;
-	}
-
-	.tab-btn {
-		flex: 1;
-		padding: 0.3rem 0.5rem;
-		border: none;
-		background: transparent;
-		border-radius: 4px;
-		cursor: pointer;
-		font-size: 0.75rem;
-		font-family: inherit;
-		color: var(--text-faint);
-		transition: background 0.15s, color 0.15s;
-	}
-
-	.tab-btn:hover {
-		color: var(--text);
-	}
-
-	.tab-btn.active {
-		background: var(--bg-surface);
-		color: var(--text);
-		font-weight: 600;
 	}
 
 	.results-section {

@@ -2,6 +2,7 @@
 	import { sendMessage } from '$lib/stores/chat.ts';
 	import { copyToClipboard } from '$lib/clipboard.ts';
 	import DataTable from '$lib/DataTable.svelte';
+	import TabBar from '$lib/TabBar.svelte';
 
 	let { data } = $props();
 
@@ -56,14 +57,15 @@
 <p class="error">{data.error}</p>
 {:else if data?.hits?.length}
 	{#if data.program}<p class="program">{data.program} -- {data.total} hit(s)</p>{/if}
-	<div class="tab-bar">
-		<button class="tab-btn" class:active={tab === 'sequences'} onclick={() => tab = 'sequences'}>
-			Sequences ({seqHits.length})
-		</button>
-		<button class="tab-btn" class:active={tab === 'parts'} onclick={() => tab = 'parts'}>
-			Parts ({partHits.length})
-		</button>
-	</div>
+	<TabBar
+		tabs={[
+			{ id: 'sequences', label: `Sequences (${seqHits.length})` },
+			{ id: 'parts', label: `Parts (${partHits.length})` },
+		]}
+		active={tab}
+		onchange={(id) => tab = id}
+		variant="underline"
+	/>
 	{#if tab === 'sequences'}
 		{#if seqHits.length > 0}
 			<DataTable rows={seqHits} columns={seqColumns} actions={seqActions} />
@@ -87,35 +89,4 @@
 	.program { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.25rem; }
 	:global(.name) { font-weight: 500; }
 
-	.tab-bar {
-		display: flex;
-		gap: 2px;
-		background: var(--bg-app);
-		border-radius: 6px;
-		padding: 2px;
-		margin-bottom: 0.5rem;
-	}
-
-	.tab-btn {
-		flex: 1;
-		padding: 0.3rem 0.5rem;
-		border: none;
-		background: transparent;
-		border-radius: 4px;
-		cursor: pointer;
-		font-size: 0.75rem;
-		font-family: inherit;
-		color: var(--text-faint);
-		transition: background 0.15s, color 0.15s;
-	}
-
-	.tab-btn:hover {
-		color: var(--text);
-	}
-
-	.tab-btn.active {
-		background: var(--bg-surface);
-		color: var(--text);
-		font-weight: 600;
-	}
 </style>
