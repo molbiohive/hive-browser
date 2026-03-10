@@ -29,12 +29,13 @@
 	const seqData = $derived(seq?.sequence_data || '');
 	const topology = $derived(seq?.topology || 'circular');
 
-	// Shared selection state keeps plasmid and sequence viewers in sync
 	const selectionState = $derived(
 		seq?.size_bp ? new SelectionState(seq.size_bp) : null
 	);
 
 	let hover = $state(null);
+	let plasmidW = $state(0);
+	let seqPanelW = $state(0);
 </script>
 
 {#if seq}
@@ -46,7 +47,8 @@
 	</div>
 
 	<div class="examine-panels">
-		<div class="panel-plasmid">
+		<div class="panel-plasmid" bind:clientWidth={plasmidW}>
+			{#if plasmidW > 0}
 			<PlasmidViewer
 				name={seq.name}
 				size={seq.size_bp}
@@ -54,22 +56,28 @@
 				cutSites={cappedCutSites}
 				{topology}
 				{selectionState}
+				width={plasmidW}
+				height={plasmidW}
 				onhoverinfo={(info) => { hover = info; }}
 			/>
+			{/if}
 		</div>
 
 		{#if seqData}
-		<div class="panel-sequence">
+		<div class="panel-sequence" bind:clientWidth={seqPanelW}>
+			{#if seqPanelW > 0}
 			<SequenceViewer
 				seq={seqData}
 				{parts}
 				cutSites={cappedCutSites}
 				{topology}
 				{selectionState}
+				width={seqPanelW}
 				showComplement={true}
 				showAnnotations={true}
 				onhoverinfo={(info) => { hover = info; }}
 			/>
+			{/if}
 		</div>
 		{/if}
 	</div>
@@ -101,16 +109,17 @@
 	.meta { font-size: 0.78rem; color: var(--text-muted); }
 	.examine-panels {
 		display: flex;
-		gap: 1rem;
+		gap: 3rem;
+		align-items: center;
 	}
 	.panel-plasmid {
-		flex: 0 0 280px;
+		flex: 0 0 40%;
+		min-width: 0;
 	}
 	.panel-sequence {
 		flex: 1;
 		min-width: 0;
-		max-height: 400px;
-		overflow-y: auto;
+		overflow: auto;
 	}
 	.empty { color: var(--text-placeholder); font-size: 0.85rem; }
 	.cap-note { font-size: 0.72rem; color: var(--text-faint); margin: 0.2rem 0 0; text-align: center; }
@@ -118,5 +127,6 @@
 	@media (max-width: 640px) {
 		.examine-panels { flex-direction: column; }
 		.panel-plasmid { flex: none; }
+		.panel-sequence { max-height: 50vh; }
 	}
 </style>

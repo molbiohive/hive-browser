@@ -29,7 +29,7 @@
 
 <div class="row {message.role}">
 	<div class="msg-wrapper">
-		<div class="bubble {message.role}">
+		<div class="bubble {message.role}" class:has-widget={!!message.widget}>
 			{#if message.role === 'assistant'}
 				{#if message.thinking}
 					<div class="thinking-block">
@@ -95,7 +95,7 @@
 	}
 
 	.row.user .msg-wrapper { align-items: flex-end; }
-	.row.assistant .msg-wrapper { align-items: flex-start; }
+	.row.assistant .msg-wrapper { align-items: flex-start; width: 100%; }
 
 	.bubble {
 		border-radius: 12px;
@@ -119,6 +119,10 @@
 		background: var(--bg-surface);
 		border: 1px solid var(--border-muted);
 		border-bottom-left-radius: 4px;
+	}
+
+	.bubble.assistant.has-widget {
+		width: 85%;
 	}
 
 	.content {
