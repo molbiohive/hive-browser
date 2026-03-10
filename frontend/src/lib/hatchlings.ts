@@ -27,9 +27,10 @@ export function mapToParts(
 	const parts: Part[] = [];
 
 	if (features) {
-		for (const f of features) {
+		for (let i = 0; i < features.length; i++) {
+			const f = features[i];
 			parts.push({
-				id: f.pid != null ? `f-${f.pid}` : undefined,
+				id: f.pid != null ? `f-${f.pid}` : `f-idx-${i}`,
 				name: f.name || '',
 				type: f.type || 'misc_feature',
 				start: f.start,
@@ -41,9 +42,10 @@ export function mapToParts(
 	}
 
 	if (primers) {
-		for (const p of primers) {
+		for (let i = 0; i < primers.length; i++) {
+			const p = primers[i];
 			parts.push({
-				id: p.pid != null ? `p-${p.pid}` : undefined,
+				id: p.pid != null ? `p-${p.pid}` : `p-idx-${i}`,
 				name: p.name || '',
 				type: 'primer_bind',
 				start: p.start,
@@ -66,7 +68,8 @@ export function mapToCutSites(
 	cutSites: Array<Record<string, any>> | undefined,
 ): CutSite[] {
 	if (!cutSites) return [];
-	return cutSites.map((cs) => ({
+	return cutSites.map((cs, i) => ({
+		id: `cs-${i}`,
 		enzyme: cs.enzyme,
 		position: cs.position,
 		end: cs.end,
