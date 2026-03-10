@@ -134,17 +134,24 @@ async def ingest_file(
     Returns the IndexedFile record, or None if the file hasn't changed.
     """
     file_path = file_path.resolve()
-    file_hash = hash_file(file_path)
     stat = file_path.stat()
 
-    # Check if already indexed with same hash
+    # Check if already indexed — fast mtime check before expensive hash
     existing = await session.execute(
         select(IndexedFile).where(IndexedFile.file_path == str(file_path))
     )
     existing_file = existing.scalar_one_or_none()
 
+    if existing_file and existing_file.file_mtime:
+        existing_ts = existing_file.file_mtime.timestamp()
+        if abs(existing_ts - stat.st_mtime) < 1.0:
+            logger.debug("Unchanged (mtime): %s", file_path.name)
+            return None
+
+    file_hash = hash_file(file_path)
+
     if existing_file and existing_file.file_hash == file_hash:
-        logger.debug("Unchanged: %s", file_path.name)
+        logger.debug("Unchanged (hash): %s", file_path.name)
         return None
 
     # Parse the file
