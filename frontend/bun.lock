@@ -5,7 +5,7 @@
     "": {
       "name": "zerg-frontend",
       "dependencies": {
-        "@molbiohive/hatchlings": "0.3.1",
+        "@molbiohive/hatchlings": "^0.3.3",
         "dompurify": "^3.3.1",
         "marked": "^17.0.2",
       },
@@ -81,7 +81,7 @@
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
 
-    "@molbiohive/hatchlings": ["@molbiohive/hatchlings@0.3.1", "", { "peerDependencies": { "3dmol": "^2.4.2", "svelte": "^5.0.0" }, "optionalPeers": ["3dmol"] }, "sha512-Yk0KWdIkHh4ouMJM9BAkzrsJsT+53xJJUPMyHz8pmAjATe9qTAxv0WGmbT+azHjecYkV0Py/KLqUF7ry1o7YUA=="],
+    "@molbiohive/hatchlings": ["@molbiohive/hatchlings@0.3.3", "", { "peerDependencies": { "3dmol": "^2.4.2", "svelte": "^5.0.0" }, "optionalPeers": ["3dmol"] }, "sha512-y4CMDx983eCE6568Gor9Zl51Ew/ovBD6aq+dwHZwL3Lfxi622GUhQORMTvT6O9M/M6ASYl5KScSK38U0TkAugw=="],
 
     "@polka/url": ["@polka/url@1.0.0-next.29", "", {}, "sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww=="],
 
