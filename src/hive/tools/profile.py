@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -10,6 +11,8 @@ from hive.config import display_file_path
 from hive.db import session as db
 from hive.tools.base import Tool
 from hive.tools.resolve import resolve_sequence
+
+logger = logging.getLogger(__name__)
 
 
 class ProfileInput(BaseModel):
@@ -91,6 +94,37 @@ class ProfileTool(Tool):
                 for pi in seq.part_instances
             ]
 
+            # Scan for restriction cut sites
+            cut_sites: list[dict] = []
+            if seq.sequence and seq.molecule in (None, "DNA", "dna"):
+                try:
+                    from hive.cloning.enzymes import find_all_cutters, load_enzymes
+
+                    enzymes = await load_enzymes(session)
+                    circular = seq.topology == "circular"
+                    cutters = find_all_cutters(
+                        seq.sequence.upper(), enzymes, circular=circular,
+                    )
+                    for c in cutters:
+                        enz = enzymes.get(c["name"].upper())
+                        if not enz:
+                            continue
+                        for pos in c["positions"]:
+                            cut_sites.append({
+                                "enzyme": c["name"],
+                                "position": pos,
+                                "end": pos + enz.length,
+                                "strand": 1,
+                                "cutPosition": enz.cut5,
+                                "complementCutPosition": enz.cut3,
+                                "overhang": (
+                                    "5'" if enz.overhang < 0
+                                    else ("3'" if enz.overhang > 0 else "blunt")
+                                ),
+                            })
+                except Exception as e:
+                    logger.warning("Cut site scan failed: %s", e)
+
             return {
                 "sequence": {
                     "sid": seq.id,
@@ -127,6 +161,7 @@ class ProfileTool(Tool):
                     for p in parts_list
                     if p["annotation_type"] == "primer_bind"
                 ],
+                "cut_sites": cut_sites,
                 "file": {
                     "path": display_file_path(seq.file.file_path),
                     "format": seq.file.format,
