@@ -38,7 +38,6 @@
 
 	const parts = $derived(mapToParts(data?.features, data?.primers));
 
-	// Deduplicate cut sites by enzyme for the table
 	const uniqueCutSites = $derived.by(() => {
 		const sites = data?.cut_sites;
 		if (!sites) return [];
@@ -57,7 +56,6 @@
 		}));
 	});
 
-	// Cap displayed cut sites on the plasmid map (unique cutters first)
 	const cappedCutSites = $derived.by(() => {
 		const sites = data?.cut_sites;
 		if (!sites || sites.length <= MAX_CUTSITES) return mapToCutSites(sites);
@@ -77,7 +75,6 @@
 
 	const showPlasmid = $derived(data?.sequence?.size_bp > 0);
 
-	// Tab state
 	const tabs = $derived.by(() => {
 		const t = [];
 		if (data?.features?.length) t.push({ id: 'features', label: `Features (${data.features.length})` });
@@ -86,7 +83,6 @@
 		return t;
 	});
 	let activeTab = $state('features');
-	// Reset to first available tab when data changes
 	$effect(() => {
 		if (tabs.length && !tabs.find(t => t.id === activeTab)) {
 			activeTab = tabs[0].id;
@@ -98,46 +94,45 @@
 
 {#if data?.sequence}
 <div class="profile">
-	<!-- Top row: metadata left, plasmid right -->
-	<div class="top-row">
-		<div class="meta">
-			<div class="field"><strong>SID:</strong> {data.sequence.sid}</div>
-			<div class="field"><strong>Name:</strong> {data.sequence.name}</div>
-			<div class="field"><strong>Size:</strong> {data.sequence.size_bp} bp</div>
-			<div class="field"><strong>Topology:</strong> {data.sequence.topology}</div>
-			{#if data.sequence.molecule}
-			<div class="field"><strong>Molecule:</strong> {data.sequence.molecule}</div>
-			{/if}
-			{#if data.sequence.description}
-			<div class="field"><strong>Description:</strong> {data.sequence.description}</div>
-			{/if}
-		</div>
-
-		{#if showPlasmid}
-		<div class="plasmid-col">
-			<PlasmidViewer
-				name={data.sequence.name}
-				size={data.sequence.size_bp}
-				{parts}
-				cutSites={cappedCutSites}
-				topology={data.sequence.topology || 'circular'}
-				onhoverinfo={(info) => { hover = info; }}
-			/>
-			<Tooltip
-				visible={hover != null}
-				x={hover?.position?.x}
-				y={hover?.position?.y}
-				title={hover?.title}
-				items={hover?.items}
-			/>
-			{#if data.cut_sites?.length > MAX_CUTSITES}
-			<p class="cap-note">Showing {cappedCutSites.length} of {data.cut_sites.length} cut sites</p>
-			{/if}
-		</div>
+	<!-- Metadata header -->
+	<div class="meta">
+		<div class="field"><strong>SID:</strong> {data.sequence.sid}</div>
+		<div class="field"><strong>Name:</strong> {data.sequence.name}</div>
+		<div class="field"><strong>Size:</strong> {data.sequence.size_bp} bp</div>
+		<div class="field"><strong>Topology:</strong> {data.sequence.topology}</div>
+		{#if data.sequence.molecule}
+		<div class="field"><strong>Molecule:</strong> {data.sequence.molecule}</div>
+		{/if}
+		{#if data.sequence.description}
+		<div class="field"><strong>Description:</strong> {data.sequence.description}</div>
 		{/if}
 	</div>
 
-	<!-- Full-width sections below -->
+	<!-- Plasmid map -->
+	{#if showPlasmid}
+	<div class="plasmid-section">
+		<PlasmidViewer
+			name={data.sequence.name}
+			size={data.sequence.size_bp}
+			{parts}
+			cutSites={cappedCutSites}
+			topology={data.sequence.topology || 'circular'}
+			onhoverinfo={(info) => { hover = info; }}
+		/>
+		<Tooltip
+			visible={hover != null}
+			x={hover?.position?.x}
+			y={hover?.position?.y}
+			title={hover?.title}
+			items={hover?.items}
+		/>
+		{#if data.cut_sites?.length > MAX_CUTSITES}
+		<p class="cap-note">Showing {cappedCutSites.length} of {data.cut_sites.length} cut sites</p>
+		{/if}
+	</div>
+	{/if}
+
+	<!-- Copyable sequence -->
 	{#if data.sequence.sequence_data}
 	<h4>Sequence</h4>
 	<CopyableSequence
@@ -147,10 +142,9 @@
 	/>
 	{/if}
 
-	<!-- Tabbed table section -->
+	<!-- Tabbed tables -->
 	{#if tabs.length}
 	<TabBar {tabs} active={activeTab} onchange={(id) => activeTab = id} />
-
 	<div class="tab-content">
 		{#if activeTab === 'features' && data.features?.length}
 			<DataTable rows={data.features} columns={featureColumns} defaultPageSize={10} />
@@ -168,28 +162,18 @@
 
 <style>
 	.profile { font-size: 0.85rem; }
-	.top-row {
-		display: flex;
-		gap: 1rem;
-	}
-	.meta {
-		flex: 1;
-		min-width: 0;
-	}
-	.plasmid-col {
-		flex: 0 0 280px;
-		position: relative;
-	}
+	.meta { margin-bottom: 0.5rem; }
 	.field { margin-bottom: 0.3rem; }
+	.plasmid-section {
+		position: relative;
+		margin-bottom: 0.5rem;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+	}
 	h4 { margin: 0.75rem 0 0.3rem; font-size: 0.85rem; color: var(--text-muted); }
 	:global(.mono) { font-family: 'SF Mono', Monaco, monospace; font-size: 0.78rem; }
 	.empty { color: var(--text-placeholder); font-size: 0.85rem; }
 	.cap-note { font-size: 0.72rem; color: var(--text-faint); margin: 0.2rem 0 0; text-align: center; }
-
 	.tab-content { margin-top: 0.25rem; }
-
-	@media (max-width: 640px) {
-		.top-row { flex-direction: column; }
-		.plasmid-col { flex: none; }
-	}
 </style>
