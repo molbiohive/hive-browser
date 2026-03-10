@@ -93,6 +93,14 @@ class Tool(ABC):
             return f"Error: {error}"
         return ""
 
+    def llm_summary(self, result: dict) -> str | None:
+        """Custom LLM summary for tool results.
+
+        Return a string to replace the default _summarize_for_llm output.
+        Return None (default) to use the standard summarizer.
+        """
+        return None
+
     def schema(self) -> dict:
         """Full tool schema for LLM function calling."""
         return {

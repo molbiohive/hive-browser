@@ -424,10 +424,13 @@ async def _unified_loop(
                         tool_name, key, handle, len(val),
                     )
 
-            compact = _summarize_for_llm(
-                result, token_limit=summary_token_limit,
-                redact_keys=redact_keys if redact_keys is not None else _REDACT_KEYS,
-            )
+            # Use tool's custom summary if provided, else standard summarizer
+            compact = tool.llm_summary(result)
+            if compact is None:
+                compact = _summarize_for_llm(
+                    result, token_limit=summary_token_limit,
+                    redact_keys=redact_keys if redact_keys is not None else _REDACT_KEYS,
+                )
             # Append cache descriptions so LLM knows what data is available
             cache_info = result_cache.describe_all()
             if cache_info:
