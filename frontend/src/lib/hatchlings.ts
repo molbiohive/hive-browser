@@ -29,6 +29,7 @@ export function mapToParts(
 	if (features) {
 		for (let i = 0; i < features.length; i++) {
 			const f = features[i];
+			if (f.start == null || f.end == null) continue;
 			parts.push({
 				id: f.pid != null ? `f-${f.pid}` : `f-idx-${i}`,
 				name: f.name || '',
@@ -44,6 +45,7 @@ export function mapToParts(
 	if (primers) {
 		for (let i = 0; i < primers.length; i++) {
 			const p = primers[i];
+			if (p.start == null || p.end == null) continue;
 			parts.push({
 				id: p.pid != null ? `p-${p.pid}` : `p-idx-${i}`,
 				name: p.name || '',
