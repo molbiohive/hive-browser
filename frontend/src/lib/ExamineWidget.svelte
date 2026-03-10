@@ -29,9 +29,15 @@
 	const seqData = $derived(seq?.sequence_data || '');
 	const topology = $derived(seq?.topology || 'circular');
 
-	const selectionState = $derived(
-		seq?.size_bp ? new SelectionState(seq.size_bp) : null
-	);
+	let selectionState = $state(null);
+	let lastSize = $state(0);
+	$effect(() => {
+		const size = seq?.size_bp || 0;
+		if (size > 0 && size !== lastSize) {
+			lastSize = size;
+			selectionState = new SelectionState(size);
+		}
+	});
 
 	let hover = $state(null);
 	let plasmidW = $state(0);
@@ -119,6 +125,7 @@
 	.panel-sequence {
 		flex: 1;
 		min-width: 0;
+		max-height: 70vh;
 		overflow: auto;
 	}
 	.empty { color: var(--text-placeholder); font-size: 0.85rem; }
