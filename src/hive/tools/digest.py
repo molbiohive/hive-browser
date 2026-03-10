@@ -28,8 +28,22 @@ def _band_position(size: int, log_max: float, log_min: float) -> float:
     return max(0.05, min(0.95, pos))
 
 
-def _compute_gel_data(fragments: list[int]) -> dict:
-    """Build GelData for Hatchlings GelViewer."""
+def _make_bands(fragments: list[int], log_max: float, log_min: float) -> list[dict]:
+    """Build band dicts for a set of fragments."""
+    max_frag = max(fragments) if fragments else 1
+    return [
+        {
+            "position": _band_position(size, log_max, log_min),
+            "intensity": max(0.3, min(1.0, size / max_frag)),
+            "size": size,
+            "name": f"{size} bp",
+        }
+        for size in sorted(fragments, reverse=True)
+    ]
+
+
+def _compute_gel_data(reactions: list[dict]) -> dict:
+    """Build GelData for Hatchlings GelViewer with one lane per reaction."""
     log_max = math.log10(10000)
     log_min = math.log10(250)
 
@@ -43,22 +57,15 @@ def _compute_gel_data(fragments: list[int]) -> dict:
         for size, intensity in _1KB_PLUS_LADDER
     ]
 
-    max_frag = max(fragments) if fragments else 1
-    sample_bands = [
-        {
-            "position": _band_position(size, log_max, log_min),
-            "intensity": max(0.3, min(1.0, size / max_frag)),
-            "size": size,
-            "name": f"{size} bp",
-        }
-        for size in sorted(fragments, reverse=True)
-    ]
+    lanes = [{"label": "1kb+ Ladder", "bands": ladder_bands, "isLadder": True}]
+    for rxn in reactions:
+        lanes.append({
+            "label": rxn["name"],
+            "bands": _make_bands(rxn["fragments"], log_max, log_min),
+        })
 
     return {
-        "lanes": [
-            {"label": "1kb+ Ladder", "bands": ladder_bands, "isLadder": True},
-            {"label": "Sample", "bands": sample_bands},
-        ],
+        "lanes": lanes,
         "gelType": "agarose",
         "stain": "ethidium",
     }
@@ -69,7 +76,10 @@ class DigestInput(BaseModel):
         ...,
         description="DNA sequence, or sid:N for Sequence ID, or pid:N for Part ID",
     )
-    enzymes: list[str] = Field(..., description='Enzyme names, e.g. ["EcoRI", "BamHI"]')
+    reactions: list[str] = Field(
+        ...,
+        description='Reactions, e.g. ["EcoRI", "BsaI", "EcoRI+BsaI"]. Use + for co-digestion.',
+    )
     circular: bool = Field(
         default=True,
         description="True for circular (plasmid), False for linear",
@@ -81,7 +91,7 @@ class DigestTool(Tool):
     description = "Find restriction enzyme cut sites and calculate fragment sizes."
     widget = "digest"
     tags = {"llm", "analysis"}
-    guidelines = "Restriction digest. Provide enzymes list and sequence (or sid:N / pid:N)."
+    guidelines = "Restriction digest. Provide reactions list and sequence (or sid:N / pid:N). Use + for co-digestion (e.g. EcoRI+BamHI)."
 
     def __init__(self, **_):
         pass
@@ -96,21 +106,24 @@ class DigestTool(Tool):
             "type": "object",
             "properties": {
                 "sequence": {"type": "string", "description": "DNA sequence, sid:N, or pid:N"},
-                "enzymes": {
+                "reactions": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Enzyme names",
+                    "description": 'Reactions, e.g. ["EcoRI", "BsaI", "EcoRI+BsaI"]. Use + for co-digestion.',
                 },
             },
-            "required": ["sequence", "enzymes"],
+            "required": ["sequence", "reactions"],
         }
 
     def format_result(self, result: dict) -> str:
         if error := result.get("error"):
             return f"Error: {error}"
-        cuts = result.get("total_cuts", 0)
-        frags = result.get("fragments", [])
-        return f"{cuts} cut(s), {len(frags)} fragment(s): {frags}"
+        rxns = result.get("reactions", [])
+        parts = []
+        for rxn in rxns:
+            frags = rxn["fragments"]
+            parts.append(f"{rxn['name']}: {rxn['total_cuts']} cut(s), {len(frags)} fragment(s)")
+        return "; ".join(parts) if parts else "No reactions"
 
     async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
         inp = DigestInput(**params)
@@ -134,17 +147,24 @@ class DigestTool(Tool):
         async with db.async_session_factory() as session:
             enzymes = await load_enzymes(session)
 
-        try:
-            result = find_cut_sites(cleaned, inp.enzymes, enzymes, circular=inp.circular)
-        except ValueError as exc:
-            return {"error": str(exc)}
+        reaction_results = []
+        for rxn_str in inp.reactions:
+            enzyme_names = [e.strip() for e in rxn_str.split("+") if e.strip()]
+            try:
+                result = find_cut_sites(cleaned, enzyme_names, enzymes, circular=inp.circular)
+            except ValueError as exc:
+                return {"error": str(exc)}
 
-        fragments = result["fragments"]
+            reaction_results.append({
+                "name": rxn_str,
+                "enzymes": result["enzyme_results"],
+                "fragments": result["fragments"],
+                "total_cuts": result["total_cuts"],
+            })
+
         return {
-            "enzymes": result["enzyme_results"],
-            "fragments": fragments,
-            "total_cuts": result["total_cuts"],
-            "sequence_length": result["seq_len"],
-            "circular": result["circular"],
-            "gel_data": _compute_gel_data(fragments),
+            "reactions": reaction_results,
+            "sequence_length": len(cleaned),
+            "circular": inp.circular,
+            "gel_data": _compute_gel_data(reaction_results),
         }

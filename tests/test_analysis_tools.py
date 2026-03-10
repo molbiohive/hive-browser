@@ -134,47 +134,65 @@ class TestDigest:
     async def test_ecori_single_site(self, tool):
         # EcoRI recognizes GAATTC
         seq = "AAAGAATTCAAA"
-        result = await tool.execute({"sequence": seq, "enzymes": ["EcoRI"], "circular": False})
-        assert result["total_cuts"] == 1
-        assert len(result["fragments"]) == 2
-        assert sum(result["fragments"]) == len(seq)
+        result = await tool.execute({"sequence": seq, "reactions": ["EcoRI"], "circular": False})
+        rxn = result["reactions"][0]
+        assert rxn["total_cuts"] == 1
+        assert len(rxn["fragments"]) == 2
+        assert sum(rxn["fragments"]) == len(seq)
         assert result["sequence_length"] == 12
 
     async def test_no_cuts(self, tool):
         seq = "AAAAAAAAAA"
-        result = await tool.execute({"sequence": seq, "enzymes": ["EcoRI"], "circular": False})
-        assert result["total_cuts"] == 0
-        assert result["fragments"] == [10]
+        result = await tool.execute({"sequence": seq, "reactions": ["EcoRI"], "circular": False})
+        rxn = result["reactions"][0]
+        assert rxn["total_cuts"] == 0
+        assert rxn["fragments"] == [10]
 
     async def test_circular_digest(self, tool):
         # Circular fragment sizes should sum to sequence length
         seq = "GAATTCAAAAAAGAATTCAAAAAA"
-        result = await tool.execute({"sequence": seq, "enzymes": ["EcoRI"], "circular": True})
+        result = await tool.execute({"sequence": seq, "reactions": ["EcoRI"], "circular": True})
         assert result["circular"] is True
-        assert sum(result["fragments"]) == len(seq)
+        assert sum(result["reactions"][0]["fragments"]) == len(seq)
 
-    async def test_multiple_enzymes(self, tool):
-        # EcoRI (GAATTC) and BamHI (GGATCC)
+    async def test_co_digestion(self, tool):
+        # EcoRI (GAATTC) and BamHI (GGATCC) in one reaction
         seq = "GAATTCAAAAGGATCCAAAA"
         result = await tool.execute(
-            {"sequence": seq, "enzymes": ["EcoRI", "BamHI"], "circular": False}
+            {"sequence": seq, "reactions": ["EcoRI+BamHI"], "circular": False}
         )
-        assert result["total_cuts"] == 2
-        assert len(result["enzymes"]) == 2
-        assert sum(result["fragments"]) == len(seq)
+        rxn = result["reactions"][0]
+        assert rxn["total_cuts"] == 2
+        assert len(rxn["enzymes"]) == 2
+        assert sum(rxn["fragments"]) == len(seq)
+
+    async def test_separate_reactions(self, tool):
+        # Two separate reactions -- two gel lanes
+        seq = "GAATTCAAAAGGATCCAAAA"
+        result = await tool.execute(
+            {"sequence": seq, "reactions": ["EcoRI", "BamHI"], "circular": False}
+        )
+        assert len(result["reactions"]) == 2
+        assert result["reactions"][0]["name"] == "EcoRI"
+        assert result["reactions"][1]["name"] == "BamHI"
+        # Each single enzyme should produce 1 cut
+        assert result["reactions"][0]["total_cuts"] == 1
+        assert result["reactions"][1]["total_cuts"] == 1
+        # Gel should have ladder + 2 sample lanes
+        assert len(result["gel_data"]["lanes"]) == 3
 
     async def test_invalid_enzyme(self, tool):
         result = await tool.execute(
-            {"sequence": "ATGC", "enzymes": ["NotAnEnzyme"]}
+            {"sequence": "ATGC", "reactions": ["NotAnEnzyme"]}
         )
         assert "error" in result
 
     async def test_empty_sequence(self, tool):
-        result = await tool.execute({"sequence": "", "enzymes": ["EcoRI"]})
+        result = await tool.execute({"sequence": "", "reactions": ["EcoRI"]})
         assert "error" in result
 
     async def test_format_result(self, tool):
-        result = {"total_cuts": 2, "fragments": [500, 300]}
+        result = {"reactions": [{"name": "EcoRI", "total_cuts": 2, "fragments": [500, 300]}]}
         fmt = tool.format_result(result)
         assert "2 cut(s)" in fmt
         assert "2 fragment(s)" in fmt
@@ -400,7 +418,7 @@ class TestUniversalInputNoDB:
     async def test_digest_no_db_returns_error(self):
         tool = DigestTool()
         result = await tool.execute(
-            {"sequence": "AAAGAATTCAAA", "enzymes": ["EcoRI"], "circular": False}
+            {"sequence": "AAAGAATTCAAA", "reactions": ["EcoRI"], "circular": False}
         )
         assert "error" in result
 
