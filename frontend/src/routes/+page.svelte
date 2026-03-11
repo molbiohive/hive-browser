@@ -176,6 +176,10 @@
 		overflow: hidden;
 	}
 
+	:global(*:focus) {
+		outline: none;
+	}
+
 	main {
 		height: 100vh;
 		overflow: hidden;

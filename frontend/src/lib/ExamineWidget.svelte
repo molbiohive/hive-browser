@@ -42,6 +42,7 @@
 	let hover = $state(null);
 	let plasmidW = $state(0);
 	let seqPanelW = $state(0);
+	const seqHeight = $derived(Math.max(plasmidW, 500));
 </script>
 
 {#if data?.error}
@@ -81,6 +82,7 @@
 				{topology}
 				{selectionState}
 				width={seqPanelW}
+				height={seqHeight}
 				showComplement={true}
 				showAnnotations={true}
 				onhoverinfo={(info) => { hover = info; }}
@@ -118,7 +120,7 @@
 	.examine-panels {
 		display: flex;
 		gap: 3rem;
-		align-items: center;
+		align-items: stretch;
 	}
 	.panel-plasmid {
 		flex: 0 0 40%;
