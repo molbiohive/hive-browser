@@ -13,6 +13,7 @@ from sqlalchemy import func, select
 
 from hive.db import session as db
 from hive.db.models import IndexedFile, Part, Sequence, User
+from hive.context import current_user_id
 from hive.tools.router import route_input
 from hive.users.service import create_feedback, get_user_by_token, update_preferences
 
@@ -271,6 +272,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
             # Handle tool re-run (for stale widgets in loaded chats)
             if data.get("type") == "rerun_tool" and registry:
+                current_user_id.set(user.id)
                 tool_name = data.get("tool")
                 params = data.get("params", {})
                 message_index = data.get("messageIndex")
@@ -329,6 +331,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     config=config,
                     tool_rag=tool_rag,
                     use_planner=use_planner,
+                    user_id=user.id,
                 )
             )
 
@@ -349,9 +352,12 @@ async def _handle_message(
     config,
     tool_rag=None,
     use_planner: bool = True,
+    user_id: int | None = None,
 ):
     """Process a user message — runs as a cancellable background task."""
     try:
+        current_user_id.set(user_id)
+
         async def _progress(data: dict):
             await manager.send_json(conn_id, {"type": "progress", **data})
 

@@ -9,7 +9,7 @@ from pathlib import Path
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from hive.db.models import Enzyme
+from hive.db.models import Collection, Enzyme
 
 logger = logging.getLogger(__name__)
 
@@ -260,4 +260,35 @@ async def bootstrap_enzymes(session: AsyncSession) -> int:
     await session.flush()
     loaded = len(items)
     logger.info("Bootstrapped %d enzymes from %s", loaded, path.name)
+
+    # Bootstrap default enzyme collection
+    await _bootstrap_default_collection(session)
+
     return loaded
+
+
+_DEFAULT_ENZYMES = [
+    "EcoRI", "BamHI", "HindIII", "XbaI", "SalI", "PstI", "SphI", "KpnI",
+    "NcoI", "NdeI", "NheI", "XhoI", "NotI", "EcoRV", "SmaI", "SacI",
+    "SacII", "ClaI", "BglII", "ApaI", "MluI", "StuI", "ScaI", "SpeI",
+    "BsaI", "BbsI", "BsmBI", "SapI", "AarI", "DpnI",
+]
+
+
+async def _bootstrap_default_collection(session: AsyncSession) -> None:
+    """Create a default 'Common Enzymes' collection if none exists."""
+    existing = (await session.execute(
+        select(func.count()).select_from(Collection)
+        .where(Collection.set_type == "enzymes", Collection.is_default.is_(True))
+    )).scalar() or 0
+    if existing > 0:
+        return
+
+    session.add(Collection(
+        name="Common Enzymes",
+        set_type="enzymes",
+        items=_DEFAULT_ENZYMES,
+        is_default=True,
+    ))
+    await session.flush()
+    logger.info("Bootstrapped default enzyme collection (%d enzymes)", len(_DEFAULT_ENZYMES))
