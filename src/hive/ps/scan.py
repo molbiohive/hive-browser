@@ -20,26 +20,25 @@ logger = logging.getLogger(__name__)
 SCAN_COOLDOWN = 1200
 
 
-def _token_path(config: WatcherConfig) -> Path:
-    """Return path for the .last_scan timestamp file next to the watch root."""
-    root = Path(config.root).expanduser().resolve()
-    return root / ".last_scan"
+def _token_path(data_root: str) -> Path:
+    """Return path for the .last_scan timestamp file inside data_root."""
+    p = Path(data_root).expanduser().resolve()
+    p.mkdir(parents=True, exist_ok=True)
+    return p / ".last_scan"
 
 
-def _read_last_scan(config: WatcherConfig) -> float:
+def _read_last_scan(data_root: str) -> float:
     """Read last scan timestamp, or 0 if missing."""
-    path = _token_path(config)
     try:
-        return float(path.read_text().strip())
+        return float(_token_path(data_root).read_text().strip())
     except (FileNotFoundError, ValueError):
         return 0.0
 
 
-def _write_last_scan(config: WatcherConfig) -> None:
+def _write_last_scan(data_root: str) -> None:
     """Write current time as last scan timestamp."""
-    path = _token_path(config)
     try:
-        path.write_text(str(time.time()))
+        _token_path(data_root).write_text(str(time.time()))
     except OSError as e:
         logger.warning("Could not write scan token: %s", e)
 
@@ -50,12 +49,13 @@ class ScanProcess(Process):
     name = "scan"
     description = "Initial file scan"
 
-    def __init__(self, config: WatcherConfig, dep_registry: DepRegistry | None = None):
+    def __init__(self, config: WatcherConfig, data_root: str, dep_registry: DepRegistry | None = None):
         self.config = config
+        self.data_root = data_root
         self.dep_registry = dep_registry
 
     async def run(self, ctx: ProcessContext) -> str:
-        last = _read_last_scan(self.config)
+        last = _read_last_scan(self.data_root)
         elapsed = time.time() - last
         if elapsed < SCAN_COOLDOWN:
             remaining = int(SCAN_COOLDOWN - elapsed)
@@ -63,7 +63,7 @@ class ScanProcess(Process):
             return f"Skipped, last scan {int(elapsed)}s ago ({remaining}s remaining)"
 
         count = await scan_and_ingest(self.config, dep_registry=self.dep_registry, ctx=ctx)
-        _write_last_scan(self.config)
+        _write_last_scan(self.data_root)
         return f"{count} files indexed"
 
 
@@ -73,13 +73,14 @@ class RescanProcess(Process):
     name = "rescan"
     description = "Full directory rescan"
 
-    def __init__(self, config: WatcherConfig, dep_registry: DepRegistry | None = None):
+    def __init__(self, config: WatcherConfig, data_root: str, dep_registry: DepRegistry | None = None):
         self.config = config
+        self.data_root = data_root
         self.dep_registry = dep_registry
 
     async def run(self, ctx: ProcessContext) -> str:
         count = await scan_and_ingest(self.config, dep_registry=self.dep_registry, ctx=ctx)
-        _write_last_scan(self.config)
+        _write_last_scan(self.data_root)
         return f"{count} files indexed"
 
 
@@ -89,8 +90,9 @@ class ReindexProcess(Process):
     name = "reindex"
     description = "Re-parse all files"
 
-    def __init__(self, config: WatcherConfig, dep_registry: DepRegistry | None = None):
+    def __init__(self, config: WatcherConfig, data_root: str, dep_registry: DepRegistry | None = None):
         self.config = config
+        self.data_root = data_root
         self.dep_registry = dep_registry
 
     async def run(self, ctx: ProcessContext) -> str:
@@ -109,5 +111,5 @@ class ReindexProcess(Process):
             reset_count = result.rowcount
 
         count = await scan_and_ingest(self.config, dep_registry=self.dep_registry, ctx=ctx)
-        _write_last_scan(self.config)
+        _write_last_scan(self.data_root)
         return f"{reset_count} hashes reset, {count} files re-parsed"
