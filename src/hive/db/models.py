@@ -239,6 +239,26 @@ class Enzyme(Base):
     is_blunt: Mapped[bool] = mapped_column(Boolean)
 
 
+# ── Collections ─────────────────────────────────────────────────
+
+
+class Collection(Base):
+    __tablename__ = "collections"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    set_type: Mapped[str] = mapped_column(Text, nullable=False)  # "enzymes" | "primers"
+    items: Mapped[list] = mapped_column(JSON, nullable=False)  # enzyme names or part IDs
+    is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    __table_args__ = (
+        Index("idx_collection_type", "set_type"),
+    )
+
+
 # ── Feedback & Tool Approvals ────────────────────────────────────
 
 
