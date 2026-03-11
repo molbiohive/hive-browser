@@ -16,6 +16,18 @@ from hive.tools.resolve import resolve_sequence
 logger = logging.getLogger(__name__)
 
 
+def _dedup_primers(primers: list[dict]) -> list[dict]:
+    """Deduplicate primers by (name, start). File-native entries come first."""
+    seen: set[tuple] = set()
+    out: list[dict] = []
+    for p in primers:
+        key = (p.get("name", ""), p.get("start"))
+        if key not in seen:
+            seen.add(key)
+            out.append(p)
+    return out
+
+
 class ExamineInput(BaseModel):
     sid: int | None = Field(default=None, description="Sequence ID (preferred)")
     name: str | None = Field(default=None, description="Sequence name (fallback)")
@@ -102,6 +114,7 @@ class ExamineTool(Tool):
                     "end": pi.end,
                     "strand": pi.strand,
                     "length": pi.part.length,
+                    "sequence": pi.part.sequence,
                     "qualifiers": pi.qualifiers,
                 }
                 for pi in seq.part_instances
@@ -210,30 +223,34 @@ class ExamineTool(Tool):
                     for p in parts_list
                     if p["annotation_type"] != "primer_bind"
                 ],
-                "primers": [
-                    {
-                        "pid": p["pid"],
-                        "name": p["name"],
-                        "start": p["start"],
-                        "end": p["end"],
-                        "strand": p["strand"],
-                        "length": p["length"],
-                        "source": "file",
-                    }
-                    for p in parts_list
-                    if p["annotation_type"] == "primer_bind"
-                ] + [
-                    {
-                        "pid": pp["primer_id"],
-                        "name": pp["name"],
-                        "start": pp["start"],
-                        "end": pp["end"],
-                        "strand": pp["strand"],
-                        "length": pp["primer_length"],
-                        "source": "predicted",
-                    }
-                    for pp in predicted_primers
-                ],
+                "primers": _dedup_primers(
+                    [
+                        {
+                            "pid": p["pid"],
+                            "name": p["name"],
+                            "start": p["start"],
+                            "end": p["end"],
+                            "strand": p["strand"],
+                            "length": p["length"],
+                            "sequence": p.get("sequence"),
+                            "source": "file",
+                        }
+                        for p in parts_list
+                        if p["annotation_type"] == "primer_bind"
+                    ] + [
+                        {
+                            "pid": pp["primer_id"],
+                            "name": pp["name"],
+                            "start": pp["start"],
+                            "end": pp["end"],
+                            "strand": pp["strand"],
+                            "length": pp["primer_length"],
+                            "sequence": pp.get("primer_sequence"),
+                            "source": "predicted",
+                        }
+                        for pp in predicted_primers
+                    ]
+                ),
                 "cut_sites": cut_sites,
                 "file": {
                     "path": display_file_path(seq.file.file_path),

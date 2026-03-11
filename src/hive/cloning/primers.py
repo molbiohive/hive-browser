@@ -13,7 +13,7 @@ def find_primer_sites(
     sequence: str,
     primers: list[dict],
     circular: bool = True,
-    anchor_len: int = 8,
+    anchor_len: int = 10,
 ) -> list[dict]:
     """Predict primer binding sites on a target sequence.
 
@@ -73,6 +73,7 @@ def find_primer_sites(
                         "end": (actual_start + primer_len) % seq_len if circular else actual_start + primer_len,
                         "strand": 1,
                         "primer_length": primer_len,
+                        "primer_sequence": primer_seq,
                     })
             start = pos + 1
 
@@ -96,6 +97,7 @@ def find_primer_sites(
                         "end": (actual_start + primer_len) % seq_len if circular else actual_start + primer_len,
                         "strand": -1,
                         "primer_length": primer_len,
+                        "primer_sequence": primer_seq,
                     })
             start = pos + 1
 

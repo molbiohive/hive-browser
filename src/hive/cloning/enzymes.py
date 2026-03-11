@@ -232,6 +232,7 @@ async def bootstrap_enzymes(session: AsyncSession) -> int:
     )).scalar() or 0
     if count > 0:
         logger.debug("Enzymes already loaded: %d", count)
+        await _bootstrap_default_collection(session)
         return 0
 
     path = _EXTRAS_DIR / "enzymes.json"
