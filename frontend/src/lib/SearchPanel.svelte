@@ -99,7 +99,7 @@
 			return;
 		}
 		searchLoading = true;
-		_debounceTimer = setTimeout(() => doSearch(q), 300);
+		_debounceTimer = setTimeout(() => doSearch(q), 150);
 	}
 
 	async function doSearch(q) {
