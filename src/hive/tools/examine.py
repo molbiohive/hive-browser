@@ -8,6 +8,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from hive.config import display_file_path
+from hive.context import current_user_id
 from hive.db import session as db
 from hive.tools.base import Tool
 from hive.tools.resolve import resolve_sequence
@@ -106,36 +107,84 @@ class ExamineTool(Tool):
                 for pi in seq.part_instances
             ]
 
-            # Scan cut sites
+            circular = seq.topology == "circular"
+
+            # Scan cut sites (optionally filtered by active enzyme collection)
             cut_sites: list[dict] = []
             if seq.sequence and seq.molecule in (None, "DNA", "dna"):
                 try:
-                    from hive.cloning.enzymes import find_all_cutters, load_enzymes
+                    from hive.cloning.collections import get_active_enzyme_names
+                    from hive.cloning.enzymes import (
+                        find_all_cutters,
+                        find_cut_sites,
+                        load_enzymes,
+                    )
 
                     enzymes = await load_enzymes(session)
-                    circular = seq.topology == "circular"
-                    cutters = find_all_cutters(
-                        seq.sequence.upper(), enzymes, circular=circular,
-                    )
-                    for c in cutters:
-                        enz = enzymes.get(c["name"].upper())
-                        if not enz:
-                            continue
-                        for pos in c["positions"]:
-                            cut_sites.append({
-                                "enzyme": c["name"],
-                                "position": pos,
-                                "end": pos + enz.length,
-                                "strand": 1,
-                                "cutPosition": enz.cut5,
-                                "complementCutPosition": enz.cut3,
-                                "overhang": (
-                                    "5'" if enz.overhang < 0
-                                    else ("3'" if enz.overhang > 0 else "blunt")
-                                ),
-                            })
+                    user_id = current_user_id.get()
+                    active_names = await get_active_enzyme_names(session, user_id)
+
+                    if active_names:
+                        result = find_cut_sites(
+                            seq.sequence.upper(), active_names, enzymes,
+                            circular=circular,
+                        )
+                        for er in result["enzyme_results"]:
+                            enz = enzymes.get(er["name"].upper())
+                            if not enz:
+                                continue
+                            for pos in er["sites"]:
+                                cut_sites.append({
+                                    "enzyme": er["name"],
+                                    "position": pos,
+                                    "end": pos + enz.length,
+                                    "strand": 1,
+                                    "cutPosition": enz.cut5,
+                                    "complementCutPosition": enz.cut3,
+                                    "overhang": (
+                                        "5'" if enz.overhang < 0
+                                        else ("3'" if enz.overhang > 0 else "blunt")
+                                    ),
+                                })
+                    else:
+                        cutters = find_all_cutters(
+                            seq.sequence.upper(), enzymes, circular=circular,
+                        )
+                        for c in cutters:
+                            enz = enzymes.get(c["name"].upper())
+                            if not enz:
+                                continue
+                            for pos in c["positions"]:
+                                cut_sites.append({
+                                    "enzyme": c["name"],
+                                    "position": pos,
+                                    "end": pos + enz.length,
+                                    "strand": 1,
+                                    "cutPosition": enz.cut5,
+                                    "complementCutPosition": enz.cut3,
+                                    "overhang": (
+                                        "5'" if enz.overhang < 0
+                                        else ("3'" if enz.overhang > 0 else "blunt")
+                                    ),
+                                })
                 except Exception as e:
                     logger.warning("Cut site scan failed: %s", e)
+
+            # Predict primer binding from collection
+            predicted_primers: list[dict] = []
+            if seq.sequence and seq.molecule in (None, "DNA", "dna"):
+                try:
+                    from hive.cloning.collections import get_active_primer_parts
+                    from hive.cloning.primers import find_primer_sites
+
+                    user_id = current_user_id.get()
+                    primer_parts = await get_active_primer_parts(session, user_id)
+                    if primer_parts:
+                        predicted_primers = find_primer_sites(
+                            seq.sequence.upper(), primer_parts, circular=circular,
+                        )
+                except Exception as e:
+                    logger.warning("Primer prediction failed: %s", e)
 
             return {
                 "sequence": {
@@ -169,9 +218,21 @@ class ExamineTool(Tool):
                         "end": p["end"],
                         "strand": p["strand"],
                         "length": p["length"],
+                        "source": "file",
                     }
                     for p in parts_list
                     if p["annotation_type"] == "primer_bind"
+                ] + [
+                    {
+                        "pid": pp["primer_id"],
+                        "name": pp["name"],
+                        "start": pp["start"],
+                        "end": pp["end"],
+                        "strand": pp["strand"],
+                        "length": pp["primer_length"],
+                        "source": "predicted",
+                    }
+                    for pp in predicted_primers
                 ],
                 "cut_sites": cut_sites,
                 "file": {
