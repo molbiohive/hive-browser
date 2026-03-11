@@ -37,6 +37,8 @@
 		--color-accent-light: #D1BBF8;
 		--color-warn: #704A2F;
 
+		--font-mono: 'SF Mono', Monaco, Menlo, monospace;
+
 		--shadow: rgba(47, 32, 53, 0.08);
 
 		/* Hatchlings light theme -- bg matches widget surface */

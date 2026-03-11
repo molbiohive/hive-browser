@@ -44,7 +44,7 @@
 		background: var(--bg-hover);
 	}
 	.seq-text {
-		font-family: 'SF Mono', Monaco, monospace;
+		font-family: var(--font-mono);
 		font-size: 0.78rem;
 		line-height: 1.5;
 		margin: 0;

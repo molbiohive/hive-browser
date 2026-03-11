@@ -649,7 +649,7 @@
 	}
 
 	.item-site {
-		font-family: 'SF Mono', 'Menlo', 'Monaco', monospace;
+		font-family: var(--font-mono);
 		font-size: 0.78rem;
 		color: var(--text-secondary);
 	}

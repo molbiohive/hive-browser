@@ -142,7 +142,7 @@
 		background: var(--bg-code);
 		border: 1px solid var(--border-muted);
 		border-radius: 4px;
-		font-family: 'SF Mono', Monaco, monospace;
+		font-family: var(--font-mono);
 		font-size: 0.72rem;
 		color: var(--text-muted);
 		cursor: pointer;
@@ -174,7 +174,7 @@
 		background: var(--bg-code);
 		border: 1px solid var(--border-muted);
 		border-radius: 4px;
-		font-family: 'SF Mono', Monaco, monospace;
+		font-family: var(--font-mono);
 		font-size: 0.72rem;
 		color: var(--text-muted);
 		white-space: pre;

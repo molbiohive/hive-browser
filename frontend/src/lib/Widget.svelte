@@ -168,7 +168,7 @@
 	}
 
 	.header-cmd {
-		font-family: 'SF Mono', Monaco, Menlo, monospace;
+		font-family: var(--font-mono);
 		font-size: 0.75rem;
 		color: var(--text-faint);
 		background: none;
@@ -254,7 +254,7 @@
 	}
 
 	.truncated {
-		font-family: 'SF Mono', Monaco, monospace;
+		font-family: var(--font-mono);
 		font-size: 0.72rem;
 		cursor: help;
 	}

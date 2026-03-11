@@ -154,7 +154,7 @@
 	}
 
 	.tokens {
-		font-family: 'SF Mono', Monaco, monospace;
+		font-family: var(--font-mono);
 		font-size: 0.65rem;
 	}
 
@@ -194,7 +194,7 @@
 		background: var(--bg-muted);
 		border-left: 3px solid var(--border);
 		border-radius: 0 4px 4px 0;
-		font-family: 'SF Mono', Monaco, monospace;
+		font-family: var(--font-mono);
 		font-size: 0.78rem;
 		line-height: 1.5;
 		color: var(--text-muted);
@@ -241,7 +241,7 @@
 		background: var(--bg-code);
 		padding: 0.1rem 0.35rem;
 		border-radius: 3px;
-		font-family: 'SF Mono', Monaco, monospace;
+		font-family: var(--font-mono);
 		font-size: 0.82rem;
 	}
 

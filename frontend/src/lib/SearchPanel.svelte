@@ -371,7 +371,7 @@
 		background: var(--bg-surface);
 		border-radius: 8px;
 		font-size: 0.8rem;
-		font-family: monospace;
+		font-family: var(--font-mono);
 		color: var(--text);
 		outline: none;
 		resize: vertical;

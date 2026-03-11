@@ -84,7 +84,7 @@
 		background: var(--bg-hover);
 	}
 	.alignment {
-		font-family: 'SF Mono', Monaco, Menlo, 'Courier New', monospace;
+		font-family: var(--font-mono);
 		font-size: 0.75rem;
 		line-height: 1.4;
 		padding: 0.75rem;

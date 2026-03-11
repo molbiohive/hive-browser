@@ -172,7 +172,7 @@
 		align-items: center;
 	}
 	h4 { margin: 0.75rem 0 0.3rem; font-size: 0.85rem; color: var(--text-muted); }
-	:global(.mono) { font-family: 'SF Mono', Monaco, monospace; font-size: 0.78rem; }
+	:global(.mono) { font-family: var(--font-mono); font-size: 0.78rem; }
 	.empty { color: var(--text-placeholder); font-size: 0.85rem; }
 	.cap-note { font-size: 0.72rem; color: var(--text-faint); margin: 0.2rem 0 0; text-align: center; }
 	.tab-content { margin-top: 0.25rem; }
