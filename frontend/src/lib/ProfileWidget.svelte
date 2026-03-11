@@ -2,12 +2,8 @@
 	import DataTable from '$lib/DataTable.svelte';
 	import TabBar from '$lib/TabBar.svelte';
 	import CopyableSequence from '$lib/CopyableSequence.svelte';
-	import { mapToParts, mapToCutSites } from '$lib/hatchlings.ts';
-	import { PlasmidViewer, Tooltip } from '@molbiohive/hatchlings';
 
 	let { data } = $props();
-
-	const MAX_CUTSITES = 50;
 
 	const featureColumns = [
 		{ key: 'pid', label: 'PID' },
@@ -36,8 +32,6 @@
 		return s.length > 100 ? s.slice(0, 100) + '\u2026' : s;
 	});
 
-	const parts = $derived(mapToParts(data?.features, data?.primers));
-
 	const uniqueCutSites = $derived.by(() => {
 		const sites = data?.cut_sites;
 		if (!sites) return [];
@@ -56,25 +50,6 @@
 		}));
 	});
 
-	const cappedCutSites = $derived.by(() => {
-		const sites = data?.cut_sites;
-		if (!sites || sites.length <= MAX_CUTSITES) return mapToCutSites(sites);
-		const byEnzyme = {};
-		for (const cs of sites) {
-			if (!byEnzyme[cs.enzyme]) byEnzyme[cs.enzyme] = [];
-			byEnzyme[cs.enzyme].push(cs);
-		}
-		const sorted = Object.values(byEnzyme).sort((a, b) => a.length - b.length);
-		const result = [];
-		for (const group of sorted) {
-			if (result.length + group.length > MAX_CUTSITES) break;
-			result.push(...group);
-		}
-		return mapToCutSites(result);
-	});
-
-	const showPlasmid = $derived(data?.sequence?.size_bp > 0);
-
 	const tabs = $derived.by(() => {
 		const t = [];
 		if (data?.features?.length) t.push({ id: 'features', label: `Features (${data.features.length})` });
@@ -88,8 +63,6 @@
 			activeTab = tabs[0].id;
 		}
 	});
-
-	let hover = $state(null);
 </script>
 
 {#if data?.error}
@@ -109,30 +82,6 @@
 		<div class="field"><strong>Description:</strong> {data.sequence.description}</div>
 		{/if}
 	</div>
-
-	<!-- Plasmid map -->
-	{#if showPlasmid}
-	<div class="plasmid-section">
-		<PlasmidViewer
-			name={data.sequence.name}
-			size={data.sequence.size_bp}
-			{parts}
-			cutSites={cappedCutSites}
-			topology={data.sequence.topology || 'circular'}
-			onhoverinfo={(info) => { hover = info; }}
-		/>
-		<Tooltip
-			visible={hover != null}
-			x={hover?.position?.x}
-			y={hover?.position?.y}
-			title={hover?.title}
-			items={hover?.items}
-		/>
-		{#if data.cut_sites?.length > MAX_CUTSITES}
-		<p class="cap-note">Showing {cappedCutSites.length} of {data.cut_sites.length} cut sites</p>
-		{/if}
-	</div>
-	{/if}
 
 	<!-- Copyable sequence -->
 	{#if data.sequence.sequence_data}
@@ -166,17 +115,8 @@
 	.profile { font-size: 0.85rem; }
 	.meta { margin-bottom: 0.5rem; }
 	.field { margin-bottom: 0.3rem; }
-	.plasmid-section {
-		position: relative;
-		margin-bottom: 0.5rem;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-	}
 	h4 { margin: 0.75rem 0 0.3rem; font-size: 0.85rem; color: var(--text-muted); }
-	:global(.mono) { font-family: var(--font-mono); font-size: 0.78rem; }
 	.error { color: var(--color-err); font-size: 0.85rem; }
 	.empty { color: var(--text-placeholder); font-size: 0.85rem; }
-	.cap-note { font-size: 0.72rem; color: var(--text-faint); margin: 0.2rem 0 0; text-align: center; }
 	.tab-content { margin-top: 0.25rem; }
 </style>
