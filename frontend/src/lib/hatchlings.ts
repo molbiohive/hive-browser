@@ -13,6 +13,7 @@ const FEATURE_COLORS: Record<string, string> = {
 	rep_origin: '#9467BD',
 	misc_feature: '#8C8C8C',
 	primer_bind: '#E377C2',
+	primer_predicted: '#C49BD9',
 	RBS: '#17BECF',
 	regulatory: '#31A354',
 };
@@ -31,7 +32,7 @@ export function mapToParts(
 			const f = features[i];
 			if (f.start == null || f.end == null) continue;
 			parts.push({
-				id: f.pid != null ? `f-${f.pid}` : `f-idx-${i}`,
+				id: `f-${i}`,
 				name: f.name || '',
 				type: f.type || 'misc_feature',
 				start: f.start,
@@ -43,18 +44,29 @@ export function mapToParts(
 	}
 
 	if (primers) {
+		// Deduplicate: hatchlings keys primers by (name + start), so if a
+		// file-native and predicted primer share name+start, keep file-native.
+		const seen = new Set<string>();
 		for (let i = 0; i < primers.length; i++) {
 			const p = primers[i];
 			if (p.start == null || p.end == null) continue;
+			const key = `${p.name || ''}\0${p.start}`;
+			if (seen.has(key)) continue;
+			seen.add(key);
+			const predicted = p.source === 'predicted';
 			parts.push({
-				id: p.pid != null ? `p-${p.pid}` : `p-idx-${i}`,
+				id: `p-${i}`,
 				name: p.name || '',
 				type: 'primer_bind',
 				start: p.start,
 				end: p.end,
 				strand: p.strand > 0 ? 1 : -1,
-				color: FEATURE_COLORS.primer_bind,
+				color: predicted ? FEATURE_COLORS.primer_predicted : FEATURE_COLORS.primer_bind,
+				note: predicted ? 'predicted' : undefined,
 				tm: p.tm,
+				sequence: p.sequence,
+				bindingStart: p.bindingStart,
+				bindingEnd: p.bindingEnd,
 			});
 		}
 	}
