@@ -1,4 +1,6 @@
 <script>
+	import { copyToClipboard } from '$lib/clipboard.ts';
+
 	let { data } = $props();
 	let copied = $state(false);
 
@@ -30,12 +32,10 @@
 	);
 
 	async function copyAlignment() {
-		try {
-			await navigator.clipboard.writeText(data.aligned);
+		const ok = await copyToClipboard(data.aligned);
+		if (ok) {
 			copied = true;
 			setTimeout(() => { copied = false; }, 1500);
-		} catch (err) {
-			console.error('Copy failed:', err);
 		}
 	}
 </script>

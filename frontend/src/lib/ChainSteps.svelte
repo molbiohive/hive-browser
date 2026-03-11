@@ -1,4 +1,6 @@
 <script>
+	import { copyToClipboard } from '$lib/clipboard.ts';
+
 	let { chain } = $props();
 	let expanded = $state(false);
 
@@ -16,12 +18,8 @@
 	}
 
 	async function copyCode(step) {
-		try {
-			const text = isSandbox(step) ? (step.params?.code || '') : fullCommand(step);
-			await navigator.clipboard.writeText(text);
-		} catch (e) {
-			console.error('Clipboard copy failed:', e);
-		}
+		const text = isSandbox(step) ? (step.params?.code || '') : fullCommand(step);
+		await copyToClipboard(text);
 	}
 </script>
 

@@ -1,5 +1,6 @@
 <script>
 	import { rerunTool } from '$lib/stores/chat.ts';
+	import { copyToClipboard } from '$lib/clipboard.ts';
 	import DataTable from '$lib/DataTable.svelte';
 
 	// Auto-discover widget components: FooWidget.svelte -> type "foo"
@@ -77,12 +78,10 @@
 
 	async function copyCommand(e) {
 		e.stopPropagation();
-		try {
-			await navigator.clipboard.writeText(commandText);
+		const ok = await copyToClipboard(commandText);
+		if (ok) {
 			copied = true;
 			setTimeout(() => { copied = false; }, 1500);
-		} catch (err) {
-			console.error('Copy failed:', err);
 		}
 	}
 
