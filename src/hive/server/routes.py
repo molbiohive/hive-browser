@@ -256,6 +256,53 @@ async def delete_collection_endpoint(collection_id: int):
         return {"deleted": deleted}
 
 
+# ── Enzyme / Primer item lists (for collection picker) ────
+
+
+@router.get("/enzymes")
+async def list_enzymes():
+    """Return all enzyme names for the collection item picker."""
+    if not db.async_session_factory:
+        return []
+    from hive.db.models import Enzyme
+
+    async with db.async_session_factory() as s:
+        rows = (await s.execute(
+            select(Enzyme.name, Enzyme.site, Enzyme.length)
+            .order_by(Enzyme.name)
+        )).all()
+        return [{"name": r.name, "site": r.site, "length": r.length} for r in rows]
+
+
+@router.get("/primers")
+async def list_primer_parts():
+    """Return all primer parts for the collection item picker."""
+    if not db.async_session_factory:
+        return []
+    from sqlalchemy.orm import selectinload
+
+    from hive.db.models import Part, PartInstance
+
+    async with db.async_session_factory() as s:
+        parts = (await s.execute(
+            select(Part)
+            .join(PartInstance, Part.id == PartInstance.part_id)
+            .where(PartInstance.annotation_type == "primer_bind")
+            .options(selectinload(Part.names))
+            .distinct()
+            .order_by(Part.id)
+        )).scalars().all()
+        return [
+            {
+                "id": p.id,
+                "name": p.names[0].name if p.names else "",
+                "length": p.length,
+                "molecule": p.molecule,
+            }
+            for p in parts
+        ]
+
+
 # ── Search / BLAST endpoints (for search panel) ──────────
 
 

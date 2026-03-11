@@ -48,7 +48,6 @@ async def route_input(
     sandbox_max_retries: int = 3,
     context_char_limit: int = 0,
     redact_keys: frozenset[str] | None = None,
-    user_id: int | None = None,
 ) -> dict[str, Any]:
     """
     Route user input → tool execution → response.
