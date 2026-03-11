@@ -177,6 +177,85 @@ async def _discover_ollama(base_url: str, configured: list[dict]) -> list[dict]:
     return []
 
 
+# ── Collections ───────────────────────────────────────────
+
+
+@router.get("/collections")
+async def list_collections_endpoint(request: Request, type: str | None = None):
+    from hive.cloning.collections import list_collections
+
+    if not db.async_session_factory:
+        return []
+    async with db.async_session_factory() as s:
+        cols = await list_collections(s, set_type=type)
+        return [
+            {
+                "id": c.id, "name": c.name, "set_type": c.set_type,
+                "items": c.items, "is_default": c.is_default,
+            }
+            for c in cols
+        ]
+
+
+@router.post("/collections")
+async def create_collection_endpoint(request: Request):
+    from hive.cloning.collections import create_collection
+
+    if not db.async_session_factory:
+        return JSONResponse({"error": "Database not available"}, status_code=503)
+    body = await request.json()
+    name = body.get("name", "").strip()
+    set_type = body.get("set_type", "").strip()
+    items = body.get("items", [])
+    if not name or not set_type:
+        return JSONResponse({"error": "name and set_type required"}, status_code=422)
+    try:
+        async with db.async_session_factory() as s:
+            col = await create_collection(s, name=name, set_type=set_type, items=items)
+            await s.commit()
+            return {
+                "id": col.id, "name": col.name, "set_type": col.set_type,
+                "items": col.items, "is_default": col.is_default,
+            }
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=422)
+
+
+@router.put("/collections/{collection_id}")
+async def update_collection_endpoint(collection_id: int, request: Request):
+    from hive.cloning.collections import update_collection
+
+    if not db.async_session_factory:
+        return JSONResponse({"error": "Database not available"}, status_code=503)
+    body = await request.json()
+    try:
+        async with db.async_session_factory() as s:
+            col = await update_collection(
+                s, collection_id,
+                name=body.get("name"),
+                items=body.get("items"),
+            )
+            await s.commit()
+            return {
+                "id": col.id, "name": col.name, "set_type": col.set_type,
+                "items": col.items, "is_default": col.is_default,
+            }
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=404)
+
+
+@router.delete("/collections/{collection_id}")
+async def delete_collection_endpoint(collection_id: int):
+    from hive.cloning.collections import delete_collection
+
+    if not db.async_session_factory:
+        return JSONResponse({"error": "Database not available"}, status_code=503)
+    async with db.async_session_factory() as s:
+        deleted = await delete_collection(s, collection_id)
+        await s.commit()
+        return {"deleted": deleted}
+
+
 # ── Search / BLAST endpoints (for search panel) ──────────
 
 

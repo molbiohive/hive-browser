@@ -9,6 +9,7 @@
 	import WelcomeModal from '$lib/WelcomeModal.svelte';
 	import UserPicker from '$lib/UserPicker.svelte';
 	import FeedbackModal from '$lib/FeedbackModal.svelte';
+	import SettingsModal from '$lib/SettingsModal.svelte';
 	import SearchPanel from '$lib/SearchPanel.svelte';
 
 	let inputText = $state('');
@@ -21,6 +22,7 @@
 	let _timerRef = null; // plain var — must not be $state to avoid retriggering $effect
 	let dark = $state(false);
 	let showFeedback = $state(false);
+	let showSettings = $state(false);
 	let showAddUser = $state(false);
 	let previousUserSlug = $state(null);
 	const modalMode = $derived(showAddUser ? 'new' : 'return');
@@ -358,6 +360,9 @@
 		</div>
 		<div class="sidebar-footer">
 			<UserPicker onAddUser={handleAddUser} />
+			<button class="theme-btn" onclick={() => showSettings = true} aria-label="Settings">
+				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 00-2 2v.18a2 2 0 01-1 1.73l-.43.25a2 2 0 01-2 0l-.15-.08a2 2 0 00-2.73.73l-.22.38a2 2 0 00.73 2.73l.15.1a2 2 0 011 1.72v.51a2 2 0 01-1 1.74l-.15.09a2 2 0 00-.73 2.73l.22.38a2 2 0 002.73.73l.15-.08a2 2 0 012 0l.43.25a2 2 0 011 1.73V20a2 2 0 002 2h.44a2 2 0 002-2v-.18a2 2 0 011-1.73l.43-.25a2 2 0 012 0l.15.08a2 2 0 002.73-.73l.22-.39a2 2 0 00-.73-2.73l-.15-.08a2 2 0 01-1-1.74v-.5a2 2 0 011-1.74l.15-.09a2 2 0 00.73-2.73l-.22-.38a2 2 0 00-2.73-.73l-.15.08a2 2 0 01-2 0l-.43-.25a2 2 0 01-1-1.73V4a2 2 0 00-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+			</button>
 			<button class="theme-btn" onclick={toggleTheme} aria-label="Toggle theme">
 				{#if dark}
 					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
@@ -498,6 +503,9 @@
 </div>
 {#if showFeedback}
 	<FeedbackModal onClose={() => showFeedback = false} />
+{/if}
+{#if showSettings}
+	<SettingsModal onClose={() => showSettings = false} />
 {/if}
 {/if}
 
