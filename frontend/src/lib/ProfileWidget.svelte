@@ -92,7 +92,9 @@
 	let hover = $state(null);
 </script>
 
-{#if data?.sequence}
+{#if data?.error}
+<p class="error">{data.error}</p>
+{:else if data?.sequence}
 <div class="profile">
 	<!-- Metadata header -->
 	<div class="meta">
@@ -173,6 +175,7 @@
 	}
 	h4 { margin: 0.75rem 0 0.3rem; font-size: 0.85rem; color: var(--text-muted); }
 	:global(.mono) { font-family: var(--font-mono); font-size: 0.78rem; }
+	.error { color: var(--color-err); font-size: 0.85rem; }
 	.empty { color: var(--text-placeholder); font-size: 0.85rem; }
 	.cap-note { font-size: 0.72rem; color: var(--text-faint); margin: 0.2rem 0 0; text-align: center; }
 	.tab-content { margin-top: 0.25rem; }

@@ -40,7 +40,9 @@
 	];
 </script>
 
-{#if isPidMode}
+{#if data?.error}
+<p class="error">{data.error}</p>
+{:else if isPidMode}
 <div class="parts-detail">
 	<div class="field"><strong>PID:</strong> {data.part.pid}</div>
 	{#if data.part.names?.length}
@@ -98,6 +100,7 @@
 {/if}
 
 <style>
+	.error { color: var(--color-err); font-size: 0.85rem; }
 	.parts-detail, .parts-list { font-size: 0.85rem; }
 	.field { margin-bottom: 0.3rem; }
 	h4 { margin: 0.75rem 0 0.3rem; font-size: 0.85rem; color: var(--text-muted); }

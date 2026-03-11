@@ -18,7 +18,9 @@
 	let hover = $state(null);
 </script>
 
-{#if data}
+{#if data?.error}
+<p class="error">{data.error}</p>
+{:else if data}
 <div class="digest-layout">
 	<div class="digest-left">
 		<div class="summary">
@@ -53,6 +55,7 @@
 {/if}
 
 <style>
+	.error { color: var(--color-err); font-size: 0.85rem; }
 	.digest-layout {
 		display: flex;
 		gap: 1rem;

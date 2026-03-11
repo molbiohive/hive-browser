@@ -67,7 +67,9 @@
 	];
 </script>
 
-{#if data?.results?.length}
+{#if data?.error}
+	<p class="error">{data.error}</p>
+{:else if data?.results?.length}
 	<DataTable rows={data.results} {columns} actions={tableActions} />
 {:else if !data?.parts?.length}
 	<p class="empty">No results</p>
@@ -81,6 +83,7 @@
 {/if}
 
 <style>
+	.error { color: var(--color-err); font-size: 0.85rem; }
 	.empty { color: var(--text-placeholder); font-size: 0.85rem; }
 	:global(.name) { font-weight: 500; }
 	.parts-section { margin-top: 1rem; }

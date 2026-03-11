@@ -44,7 +44,9 @@
 	let seqPanelW = $state(0);
 </script>
 
-{#if seq}
+{#if data?.error}
+<p class="error">{data.error}</p>
+{:else if seq}
 <div class="examine">
 	<div class="examine-header">
 		<strong>{seq.name}</strong>
@@ -128,6 +130,7 @@
 		max-height: 70vh;
 		overflow: auto;
 	}
+	.error { color: var(--color-err); font-size: 0.85rem; }
 	.empty { color: var(--text-placeholder); font-size: 0.85rem; }
 	.cap-note { font-size: 0.72rem; color: var(--text-faint); margin: 0.2rem 0 0; text-align: center; }
 
