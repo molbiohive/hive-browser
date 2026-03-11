@@ -546,22 +546,6 @@
 		display: block;
 	}
 
-	.theme-btn {
-		background: none;
-		border: none;
-		cursor: pointer;
-		color: var(--text-faint);
-		padding: 0.2rem;
-		border-radius: 4px;
-		display: flex;
-		align-items: center;
-	}
-
-	.theme-btn:hover {
-		color: var(--text);
-		background: var(--bg-hover);
-	}
-
 	.sidebar-actions {
 		padding: 0.5rem 0.75rem;
 	}
