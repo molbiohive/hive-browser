@@ -8,6 +8,14 @@ from hive.config import Settings, load_config
 from hive.server.app import create_app
 
 
+class _HealthFilter(logging.Filter):
+    """Suppress uvicorn access log entries for /api/health."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        msg = record.getMessage()
+        return "/api/health" not in msg
+
+
 def init_logging(config: Settings) -> None:
     """Configure centralized logging with file output and optional LLM dump."""
     log_dir = Path(config.logs_dir)
@@ -43,6 +51,7 @@ def init_logging(config: Settings) -> None:
 
 config = load_config()
 init_logging(config)
+logging.getLogger("uvicorn.access").addFilter(_HealthFilter())
 app = create_app(config)
 
 if __name__ == "__main__":

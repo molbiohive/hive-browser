@@ -15,6 +15,7 @@ services:
     restart: unless-stopped
 
   hive:
+    container_name: hive
     build: .
     extra_hosts:
       - "host.docker.internal:host-gateway"
