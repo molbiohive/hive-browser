@@ -1,9 +1,12 @@
 <script>
+	import { mapToParts, mapToCutSites } from '$lib/hatchlings.ts';
+	import { PlasmidViewer, SequenceViewer, Tooltip, SelectionState } from '@molbiohive/hatchlings';
 	import DataTable from '$lib/DataTable.svelte';
 	import TabBar from '$lib/TabBar.svelte';
-	import CopyableSequence from '$lib/CopyableSequence.svelte';
 
 	let { data } = $props();
+
+	const MAX_CUTSITES = 50;
 
 	const featureColumns = [
 		{ key: 'pid', label: 'PID' },
@@ -26,11 +29,43 @@
 		{ key: 'overhang', label: 'Overhang' },
 	];
 
-	const seqPreview = $derived.by(() => {
-		const s = data?.sequence?.sequence_data;
-		if (!s) return '';
-		return s.length > 100 ? s.slice(0, 100) + '\u2026' : s;
+	const seq = $derived(data?.sequence);
+	const seqData = $derived(seq?.sequence_data || '');
+	const topology = $derived(seq?.topology || 'circular');
+
+	const parts = $derived(mapToParts(data?.features, data?.primers));
+
+	const cappedCutSites = $derived.by(() => {
+		const sites = data?.cut_sites;
+		if (!sites || sites.length <= MAX_CUTSITES) return mapToCutSites(sites);
+		const byEnzyme = {};
+		for (const cs of sites) {
+			if (!byEnzyme[cs.enzyme]) byEnzyme[cs.enzyme] = [];
+			byEnzyme[cs.enzyme].push(cs);
+		}
+		const sorted = Object.values(byEnzyme).sort((a, b) => a.length - b.length);
+		const result = [];
+		for (const group of sorted) {
+			if (result.length + group.length > MAX_CUTSITES) break;
+			result.push(...group);
+		}
+		return mapToCutSites(result);
 	});
+
+	let selectionState = $state(null);
+	let lastSize = $state(0);
+	$effect(() => {
+		const size = seq?.size_bp || 0;
+		if (size > 0 && size !== lastSize) {
+			lastSize = size;
+			selectionState = new SelectionState(size);
+		}
+	});
+
+	let hover = $state(null);
+	let plasmidW = $state(0);
+	let seqPanelW = $state(0);
+	const seqHeight = $derived(Math.max(plasmidW, 500));
 
 	const uniqueCutSites = $derived.by(() => {
 		const sites = data?.cut_sites;
@@ -67,31 +102,67 @@
 
 {#if data?.error}
 <p class="error">{data.error}</p>
-{:else if data?.sequence}
+{:else if seq}
 <div class="profile">
-	<!-- Metadata header -->
-	<div class="meta">
-		<div class="field"><strong>SID:</strong> {data.sequence.sid}</div>
-		<div class="field"><strong>Name:</strong> {data.sequence.name}</div>
-		<div class="field"><strong>Size:</strong> {data.sequence.size_bp} bp</div>
-		<div class="field"><strong>Topology:</strong> {data.sequence.topology}</div>
-		{#if data.sequence.molecule}
-		<div class="field"><strong>Molecule:</strong> {data.sequence.molecule}</div>
-		{/if}
-		{#if data.sequence.description}
-		<div class="field"><strong>Description:</strong> {data.sequence.description}</div>
+	<!-- Visual viewers -->
+	<div class="viewers">
+		<div class="panel-plasmid" bind:clientWidth={plasmidW}>
+			{#if plasmidW > 0}
+			<PlasmidViewer
+				name={seq.name}
+				size={seq.size_bp}
+				{parts}
+				cutSites={cappedCutSites}
+				{topology}
+				{selectionState}
+				width={plasmidW}
+				height={plasmidW}
+				onhoverinfo={(info) => { hover = info; }}
+			/>
+			{/if}
+		</div>
+
+		{#if seqData}
+		<div class="panel-sequence" bind:clientWidth={seqPanelW}>
+			{#if seqPanelW > 0}
+			<SequenceViewer
+				seq={seqData}
+				{parts}
+				cutSites={cappedCutSites}
+				{topology}
+				{selectionState}
+				width={seqPanelW}
+				height={seqHeight}
+				showComplement={true}
+				showAnnotations={true}
+				onhoverinfo={(info) => { hover = info; }}
+			/>
+			{/if}
+		</div>
 		{/if}
 	</div>
 
-	<!-- Copyable sequence -->
-	{#if data.sequence.sequence_data}
-	<h4>Sequence</h4>
-	<CopyableSequence
-		sequence={data.sequence.sequence_data}
-		display={seqPreview}
-		label="{data.sequence.size_bp} bp -- click to copy"
+	<Tooltip
+		visible={hover != null}
+		x={hover?.position?.x}
+		y={hover?.position?.y}
+		title={hover?.title}
+		items={hover?.items}
 	/>
+
+	{#if data.cut_sites?.length > MAX_CUTSITES}
+	<p class="cap-note">Showing {cappedCutSites.length} of {data.cut_sites.length} cut sites</p>
 	{/if}
+
+	<!-- Metadata row -->
+	<div class="meta">
+		<span class="field"><strong>SID:</strong> {seq.sid}</span>
+		<span class="field"><strong>Name:</strong> {seq.name}</span>
+		<span class="field"><strong>Size:</strong> {seq.size_bp} bp</span>
+		<span class="field"><strong>Topology:</strong> {topology}</span>
+		{#if seq.molecule}<span class="field"><strong>Molecule:</strong> {seq.molecule}</span>{/if}
+		{#if seq.description}<span class="field"><strong>Description:</strong> {seq.description}</span>{/if}
+	</div>
 
 	<!-- Tabbed tables -->
 	{#if tabs.length}
@@ -112,11 +183,38 @@
 {/if}
 
 <style>
-	.profile { font-size: 0.85rem; }
-	.meta { margin-bottom: 0.5rem; }
-	.field { margin-bottom: 0.3rem; }
-	h4 { margin: 0.75rem 0 0.3rem; font-size: 0.85rem; color: var(--text-muted); }
+	.profile { font-size: 0.85rem; position: relative; }
+	.viewers {
+		display: flex;
+		gap: 3rem;
+		align-items: stretch;
+		margin-bottom: 0.75rem;
+	}
+	.panel-plasmid {
+		flex: 0 0 40%;
+		min-width: 0;
+	}
+	.panel-sequence {
+		flex: 1;
+		min-width: 0;
+		max-height: 70vh;
+		overflow: auto;
+	}
+	.meta {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.3rem 1rem;
+		margin-bottom: 0.5rem;
+	}
+	.field { white-space: nowrap; }
 	.error { color: var(--color-err); font-size: 0.85rem; }
 	.empty { color: var(--text-placeholder); font-size: 0.85rem; }
 	.tab-content { margin-top: 0.25rem; }
+	.cap-note { font-size: 0.72rem; color: var(--text-faint); margin: 0.2rem 0 0; text-align: center; }
+
+	@media (max-width: 640px) {
+		.viewers { flex-direction: column; }
+		.panel-plasmid { flex: none; }
+		.panel-sequence { max-height: 50vh; }
+	}
 </style>

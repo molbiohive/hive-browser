@@ -36,12 +36,15 @@ class ProfileInput(BaseModel):
 class ProfileTool(Tool):
     name = "profile"
     description = (
-        "Show full details of a specific sequence: "
-        "metadata, parts (features, primers), file info."
+        "Full details and visual inspection of a specific sequence: "
+        "plasmid map, annotated viewer, metadata, features, primers, cut sites."
     )
     widget = "profile"
-    tags = {"llm", "info"}
-    guidelines = "Full sequence details. Use sid (from search results) or name."
+    tags = {"llm", "info", "visual"}
+    guidelines = (
+        "Full sequence details and close-up visual inspection. "
+        "Use sid (from search results) or name."
+    )
 
     def __init__(self, **_):
         pass
