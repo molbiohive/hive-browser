@@ -21,11 +21,6 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# Fields stripped from LLM summaries (large data, file paths, raw sequences)
-_REDACT_KEYS = frozenset({
-    "file_path", "path", "file_name", "filename",
-    "sequence", "raw_sequence", "subject",
-})
 
 # Pattern: //command args (direct tool, no LLM)
 DIRECT_PATTERN = re.compile(r"^//(\w+)\s*(.*)", re.DOTALL)
@@ -41,13 +36,13 @@ async def route_input(
     history: list[dict] | None = None,
     max_turns: int = 5,
     pipe_min_length: int = 200,
-    summary_token_limit: int = 1000,
+    sandbox_output_limit: int = 4000,
+    python_max_turns: int = 6,
     on_progress: Callable[[dict], Awaitable[None]] | None = None,
     tool_rag: ToolRAG | None = None,
     use_planner: bool = True,
     sandbox_max_retries: int = 3,
     context_char_limit: int = 0,
-    redact_keys: frozenset[str] | None = None,
 ) -> dict[str, Any]:
     """
     Route user input → tool execution → response.
@@ -104,13 +99,13 @@ async def route_input(
             history=history,
             max_turns=max_turns,
             pipe_min_length=pipe_min_length,
-            summary_token_limit=summary_token_limit,
+            sandbox_output_limit=sandbox_output_limit,
+            python_max_turns=python_max_turns,
             on_progress=on_progress,
             tool_rag=tool_rag,
             use_planner=use_planner,
             sandbox_max_retries=sandbox_max_retries,
             context_char_limit=context_char_limit,
-            redact_keys=redact_keys,
         )
 
     # ── Mode 3: Natural language — unified agentic loop ──
@@ -124,13 +119,13 @@ async def route_input(
         history=history,
         max_turns=max_turns,
         pipe_min_length=pipe_min_length,
-        summary_token_limit=summary_token_limit,
+        sandbox_output_limit=sandbox_output_limit,
+        python_max_turns=python_max_turns,
         on_progress=on_progress,
         tool_rag=tool_rag,
         use_planner=use_planner,
         sandbox_max_retries=sandbox_max_retries,
         context_char_limit=context_char_limit,
-        redact_keys=redact_keys,
     )
 
 
@@ -144,19 +139,19 @@ async def _unified_loop(
     history: list[dict] | None = None,
     max_turns: int = 5,
     pipe_min_length: int = 200,
-    summary_token_limit: int = 1000,
+    sandbox_output_limit: int = 4000,
+    python_max_turns: int = 6,
     on_progress: Callable[[dict], Awaitable[None]] | None = None,
     tool_rag: ToolRAG | None = None,
     use_planner: bool = True,
     sandbox_max_retries: int = 3,
     context_char_limit: int = 0,
-    redact_keys: frozenset[str] | None = None,
 ) -> dict[str, Any]:
     """Unified agentic loop — LLM converses and chains tools as needed.
 
     Single loop handles everything: simple queries, multi-step chains,
-    and pure conversation. Large data (sequences, etc.) is cached locally
-    and auto-injected into subsequent tools — never sent through LLM context.
+    and pure conversation. ALL tool results go to workspace — LLM sees
+    descriptors and queries data via python sandbox.
 
     Two-mode RAG pipeline (when tool_rag is provided):
     - Planner ON:  planning call → RAG on plan → agent sees plan + selected tools
@@ -173,13 +168,14 @@ async def _unified_loop(
     last_params = {}
     chain = []  # [{tool, params, summary, widget}]
     workspace = Workspace()
-    sandbox = SandboxRunner(workspace)
+    sandbox = SandboxRunner(workspace, output_limit=sandbox_output_limit)
     tokens = {"in": 0, "out": 0}
     exceeded = False
     error_msg = ""  # LLM error message (vs max_turns exhaustion)
     schemas = all_schemas
     plan_text = None  # plan injected into agent context
     sandbox_errors = 0  # consecutive sandbox errors (for retry limit)
+    python_turns = 0  # separate python turn counter
 
     async def _emit(phase: str, tool: str | None = None):
         if on_progress:
@@ -234,7 +230,11 @@ async def _unified_loop(
     for turn in range(max_turns):
         turn_tools = schemas
         # Inject python schema when cached data is available (skip after too many errors)
-        if len(workspace) > 0 and sandbox_errors < sandbox_max_retries:
+        if (
+            len(workspace) > 0
+            and sandbox_errors < sandbox_max_retries
+            and python_turns < python_max_turns
+        ):
             turn_tools = [*schemas, sandbox.tool_schema()]
 
         # Log payload sizes for token debugging
@@ -324,6 +324,7 @@ async def _unified_loop(
 
             # Built-in sandbox -- not a registered tool
             if tool_name == "python" and len(workspace) > 0:
+                python_turns += 1
                 code = params.get("code", "")
                 sb_result = sandbox.execute(code)
                 compact = sandbox.summary_for_llm(sb_result)
@@ -404,33 +405,15 @@ async def _unified_loop(
             result = await tool.execute(params, mode="natural")
             sandbox_errors = 0  # regular tool success resets sandbox error budget
 
-            # Store significant fields in workspace for auto-fill and sandbox
-            for key, val in result.items():
-                if key == "error":
-                    continue
-                if isinstance(val, str) and len(val) >= pipe_min_length:
-                    handle = workspace.store(key, val, tool_name, params)
-                    logger.info("Stored %s.%s as %s (%d chars)", tool_name, key, handle, len(val))
-                elif isinstance(val, list) and val:
-                    handle = workspace.store(key, val, tool_name, params)
-                    logger.info("Stored %s.%s as %s (%d items)", tool_name, key, handle, len(val))
-                elif isinstance(val, dict) and len(val) > 2:
-                    handle = workspace.store(key, val, tool_name, params)
-                    logger.info("Stored %s.%s as %s (%d keys)", tool_name, key, handle, len(val))
+            # Store full result in workspace (error results bypass)
+            if "error" not in result:
+                workspace.store_result(result, tool_name, params)
+                compact = _build_tool_message(tool_name, result, workspace)
+            else:
+                compact = f"Error: {result['error']}"
 
-            # Use tool's custom summary if provided, else standard summarizer
-            compact = tool.llm_summary(result)
-            if compact is None:
-                compact = _summarize_for_llm(
-                    result, token_limit=summary_token_limit,
-                    redact_keys=redact_keys if redact_keys is not None else _REDACT_KEYS,
-                )
-            # Append workspace descriptions so LLM knows what data is available
-            ws_info = workspace.describe_all()
-            if ws_info:
-                compact += f"\n\nWorkspace (use python tool to filter/transform):\n{ws_info}"
             logger.debug(
-                "SUMMARY %s: %d chars | result keys: %s",
+                "TOOL_MSG %s: %d chars | result keys: %s",
                 tool_name, len(compact),
                 {k: type(v).__name__ + f"({len(v) if isinstance(v, (str, list)) else v})"
                  for k, v in result.items()},
@@ -514,87 +497,20 @@ def _trim_context(messages: list[dict], limit: int) -> None:
             break
 
 
-# ── Result Summarizer ──
-
-_ID_KEYS = frozenset({"sid", "pid", "id"})
+# ── Tool Message Builder ──
 
 
-def _summarize_for_llm(
-    result: dict[str, Any],
-    token_limit: int = 1000,
-    redact_keys: frozenset[str] = _REDACT_KEYS,
-) -> str:
-    """Unified result summarizer for LLM context.
+def _build_tool_message(tool_name: str, result: dict, workspace: Workspace) -> str:
+    """Build concise tool message for LLM: confirmation + workspace descriptor.
 
-    Generates compact JSON stats from a result dict:
-    - Lists → count + first N items as sample
-    - Numbers/booleans → include directly
-    - Short strings → include, long strings → truncate
-    - Nested dicts → shallow scalar fields
-    - Keys in *redact_keys* stripped (scoped: parts with ``pid`` skip redaction)
-
-    For list[dict] fields with more items than the sample, ALL values
-    of ID-like keys (sid, pid, id) are collected and appended as compact
-    arrays so the LLM can reference them in subsequent tool calls.
+    Scalar values are shown inline. Complex data (lists, dicts, strings) are
+    available in workspace — LLM queries them via python sandbox.
     """
-    redact = redact_keys
-    max_chars = token_limit * 4
-    max_items = max(5, token_limit // 50)
-    max_ids = 200
-    stats: dict[str, Any] = {}
-
-    for key, value in result.items():
-        if key in redact:
-            continue
-        if isinstance(value, list):
-            stats[f"{key}_count"] = len(value)
-            if value and isinstance(value[0], dict):
-                sample = []
-                for item in value[:max_items]:
-                    is_part = "pid" in item
-                    trimmed = {}
-                    for k, v in item.items():
-                        if not is_part and k in redact:
-                            continue
-                        if isinstance(v, (str, int, float, bool, type(None))):
-                            if not isinstance(v, str) or len(v) < 200:
-                                trimmed[k] = v
-                        elif isinstance(v, list) and len(v) <= 5 and all(
-                            isinstance(x, (str, int, float)) for x in v
-                        ):
-                            trimmed[k] = v
-                    sample.append(trimmed)
-                if sample:
-                    stats[f"{key}_sample"] = sample
-                # Collect ALL IDs when sample is truncated
-                if len(value) > max_items:
-                    for id_key in _ID_KEYS:
-                        ids = [item[id_key] for item in value[:max_ids] if id_key in item]
-                        if ids:
-                            stats[f"all_{key}_{id_key}s"] = ids
-            elif value:
-                stats[f"{key}_sample"] = value[:max_items]
-        elif isinstance(value, (int, float, bool)):
-            stats[key] = value
-        elif isinstance(value, str):
-            if len(value) < 200:
-                stats[key] = value
-            else:
-                stats[key] = value[:100] + "..."
-        elif isinstance(value, dict):
-            shallow = {
-                k: v for k, v in value.items()
-                if k not in redact
-                and isinstance(v, (str, int, float, bool, type(None)))
-                and (not isinstance(v, str) or len(v) < 200)
-            }
-            if shallow:
-                stats[key] = shallow
-
-    text = json.dumps(stats, default=str)
-    if len(text) > max_chars:
-        text = text[:max_chars - 3] + "..."
-    return text
+    parts = [f"{tool_name}: done."]
+    ws_info = workspace.describe_all()
+    if ws_info:
+        parts.append(f"\nWorkspace:\n{ws_info}")
+    return "\n".join(parts)
 
 
 # ── Helpers ──
