@@ -75,6 +75,32 @@ class Workspace:
         """All handles as Python variables for sandbox injection."""
         return {entry.handle: entry.value for entry in self._entries}
 
+    def store_result(
+        self,
+        result: dict[str, Any],
+        tool: str,
+        params: dict[str, Any] | None = None,
+    ) -> str:
+        """Store full tool result and break out complex sub-values.
+
+        Always stores the complete result dict as ``_result``.  Then stores
+        lists, large strings (>=200 chars), and dicts (>2 keys) as separate
+        entries for direct sandbox access.  Python references are shared --
+        no memory duplication.
+        """
+        p = params or {}
+        self.store("_result", result, tool, p)
+        for key, val in result.items():
+            if key == "error":
+                continue
+            if isinstance(val, list) and val:
+                self.store(key, val, tool, p)
+            elif isinstance(val, str) and len(val) >= 200:
+                self.store(key, val, tool, p)
+            elif isinstance(val, dict) and len(val) > 2:
+                self.store(key, val, tool, p)
+        return "r0"  # handle of _result
+
     def find_by_field(self, field_name: str, min_length: int = 0) -> str | None:
         """Find most recent stored string whose field name matches.
 
@@ -136,11 +162,30 @@ def _detail(value: Any) -> str:
             return f", {len(value)} rows [{', '.join(cols)}]"
         return f", {len(value)} items"
     if isinstance(value, dict):
-        keys = list(value.keys())[:6]
-        if len(value) > 6:
-            keys.append("...")
-        return f", {len(value)} keys [{', '.join(str(k) for k in keys)}]"
+        return _dict_detail(value)
     return ""
+
+
+def _dict_detail(d: dict) -> str:
+    """Inline scalars + type hints for complex values, capped at 8 entries."""
+    parts: list[str] = []
+    for key, val in list(d.items())[:8]:
+        if isinstance(val, (int, float, bool)):
+            parts.append(f"{key}={val}")
+        elif isinstance(val, str):
+            if len(val) <= 80:
+                parts.append(f"{key}={val}")
+            else:
+                parts.append(f"{key}=str({len(val)})")
+        elif isinstance(val, list):
+            parts.append(f"{key}=list({len(val)})")
+        elif isinstance(val, dict):
+            parts.append(f"{key}=dict({len(val)})")
+        elif val is None:
+            parts.append(f"{key}=None")
+    if len(d) > 8:
+        parts.append("...")
+    return f" -- {', '.join(parts)}" if parts else ""
 
 
 def _column_names(rows: list[dict], max_cols: int = 8) -> list[str]:

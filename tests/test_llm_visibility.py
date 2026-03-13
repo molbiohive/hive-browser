@@ -5,7 +5,6 @@ For every tool, verifies:
 2. LLM summary preserves critical fields (IDs, counts, metadata)
 3. Long strings are truncated (not redacted, just length-limited)
 4. format_result() (chain summary) contains essential info
-5. Specific tools with custom llm_summary() behave correctly
 
 No redaction -- local models get all data. The only transformation is
 compaction: lists are sampled, long strings truncated to 100 chars.

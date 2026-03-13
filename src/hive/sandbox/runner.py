@@ -16,8 +16,9 @@ class SandboxRunner:
     by the router alongside regular tool schemas.
     """
 
-    def __init__(self, workspace: Workspace):
+    def __init__(self, workspace: Workspace, output_limit: int = 4000):
         self.workspace = workspace
+        self.output_limit = output_limit
 
     def tool_schema(self) -> dict:
         """OpenAI-format function schema with dynamic workspace description."""
@@ -49,7 +50,7 @@ class SandboxRunner:
         variables = self.workspace.namespace()
         return safe_exec(code, variables)
 
-    def summary_for_llm(self, result: dict[str, Any], token_limit: int = 500) -> str:
+    def summary_for_llm(self, result: dict[str, Any]) -> str:
         """Compact result summary for LLM context."""
         if result["status"] == "error":
             parts = [f"Error: {result['error']}"]
@@ -59,7 +60,7 @@ class SandboxRunner:
 
         value = result["result"]
         stdout = result.get("stdout", "")
-        max_chars = token_limit * 4
+        max_chars = self.output_limit
 
         # Format the result value
         if isinstance(value, (list, dict)):

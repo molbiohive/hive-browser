@@ -29,7 +29,6 @@ class ModelEntry(BaseSettings):
 class LLMConfig(BaseSettings):
     models: list[ModelEntry] = Field(default_factory=lambda: [ModelEntry()])
     auto_discover: bool = False  # auto-discover Ollama models at runtime
-    summary_token_limit: int = 500  # max tokens for auto-summarize sent to LLM
     agent_max_turns: int = 10  # max tool-call turns in agentic loop
     pipe_min_length: int = 200  # auto-pipe strings longer than this between tools
     tool_rag_enabled: bool = True  # planning call + RAG tool selection
@@ -38,12 +37,9 @@ class LLMConfig(BaseSettings):
     tool_rag_threshold: float = 0.3  # min cosine similarity to include a tool
     tool_rag_top_k: int = 8  # max tools returned by RAG
     sandbox_max_retries: int = 3  # max consecutive sandbox errors before dropping python schema
+    sandbox_output_limit: int = 4000  # max chars for sandbox/tool output sent to LLM
+    python_max_turns: int = 6  # max python sandbox calls per query
     context_char_limit: int = 24000  # max chars in LLM context (0 = no limit)
-    redact_keys: list[str] = Field(default_factory=lambda: [
-        "file_path", "path", "file_name", "filename",
-        "name", "sequence", "raw_sequence", "subject",
-    ])
-
     model_config = {"env_prefix": "LLM_"}
 
 
