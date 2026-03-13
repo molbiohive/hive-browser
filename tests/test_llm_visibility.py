@@ -1,29 +1,19 @@
-"""Exhaustive test: LLM context visibility vs widget (user viewport) data.
+"""Test: workspace storage, descriptors, widget data, and format_result.
 
-For every tool, verifies:
+Verifies:
 1. Widget gets the FULL result dict (no field loss)
-2. LLM summary preserves critical fields (IDs, counts, metadata)
-3. Long strings are truncated (not redacted, just length-limited)
+2. store_result() correctly breaks out sub-entries
+3. Workspace descriptors inline scalars and type-hint complex values
 4. format_result() (chain summary) contains essential info
-
-No redaction -- local models get all data. The only transformation is
-compaction: lists are sampled, long strings truncated to 100 chars.
 """
-
-import json
 
 import pytest
 
-from hive.tools.router import _summarize_for_llm, _tool_response
+from hive.sandbox.workspace import Workspace
+from hive.tools.router import _tool_response
 
 
 # ── Helpers ──
-
-
-def llm_sees(result: dict) -> dict:
-    """Run result through the standard LLM summarizer, return parsed JSON."""
-    text = _summarize_for_llm(result)
-    return json.loads(text)
 
 
 def widget_gets(tool_name: str, result: dict) -> dict:
@@ -193,300 +183,109 @@ class TestWidgetGetsFullData:
         assert data is result  # same object, no copy/filter
 
 
-class TestLLMSeesIDs:
-    """LLM must always have access to SID/PID/ID fields for tool chaining."""
+class TestWorkspaceStorage:
+    """store_result() breaks results into typed workspace entries."""
 
-    def test_search_sids_visible(self):
-        s = llm_sees(SEARCH_RESULT)
-        sample = s["results_sample"]
-        assert all("sid" in item for item in sample)
+    def test_gc_all_scalars(self):
+        """All-scalar result: only _result entry (no sub-entries)."""
+        ws = Workspace()
+        ws.store_result(GC_RESULT, "gc")
+        assert len(ws) == 1  # just _result
+        assert ws.get("r0") is GC_RESULT
 
-    def test_search_parts_pids_visible(self):
-        s = llm_sees(SEARCH_RESULT)
-        sample = s["parts_sample"]
-        assert all("pid" in item for item in sample)
+    def test_search_breaks_out_lists(self):
+        """Lists are broken out as separate entries."""
+        ws = Workspace()
+        ws.store_result(SEARCH_RESULT, "search")
+        # _result + results + parts = 3
+        assert len(ws) >= 3
+        assert ws.get("r0") is SEARCH_RESULT
+        # results list
+        assert ws.get("r1") is SEARCH_RESULT["results"]
+        # parts list
+        assert ws.get("r2") is SEARCH_RESULT["parts"]
 
-    def test_blast_sids_visible(self):
-        s = llm_sees(BLAST_RESULT)
-        sample = s["hits_sample"]
-        assert all("sid" in item for item in sample)
+    def test_profile_breaks_out_complex(self):
+        """Profile: sequence dict (>2 keys), features list, primers list, cut_sites list, file dict."""
+        ws = Workspace()
+        ws.store_result(PROFILE_RESULT, "profile")
+        # _result + sequence + features + primers + cut_sites + file = 6
+        assert len(ws) == 6
+        # Verify references are shared (not copied)
+        assert ws.get("r1") is PROFILE_RESULT["sequence"]
+        assert ws.get("r2") is PROFILE_RESULT["features"]
 
-    def test_parts_pid_mode_pid_visible(self):
-        s = llm_sees(PARTS_PID_RESULT)
-        assert "part" in s
-        assert s["part"]["pid"] == 10
+    def test_extract_breaks_out_long_string(self):
+        """Long strings (>=200 chars) are broken out."""
+        ws = Workspace()
+        ws.store_result(EXTRACT_RESULT, "extract")
+        # _result + sequence (400 chars) = 2
+        assert len(ws) == 2
+        assert ws.get("r1") is EXTRACT_RESULT["sequence"]
 
-    def test_parts_sid_mode_pids_visible(self):
-        s = llm_sees(PARTS_SID_RESULT)
-        sample = s["parts_sample"]
-        assert all("pid" in item for item in sample)
+    def test_error_result_bypasses(self):
+        """Error fields are not stored."""
+        ws = Workspace()
+        ws.store_result({"error": "not found", "details": [1, 2]}, "search")
+        # _result + details list = 2  (error key skipped)
+        assert len(ws) == 2
 
-    def test_profile_sid_visible(self):
-        """Profile 'sequence' is a nested dict -- shallow scalars extracted."""
-        s = llm_sees(PROFILE_RESULT)
-        assert s["sequence"]["sid"] == 1
-
-    def test_extract_pid_visible(self):
-        s = llm_sees(EXTRACT_RESULT)
-        assert s["pid"] == 10
-
-
-class TestLLMSeesMetadata:
-    """LLM must see counts, scores, and metadata for informed decisions."""
-
-    def test_search_total_and_query(self):
-        s = llm_sees(SEARCH_RESULT)
-        assert s["total"] == 2
-        assert s["parts_total"] == 1
-        assert s["query"] == "ampicillin"
-
-    def test_search_scores_visible(self):
-        s = llm_sees(SEARCH_RESULT)
-        sample = s["results_sample"]
-        assert all("score" in item for item in sample)
-
-    def test_search_size_visible(self):
-        s = llm_sees(SEARCH_RESULT)
-        sample = s["results_sample"]
-        assert all("size_bp" in item for item in sample)
-
-    def test_search_names_visible(self):
-        s = llm_sees(SEARCH_RESULT)
-        sample = s["results_sample"]
-        assert all("name" in item for item in sample)
-
-    def test_search_file_paths_visible(self):
-        s = llm_sees(SEARCH_RESULT)
-        sample = s["results_sample"]
-        assert all("file_path" in item for item in sample)
-
-    def test_blast_alignment_metrics(self):
-        s = llm_sees(BLAST_RESULT)
-        assert s["total"] == 2
-        assert s["query_length"] == 2686
-        assert s["program"] == "blastn"
-        hit = s["hits_sample"][0]
-        assert "identity" in hit
-        assert "alignment_length" in hit
-        assert "evalue" in hit
-        assert "bitscore" in hit
-
-    def test_blast_subject_visible(self):
-        s = llm_sees(BLAST_RESULT)
-        hit = s["hits_sample"][0]
-        assert "subject" in hit
-
-    def test_blast_file_paths_visible(self):
-        s = llm_sees(BLAST_RESULT)
-        hit = s["hits_sample"][0]
-        assert "file_path" in hit
-
-    def test_profile_sequence_metadata(self):
-        """Profile sequence dict: shallow scalars extracted (no redaction)."""
-        s = llm_sees(PROFILE_RESULT)
-        seq = s["sequence"]
-        assert seq["sid"] == 1
-        assert seq["name"] == "pUC19"
-        assert seq["size_bp"] == 2686
-        assert seq["topology"] == "circular"
-        assert seq["molecule"] == "dna"
-        assert seq["description"] == "Cloning vector"
-
-    def test_profile_file_metadata(self):
-        s = llm_sees(PROFILE_RESULT)
-        f = s["file"]
-        assert f["path"] == "/data/pUC19.dna"
-        assert f["format"] == "sgff"
-        assert f["size"] == 8192
-
-    def test_profile_feature_details(self):
-        s = llm_sees(PROFILE_RESULT)
-        sample = s["features_sample"]
-        feat = sample[0]
-        assert feat["name"] == "AmpR"
-        assert feat["type"] == "CDS"
-        assert feat["start"] == 100
-        assert feat["end"] == 960
-
-    def test_profile_primer_details(self):
-        s = llm_sees(PROFILE_RESULT)
-        sample = s["primers_sample"]
-        primer = sample[0]
-        assert primer["name"] == "M13F"
-        assert primer["start"] == 400
-        assert primer["sequence"] == "GTAAAACGACGGCCAGT"
-
-    def test_profile_cut_site_details(self):
-        s = llm_sees(PROFILE_RESULT)
-        sample = s["cut_sites_sample"]
-        cs = sample[0]
-        assert cs["enzyme"] == "EcoRI"
-        assert cs["position"] == 396
-
-    def test_digest_reactions(self):
-        s = llm_sees(DIGEST_RESULT)
-        assert s["sequence_length"] == 2686
-        assert s["circular"] is True
-        sample = s["reactions_sample"]
-        rxn = sample[0]
-        assert rxn["name"] == "EcoRI"
-        assert rxn["total_cuts"] == 1
-
-    def test_sites_cutters(self):
-        s = llm_sees(SITES_RESULT)
-        assert s["cutters_found"] == 2
-        assert s["total_enzymes_scanned"] == 754
-        sample = s["cutters_sample"]
-        assert any(c["name"] == "EcoRI" for c in sample)
-
-    def test_gc_all_metrics(self):
-        s = llm_sees(GC_RESULT)
-        assert s["gc_percent"] == 52.3
-        assert s["at_percent"] == 47.7
-        assert s["length"] == 2686
-        assert s["g"] == 702
-        assert s["c"] == 703
-
-    def test_translate_metadata(self):
-        s = llm_sees(TRANSLATE_RESULT)
-        assert s["nucleotide_length"] == 750
-        assert s["protein_length"] == 250
-        assert s["stop_codons"] == 1
-        assert s["complete"] is True
-        assert s["codon_table"] == 1
-
-    def test_extract_metadata(self):
-        s = llm_sees(EXTRACT_RESULT)
-        assert s["name"] == "AmpR"
-        assert s["source"] == "pUC19"
-        assert s["start"] == 100
-        assert s["end"] == 960
-        assert s["length"] == 861
-
-    def test_align_count(self):
-        s = llm_sees(ALIGN_RESULT)
-        assert s["count"] == 2
-
-    def test_revcomp_length(self):
-        s = llm_sees(REVCOMP_RESULT)
-        assert s["length"] == 800
-
-    def test_transcribe_length(self):
-        s = llm_sees(TRANSCRIBE_RESULT)
-        assert s["length"] == 800
-
-    def test_parts_instances_file_paths_visible(self):
-        s = llm_sees(PARTS_PID_RESULT)
-        for item in s["instances_sample"]:
-            assert "file_path" in item
+    def test_no_memory_duplication(self):
+        """Sub-entries reference same objects as _result (no copies)."""
+        ws = Workspace()
+        ws.store_result(SEARCH_RESULT, "search")
+        full = ws.get("r0")
+        results_list = ws.get("r1")
+        assert full["results"] is results_list
 
 
-class TestLLMStringTruncation:
-    """Long strings are truncated at 100 chars + '...' (threshold: 200 chars)."""
+class TestWorkspaceDescriptor:
+    """Workspace descriptors inline scalars and type-hint complex values."""
 
-    def test_short_string_preserved(self):
-        result = {"description": "Short text"}
-        s = llm_sees(result)
-        assert s["description"] == "Short text"
+    def test_gc_descriptor_shows_scalars(self):
+        """All-scalar dict shows values inline."""
+        ws = Workspace()
+        ws.store_result(GC_RESULT, "gc")
+        desc = ws.describe("r0")
+        assert "gc_percent=52.3" in desc
+        assert "length=2686" in desc
+        assert "gc" in desc  # tool name
 
-    def test_long_string_truncated(self):
-        result = {"description": "A" * 300}
-        s = llm_sees(result)
-        assert s["description"] == "A" * 100 + "..."
+    def test_search_descriptor_shows_counts_and_types(self):
+        """Mixed dict: scalar values inline, lists as type hints."""
+        ws = Workspace()
+        ws.store_result(SEARCH_RESULT, "search")
+        desc = ws.describe("r0")
+        assert "total=2" in desc
+        assert "results=list(2)" in desc
+        assert "query=ampicillin" in desc
 
-    def test_medium_string_preserved(self):
-        """Strings under 200 chars are kept in full."""
-        result = {"description": "B" * 199}
-        s = llm_sees(result)
-        assert s["description"] == "B" * 199
+    def test_list_descriptor_shows_columns(self):
+        """List[dict] entries show row count and column names."""
+        ws = Workspace()
+        ws.store_result(SEARCH_RESULT, "search")
+        desc = ws.describe("r1")  # results list
+        assert "list[dict]" in desc
+        assert "2 rows" in desc
+        assert "sid" in desc
 
-    def test_sequence_truncated(self):
-        """Sequences (long strings) are truncated, not hidden."""
-        s = llm_sees(EXTRACT_RESULT)
-        assert "sequence" in s
-        assert s["sequence"].endswith("...")
+    def test_long_string_shows_char_count(self):
+        """Long string entries show character count."""
+        ws = Workspace()
+        ws.store_result(EXTRACT_RESULT, "extract")
+        desc = ws.describe("r1")  # sequence string
+        assert "str" in desc
+        assert "400 chars" in desc
 
-    def test_protein_truncated(self):
-        s = llm_sees(TRANSLATE_RESULT)
-        assert "protein" in s
-        assert s["protein"].endswith("...")
-        assert len(s["protein"]) <= 104  # 100 + "..."
-
-    def test_rna_truncated(self):
-        s = llm_sees(TRANSCRIBE_RESULT)
-        assert "rna" in s
-        assert s["rna"].endswith("...")
-
-    def test_revcomp_sequence_truncated(self):
-        s = llm_sees(REVCOMP_RESULT)
-        assert "sequence" in s
-        assert s["sequence"].endswith("...")
-
-    def test_nested_long_strings_excluded_from_shallow_dict(self):
-        """Dict extraction skips strings >= 200 chars."""
-        s = llm_sees(PROFILE_RESULT)
-        # sequence_data is 2000 chars, excluded from shallow extraction
-        assert "sequence_data" not in s.get("sequence", {})
-
-
-class TestLLMListSampling:
-    """Large result lists are sampled but all IDs preserved.
-
-    max_items = max(5, token_limit // 50).  Default token_limit=1000 -> max_items=20.
-    """
-
-    def test_default_max_items_is_20(self):
-        """With default token_limit=1000, max_items = max(5, 1000//50) = 20."""
-        result = {
-            "results": [{"sid": i, "name": f"seq{i}"} for i in range(20)],
-        }
-        s = llm_sees(result)
-        assert s["results_count"] == 20
-        assert len(s["results_sample"]) == 20
-
-    def test_large_list_sampled(self):
-        """Lists exceeding max_items get truncated and IDs collected."""
-        result = {
-            "results": [{"sid": i, "name": f"seq{i}"} for i in range(50)],
-        }
-        s = llm_sees(result)
-        assert s["results_count"] == 50
-        assert len(s["results_sample"]) == 20
-
-    def test_all_sids_preserved(self):
-        result = {
-            "results": [{"sid": i, "name": f"seq{i}"} for i in range(50)],
-        }
-        s = llm_sees(result)
-        assert s["all_results_sids"] == list(range(50))
-
-    def test_all_pids_preserved(self):
-        result = {
-            "parts": [{"pid": i, "name": f"part{i}"} for i in range(50)],
-        }
-        s = llm_sees(result)
-        assert s["all_parts_pids"] == list(range(50))
-
-    def test_small_list_not_sampled(self):
-        result = {
-            "results": [{"sid": i} for i in range(3)],
-        }
-        s = llm_sees(result)
-        assert s["results_count"] == 3
-        assert len(s["results_sample"]) == 3
-        assert "all_results_sids" not in s
-
-    def test_custom_token_limit_changes_max_items(self):
-        """Lower token_limit reduces max_items: 250 -> max(5, 250//50) = 5."""
-        result = {
-            "results": [{"sid": i, "name": f"seq{i}"} for i in range(20)],
-        }
-        text = _summarize_for_llm(result, token_limit=250)
-        s = json.loads(text)
-        assert s["results_count"] == 20
-        assert len(s["results_sample"]) == 5
-        assert s["all_results_sids"] == list(range(20))
-
+    def test_dict_descriptor_shows_nested_types(self):
+        """Nested dict shows scalar values inline + type hints."""
+        ws = Workspace()
+        ws.store_result(PROFILE_RESULT, "profile")
+        # r1 is the sequence dict
+        desc = ws.describe("r1")
+        assert "sid=1" in desc
+        assert "name=pUC19" in desc
+        assert "size_bp=2686" in desc
 
 
 class TestFormatResult:

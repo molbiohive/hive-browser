@@ -62,7 +62,7 @@ class TestWorkspace:
         ws.store("gel_data", {"lanes": [], "gelType": "agarose", "stain": "ethidium"}, "digest")
         desc = ws.describe("r0")
         assert "dict" in desc
-        assert "3 keys" in desc
+        assert "gelType=agarose" in desc
 
     def test_describe_all(self):
         ws = Workspace()
@@ -345,11 +345,11 @@ class TestSandboxRunner:
 
     def test_summary_for_llm_truncates(self):
         ws = Workspace()
-        runner = SandboxRunner(ws)
+        runner = SandboxRunner(ws, output_limit=40)
         big_list = list(range(1000))
         result = {"status": "ok", "result": big_list, "stdout": "", "type": "list"}
-        summary = runner.summary_for_llm(result, token_limit=10)
-        assert len(summary) <= 10 * 4 + 50  # some overhead for "result = " prefix
+        summary = runner.summary_for_llm(result)
+        assert len(summary) <= 40 + 50  # some overhead for "result = " prefix
 
     def test_tool_schema_empty_workspace(self):
         ws = Workspace()
@@ -358,3 +358,89 @@ class TestSandboxRunner:
         assert schema["function"]["name"] == "python"
         # Description still valid, just no workspace entries listed
         assert "result" in schema["function"]["description"]
+
+    def test_output_limit_default(self):
+        ws = Workspace()
+        runner = SandboxRunner(ws)
+        assert runner.output_limit == 4000
+
+    def test_output_limit_custom(self):
+        ws = Workspace()
+        runner = SandboxRunner(ws, output_limit=2000)
+        assert runner.output_limit == 2000
+
+
+class TestStoreResult:
+    """Tests for Workspace.store_result()."""
+
+    def test_all_scalars_only_result(self):
+        """All-scalar dict stores only _result."""
+        ws = Workspace()
+        data = {"a": 1, "b": 2.0, "c": True}
+        ws.store_result(data, "tool")
+        assert len(ws) == 1
+        assert ws.get("r0") is data
+
+    def test_list_broken_out(self):
+        """Non-empty lists are stored as separate entries."""
+        ws = Workspace()
+        items = [{"x": 1}]
+        data = {"items": items, "count": 1}
+        ws.store_result(data, "tool")
+        assert len(ws) == 2  # _result + items
+        assert ws.get("r1") is items
+
+    def test_long_string_broken_out(self):
+        """Strings >= 200 chars are stored as separate entries."""
+        ws = Workspace()
+        seq = "A" * 200
+        data = {"sequence": seq, "length": 200}
+        ws.store_result(data, "tool")
+        assert len(ws) == 2  # _result + sequence
+        assert ws.get("r1") is seq
+
+    def test_short_string_not_broken_out(self):
+        """Strings < 200 chars stay only in _result."""
+        ws = Workspace()
+        data = {"name": "short", "count": 1}
+        ws.store_result(data, "tool")
+        assert len(ws) == 1
+
+    def test_dict_gt2_keys_broken_out(self):
+        """Dicts with >2 keys are stored as separate entries."""
+        ws = Workspace()
+        info = {"a": 1, "b": 2, "c": 3}
+        data = {"info": info, "x": 1}
+        ws.store_result(data, "tool")
+        assert len(ws) == 2
+        assert ws.get("r1") is info
+
+    def test_dict_le2_keys_not_broken_out(self):
+        """Dicts with <=2 keys stay only in _result."""
+        ws = Workspace()
+        data = {"info": {"a": 1, "b": 2}, "x": 1}
+        ws.store_result(data, "tool")
+        assert len(ws) == 1
+
+    def test_error_key_skipped(self):
+        """Error key is not stored as sub-entry."""
+        ws = Workspace()
+        data = {"error": "not found", "items": [1, 2]}
+        ws.store_result(data, "tool")
+        # _result + items (error skipped)
+        assert len(ws) == 2
+
+    def test_empty_list_not_broken_out(self):
+        """Empty lists are not stored as separate entries."""
+        ws = Workspace()
+        data = {"items": [], "count": 0}
+        ws.store_result(data, "tool")
+        assert len(ws) == 1
+
+    def test_shared_references(self):
+        """Sub-entries share references with _result (no copies)."""
+        ws = Workspace()
+        items = [{"id": 1}]
+        data = {"items": items}
+        ws.store_result(data, "tool")
+        assert ws.get("r0")["items"] is ws.get("r1")

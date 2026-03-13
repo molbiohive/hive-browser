@@ -14,7 +14,6 @@ from hive.tools.router import (
     _form_response,
     _help_response,
     _parse_args,
-    _summarize_for_llm,
     _tool_response,
     _trim_context,
     route_input,
@@ -693,7 +692,7 @@ class TestSandboxIntegration:
             self._tool_call_response("search", {"query": "GFP"}, call_id="c1"),
             self._tool_call_response(
                 "python",
-                {"code": 'result = [r["sid"] for r in r0]'},
+                {"code": 'result = [r["sid"] for r in r1]'},
                 call_id="c2",
             ),
             self._text_response("SIDs are 1 and 2."),
@@ -731,7 +730,7 @@ class TestSandboxIntegration:
             self._tool_call_response("search", {"query": "test"}, call_id="c1"),
             self._tool_call_response(
                 "python",
-                {"code": 'result = sum(1 for r in r0 if r["topology"] == "circular")'},
+                {"code": 'result = sum(1 for r in r1 if r["topology"] == "circular")'},
                 call_id="c2",
             ),
             self._text_response("1 circular sequence."),
@@ -801,7 +800,7 @@ class TestSandboxIntegration:
         llm = self._mock_llm([
             self._tool_call_response("search", {"query": "x"}, call_id="c1"),
             self._tool_call_response(
-                "python", {"code": 'result = len(r0)'}, call_id="c2",
+                "python", {"code": 'result = len(r1)'}, call_id="c2",
             ),
             self._text_response("1 result."),
         ])
@@ -922,55 +921,3 @@ class TestContextTrim:
         assert msgs[3]["content"] == "C" * 3000
 
 
-# ── Scoped Redaction ──
-
-
-class TestScopedRedaction:
-    def test_redact_skips_parts(self):
-        """Items with ``pid`` key (parts) keep all fields visible."""
-        result = {
-            "results": [
-                {"pid": 1, "name": "pUC19", "sequence": "ATCG"},
-                {"pid": 2, "name": "pBR322", "sequence": "GCTA"},
-            ],
-        }
-        summary = _summarize_for_llm(result, redact_keys=frozenset({"name", "sequence"}))
-        data = json.loads(summary)
-        for item in data["results_sample"]:
-            assert "name" in item
-            assert "sequence" in item
-
-    def test_redact_applies_to_sequences(self):
-        """Items with ``sid`` (no ``pid``) get redacted fields stripped."""
-        result = {
-            "results": [
-                {"sid": 1, "name": "GFP", "sequence": "ATCG" * 10},
-            ],
-        }
-        summary = _summarize_for_llm(result, redact_keys=frozenset({"name", "sequence"}))
-        data = json.loads(summary)
-        item = data["results_sample"][0]
-        assert "name" not in item
-        assert "sequence" not in item
-        assert "sid" in item
-
-    def test_custom_redact_keys_empty_disables(self):
-        """Empty redact_keys disables all redaction."""
-        result = {
-            "results": [{"sid": 1, "name": "GFP", "file_path": "/data/gfp.dna"}],
-            "file_path": "/root/file.dna",
-        }
-        summary = _summarize_for_llm(result, redact_keys=frozenset())
-        data = json.loads(summary)
-        # Top-level file_path preserved
-        assert "file_path" in data
-        # Nested file_path preserved
-        assert "file_path" in data["results_sample"][0]
-
-    def test_top_level_keys_always_redacted(self):
-        """Top-level keys in redact set are always stripped."""
-        result = {"sequence": "ATCGATCG", "count": 42}
-        summary = _summarize_for_llm(result)
-        data = json.loads(summary)
-        assert "sequence" not in data
-        assert data["count"] == 42
