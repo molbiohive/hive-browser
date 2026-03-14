@@ -60,7 +60,7 @@ def safe_exec(code: str, variables: dict[str, Any] | None = None) -> dict[str, A
     Parameters
     ----------
     code:
-        Python source. Must assign to ``result``.
+        Python source. Must assign to ``feedback``.
     variables:
         Extra names injected into the namespace (e.g. cached data handles).
 
@@ -68,7 +68,7 @@ def safe_exec(code: str, variables: dict[str, Any] | None = None) -> dict[str, A
     -------
     dict with keys:
         status: "ok" | "error"
-        result: the value of ``result`` (on success)
+        feedback: the value of ``feedback`` (on success)
         stdout: captured print output
         type:   "list" | "dict" | "scalar" (on success)
         error:  error message (on failure)
@@ -109,18 +109,18 @@ def safe_exec(code: str, variables: dict[str, Any] | None = None) -> dict[str, A
 
     stdout = stdout_buf.getvalue()
 
-    if "result" not in namespace:
+    if "feedback" not in namespace:
         return {
             "status": "error",
-            "error": "Code must assign to `result`",
+            "error": "Code must assign to `feedback`",
             "stdout": stdout,
         }
 
-    value = namespace["result"]
+    value = namespace["feedback"]
     result_type = (
         "list" if isinstance(value, list)
         else "dict" if isinstance(value, dict)
         else "scalar"
     )
 
-    return {"status": "ok", "result": value, "stdout": stdout, "type": result_type}
+    return {"status": "ok", "feedback": value, "stdout": stdout, "type": result_type}

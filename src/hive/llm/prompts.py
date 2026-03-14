@@ -45,20 +45,21 @@ Prefer pid when the user asks about parts/features, sid when asking about whole 
 NEVER list or restate individual items -- the user sees a rich widget.
 - Respond concisely.
 
-## Workspace
+## Workspace & Report
 - ALL tool results are stored in workspace as r0, r1, r2, etc.
 - Scalar values (counts, percentages) are shown inline in the descriptor.
-- Use python(code="...") to inspect lists, dicts, or strings. Assign output to `result`.
-- Multiple python queries allowed. Example: result = r1[:5] to see first 5 rows.
+- Use python(code="...") to query workspace and build output.
+- Must assign `feedback` -- a short caption for the user (e.g. "Found 5 CDS features").
+- `report` dict accumulates widget data across python calls:
+  Tables: report["features"] = [{{...}}, ...] (each list[dict] = a table tab).
+  Sequences: report["protein"] = "MKLIV..." (long strings = copyable blocks).
+  Scalars: report["gc"] = 52.3 (shown in header row).
 - Available: len, sum, min, max, sorted, filter, map, comprehensions. No imports.
 
-## Reports
-Generate a detailed report ONLY when the user explicitly asks for a report, \
-comparison, analysis summary, or uses words like "report", "summarize findings", \
-"compare", "tell me about". For simple queries, answer concisely.
-When generating a report, use markdown formatting with headers and bullet points.
-If you have tabular data to present, use the python tool to produce a list[dict] \
-result which will render as a table widget."""
+## Structured Output
+For complex queries, accumulate data in `report` across multiple python calls. \
+Mix tool calls and python freely: tool -> python(store to report) -> tool -> python(add more).
+For simple queries, answer concisely in text without using report."""
 
 
 def build_system_prompt() -> str:

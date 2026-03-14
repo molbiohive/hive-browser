@@ -155,38 +155,38 @@ class TestSafeExec:
     def test_filter_list(self):
         data = [{"name": "GFP", "size": 720}, {"name": "RFP", "size": 680}]
         result = safe_exec(
-            'result = [r for r in data if r["size"] > 700]',
+            'feedback = [r for r in data if r["size"] > 700]',
             {"data": data},
         )
         assert result["status"] == "ok"
-        assert len(result["result"]) == 1
-        assert result["result"][0]["name"] == "GFP"
+        assert len(result["feedback"]) == 1
+        assert result["feedback"][0]["name"] == "GFP"
 
     def test_aggregation(self):
         data = [{"v": 10}, {"v": 20}, {"v": 30}]
-        result = safe_exec('result = sum(r["v"] for r in data)', {"data": data})
+        result = safe_exec('feedback = sum(r["v"] for r in data)', {"data": data})
         assert result["status"] == "ok"
-        assert result["result"] == 60
+        assert result["feedback"] == 60
 
     def test_sorted_result(self):
         data = [{"n": "C"}, {"n": "A"}, {"n": "B"}]
         result = safe_exec(
-            'result = sorted(data, key=lambda r: r["n"])',
+            'feedback = sorted(data, key=lambda r: r["n"])',
             {"data": data},
         )
         assert result["status"] == "ok"
-        assert [r["n"] for r in result["result"]] == ["A", "B", "C"]
+        assert [r["n"] for r in result["feedback"]] == ["A", "B", "C"]
 
     def test_comprehension(self):
         data = [{"id": 1}, {"id": 2}, {"id": 3}]
-        result = safe_exec('result = [r["id"] for r in data]', {"data": data})
+        result = safe_exec('feedback = [r["id"] for r in data]', {"data": data})
         assert result["status"] == "ok"
-        assert result["result"] == [1, 2, 3]
+        assert result["feedback"] == [1, 2, 3]
 
-    def test_must_assign_result(self):
+    def test_must_assign_feedback(self):
         result = safe_exec("x = 42")
         assert result["status"] == "error"
-        assert "result" in result["error"]
+        assert "feedback" in result["error"]
 
     def test_empty_code(self):
         result = safe_exec("")
@@ -199,93 +199,93 @@ class TestSafeExec:
         assert "Empty" in result["error"]
 
     def test_import_blocked(self):
-        result = safe_exec("import os\nresult = 1")
+        result = safe_exec("import os\nfeedback = 1")
         assert result["status"] == "error"
         assert "Blocked" in result["error"]
 
     def test_open_blocked(self):
-        result = safe_exec('result = open("/etc/passwd")')
+        result = safe_exec('feedback = open("/etc/passwd")')
         assert result["status"] == "error"
         assert "Blocked" in result["error"]
 
     def test_exec_blocked(self):
-        result = safe_exec('exec("x=1")\nresult = 1')
+        result = safe_exec('exec("x=1")\nfeedback = 1')
         assert result["status"] == "error"
         assert "Blocked" in result["error"]
 
     def test_eval_blocked(self):
-        result = safe_exec('result = eval("1+1")')
+        result = safe_exec('feedback = eval("1+1")')
         assert result["status"] == "error"
         assert "Blocked" in result["error"]
 
     def test_dunder_import_blocked(self):
-        result = safe_exec('result = __import__("os")')
+        result = safe_exec('feedback = __import__("os")')
         assert result["status"] == "error"
         assert "Blocked" in result["error"]
 
     def test_syntax_error(self):
-        result = safe_exec("result = [")
+        result = safe_exec("feedback = [")
         assert result["status"] == "error"
         assert "SyntaxError" in result["error"]
 
     def test_runtime_error(self):
-        result = safe_exec('result = 1 / 0')
+        result = safe_exec('feedback = 1 / 0')
         assert result["status"] == "error"
         assert "ZeroDivisionError" in result["error"]
 
     def test_name_error(self):
-        result = safe_exec("result = undefined_var")
+        result = safe_exec("feedback = undefined_var")
         assert result["status"] == "error"
         assert "NameError" in result["error"]
 
     def test_type_classification_list(self):
-        result = safe_exec("result = [1, 2, 3]")
+        result = safe_exec("feedback = [1, 2, 3]")
         assert result["type"] == "list"
 
     def test_type_classification_dict(self):
-        result = safe_exec('result = {"key": "val"}')
+        result = safe_exec('feedback = {"key": "val"}')
         assert result["type"] == "dict"
 
     def test_type_classification_scalar(self):
-        result = safe_exec("result = 42")
+        result = safe_exec("feedback = 42")
         assert result["type"] == "scalar"
 
     def test_stdout_capture(self):
-        result = safe_exec('print("hello")\nresult = 1')
+        result = safe_exec('print("hello")\nfeedback = 1')
         assert result["status"] == "ok"
         assert result["stdout"] == "hello\n"
-        assert result["result"] == 1
+        assert result["feedback"] == 1
 
     def test_stdout_on_error(self):
-        result = safe_exec('print("before")\nresult = 1 / 0')
+        result = safe_exec('print("before")\nfeedback = 1 / 0')
         assert result["status"] == "error"
         assert "before" in result["stdout"]
 
     def test_builtins_available(self):
         """Core builtins (len, sum, min, max, etc.) work."""
-        result = safe_exec("result = len([1, 2, 3])")
-        assert result["result"] == 3
+        result = safe_exec("feedback = len([1, 2, 3])")
+        assert result["feedback"] == 3
 
-        result = safe_exec("result = max(1, 5, 3)")
-        assert result["result"] == 5
+        result = safe_exec("feedback = max(1, 5, 3)")
+        assert result["feedback"] == 5
 
-        result = safe_exec("result = list(range(3))")
-        assert result["result"] == [0, 1, 2]
+        result = safe_exec("feedback = list(range(3))")
+        assert result["feedback"] == [0, 1, 2]
 
     def test_no_variables(self):
         """Code can run without any injected variables."""
-        result = safe_exec("result = sum(range(10))")
+        result = safe_exec("feedback = sum(range(10))")
         assert result["status"] == "ok"
-        assert result["result"] == 45
+        assert result["feedback"] == 45
 
     def test_cached_variables_in_scope(self):
         """Variables from workspace namespace are accessible."""
         result = safe_exec(
-            'result = len(r0) + len(r1)',
+            'feedback = len(r0) + len(r1)',
             {"r0": [1, 2, 3], "r1": [4, 5]},
         )
         assert result["status"] == "ok"
-        assert result["result"] == 5
+        assert result["feedback"] == 5
 
 
 # ── SandboxRunner ──
@@ -307,24 +307,24 @@ class TestSandboxRunner:
         data = [{"id": 1}, {"id": 2}, {"id": 3}]
         ws.store("results", data, "search")
         runner = SandboxRunner(ws)
-        result = runner.execute('result = [r["id"] for r in r0]')
+        result = runner.execute('feedback = [r["id"] for r in r0]')
         assert result["status"] == "ok"
-        assert result["result"] == [1, 2, 3]
+        assert result["feedback"] == [1, 2, 3]
 
     def test_execute_with_string_handle(self):
         ws = Workspace()
         ws.store("sequence_data", "ATGCATGC", "profile")
         runner = SandboxRunner(ws)
-        result = runner.execute('result = len(r0)')
+        result = runner.execute('feedback = len(r0)')
         assert result["status"] == "ok"
-        assert result["result"] == 8
+        assert result["feedback"] == 8
 
     def test_summary_for_llm_ok(self):
         ws = Workspace()
         runner = SandboxRunner(ws)
-        result = {"status": "ok", "result": [1, 2, 3], "stdout": "", "type": "list"}
+        result = {"status": "ok", "feedback": [1, 2, 3], "stdout": "", "type": "list"}
         summary = runner.summary_for_llm(result)
-        assert "result = " in summary
+        assert "feedback = " in summary
         assert "[1, 2, 3]" in summary
 
     def test_summary_for_llm_error(self):
@@ -338,18 +338,18 @@ class TestSandboxRunner:
     def test_summary_for_llm_with_stdout(self):
         ws = Workspace()
         runner = SandboxRunner(ws)
-        result = {"status": "ok", "result": 42, "stdout": "debug\n", "type": "scalar"}
+        result = {"status": "ok", "feedback": 42, "stdout": "debug\n", "type": "scalar"}
         summary = runner.summary_for_llm(result)
-        assert "result = 42" in summary
+        assert "feedback = 42" in summary
         assert "stdout: debug" in summary
 
     def test_summary_for_llm_truncates(self):
         ws = Workspace()
         runner = SandboxRunner(ws, output_limit=40)
         big_list = list(range(1000))
-        result = {"status": "ok", "result": big_list, "stdout": "", "type": "list"}
+        result = {"status": "ok", "feedback": big_list, "stdout": "", "type": "list"}
         summary = runner.summary_for_llm(result)
-        assert len(summary) <= 40 + 50  # some overhead for "result = " prefix
+        assert len(summary) <= 40 + 50  # some overhead for "feedback = " prefix
 
     def test_tool_schema_empty_workspace(self):
         ws = Workspace()
@@ -357,7 +357,30 @@ class TestSandboxRunner:
         schema = runner.tool_schema()
         assert schema["function"]["name"] == "python"
         # Description still valid, just no workspace entries listed
-        assert "result" in schema["function"]["description"]
+        assert "feedback" in schema["function"]["description"]
+
+    def test_report_dict_persists_across_calls(self):
+        """Report dict accumulates data across multiple sandbox calls."""
+        ws = Workspace()
+        ws.store("data", [{"x": 1}, {"x": 2}], "search")
+        runner = SandboxRunner(ws)
+        result1 = runner.execute('report["items"] = r0\nfeedback = "stored items"')
+        assert result1["status"] == "ok"
+        assert runner.report == {"items": [{"x": 1}, {"x": 2}]}
+
+        result2 = runner.execute('report["count"] = len(r0)\nfeedback = "stored count"')
+        assert result2["status"] == "ok"
+        assert runner.report == {"items": [{"x": 1}, {"x": 2}], "count": 2}
+
+    def test_report_dict_injected_into_namespace(self):
+        """Report dict is accessible in sandbox code."""
+        ws = Workspace()
+        ws.store("data", [1, 2, 3], "tool")
+        runner = SandboxRunner(ws)
+        runner.execute('report["step1"] = "done"\nfeedback = "ok"')
+        result = runner.execute('feedback = report.get("step1", "missing")')
+        assert result["status"] == "ok"
+        assert result["feedback"] == "done"
 
     def test_output_limit_default(self):
         ws = Workspace()

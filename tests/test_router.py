@@ -692,7 +692,7 @@ class TestSandboxIntegration:
             self._tool_call_response("search", {"query": "GFP"}, call_id="c1"),
             self._tool_call_response(
                 "python",
-                {"code": 'result = [r["sid"] for r in r1]'},
+                {"code": 'feedback = [r["sid"] for r in r1]'},
                 call_id="c2",
             ),
             self._text_response("SIDs are 1 and 2."),
@@ -730,7 +730,7 @@ class TestSandboxIntegration:
             self._tool_call_response("search", {"query": "test"}, call_id="c1"),
             self._tool_call_response(
                 "python",
-                {"code": 'result = sum(1 for r in r1 if r["topology"] == "circular")'},
+                {"code": 'feedback = sum(1 for r in r1 if r["topology"] == "circular")'},
                 call_id="c2",
             ),
             self._text_response("1 circular sequence."),
@@ -743,7 +743,7 @@ class TestSandboxIntegration:
         assert len(resp["chain"]) == 2
         assert resp["chain"][0]["tool"] == "search"
         assert resp["chain"][1]["tool"] == "python"
-        assert resp["chain"][1]["summary"].startswith("Result: ")
+        assert resp["chain"][1]["summary"] == "1"
 
     async def test_python_schema_injected_when_cache_nonempty(self):
         """python schema only appears after first tool caches data."""
@@ -800,7 +800,7 @@ class TestSandboxIntegration:
         llm = self._mock_llm([
             self._tool_call_response("search", {"query": "x"}, call_id="c1"),
             self._tool_call_response(
-                "python", {"code": 'result = len(r1)'}, call_id="c2",
+                "python", {"code": 'feedback = len(r1)'}, call_id="c2",
             ),
             self._text_response("1 result."),
         ])
@@ -811,7 +811,7 @@ class TestSandboxIntegration:
         python_tool_msgs = [
             m for m in last_call_msgs
             if isinstance(m, dict) and m.get("role") == "tool"
-            and "result = 1" in m.get("content", "")
+            and "feedback = 1" in m.get("content", "")
         ]
         assert len(python_tool_msgs) == 1
         assert "Workspace:" in python_tool_msgs[0]["content"]
@@ -840,15 +840,15 @@ class TestSandboxIntegration:
             self._tool_call_response("search", {"query": "x"}, call_id="c1"),
             # Turn 1: sandbox error #1
             self._tool_call_response(
-                "python", {"code": "result = undefined_var_1"}, call_id="c2",
+                "python", {"code": "feedback = undefined_var_1"}, call_id="c2",
             ),
             # Turn 2: sandbox error #2
             self._tool_call_response(
-                "python", {"code": "result = undefined_var_2"}, call_id="c3",
+                "python", {"code": "feedback = undefined_var_2"}, call_id="c3",
             ),
             # Turn 3: sandbox error #3
             self._tool_call_response(
-                "python", {"code": "result = undefined_var_3"}, call_id="c4",
+                "python", {"code": "feedback = undefined_var_3"}, call_id="c4",
             ),
             # Turn 4: LLM gives up and responds with text
             self._text_response("Could not process the data."),

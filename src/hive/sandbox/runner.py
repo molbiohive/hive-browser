@@ -19,13 +19,16 @@ class SandboxRunner:
     def __init__(self, workspace: Workspace, output_limit: int = 4000):
         self.workspace = workspace
         self.output_limit = output_limit
+        self.report: dict[str, Any] = {}  # LLM-populated, persists across calls
 
     def tool_schema(self) -> dict:
         """OpenAI-format function schema with dynamic workspace description."""
         desc = (
             "Execute Python on cached data. Variables in scope:\n"
             + self.workspace.describe_all()
-            + "\nMust assign to `result`."
+            + "\n`report` dict accumulates widget data. "
+            "Assign named values: report[\"features\"] = [...].\n"
+            "Must assign to `feedback` (caption text for the widget)."
         )
         return {
             "type": "function",
@@ -37,7 +40,7 @@ class SandboxRunner:
                     "properties": {
                         "code": {
                             "type": "string",
-                            "description": "Python code. Assign output to `result`.",
+                            "description": "Python code. Assign output to `feedback`.",
                         },
                     },
                     "required": ["code"],
@@ -46,8 +49,9 @@ class SandboxRunner:
         }
 
     def execute(self, code: str) -> dict[str, Any]:
-        """Run *code* with all workspace handles as variables."""
+        """Run *code* with all workspace handles + report dict as variables."""
         variables = self.workspace.namespace()
+        variables["report"] = self.report  # mutable dict — changes persist
         return safe_exec(code, variables)
 
     def summary_for_llm(self, result: dict[str, Any]) -> str:
@@ -58,11 +62,11 @@ class SandboxRunner:
                 parts.append(f"stdout: {result['stdout'].rstrip()}")
             return "\n".join(parts)
 
-        value = result["result"]
+        value = result["feedback"]
         stdout = result.get("stdout", "")
         max_chars = self.output_limit
 
-        # Format the result value
+        # Format the feedback value
         if isinstance(value, (list, dict)):
             text = json.dumps(value, default=str)
             if len(text) > max_chars:
@@ -70,7 +74,7 @@ class SandboxRunner:
         else:
             text = str(value)
 
-        parts = [f"result = {text}"]
+        parts = [f"feedback = {text}"]
         if stdout:
             parts.append(f"stdout: {stdout.rstrip()}")
         return "\n".join(parts)

@@ -289,6 +289,12 @@ async def _unified_loop(
                 turn + 1, [s["tool"] for s in chain],
             )
 
+            # Report dict populated by sandbox → becomes the widget data
+            if sandbox.report:
+                last_result = sandbox.report
+                last_tool = "python"
+                last_params = {}
+
             if last_result and last_tool:
                 resp = _tool_response(last_tool, last_result, last_params, content)
                 resp["tokens"] = tokens
@@ -337,42 +343,21 @@ async def _unified_loop(
                     "content": compact,
                 })
 
-                # Sandbox is the final computation — update last_result accordingly
-                sb_val = sb_result.get("result")
-                is_tabular = (
-                    sb_result["status"] == "ok"
-                    and isinstance(sb_val, list)
-                    and sb_val
-                    and isinstance(sb_val[0], dict)
-                )
-
                 # Human-readable chain summary (shown in UI, not sent to LLM)
                 if sb_result["status"] != "ok":
                     chain_summary = f"Error: {sb_result.get('error', 'unknown')}"
-                elif is_tabular:
-                    chain_summary = f"Filtered to {len(sb_val)} row(s)"
+                    sandbox_errors += 1
                 else:
-                    short = str(sb_val)
-                    chain_summary = f"Result: {short[:80]}" if len(short) > 80 else f"Result: {short}"
+                    sandbox_errors = 0
+                    desc = str(sb_result.get("feedback", ""))
+                    chain_summary = desc[:80] if len(desc) > 80 else desc
 
                 chain.append({
                     "tool": "python",
                     "params": {"code": code},
                     "summary": chain_summary,
-                    "widget": "table" if is_tabular else "none",
+                    "widget": "none",  # python never sets widget directly
                 })
-                # Track consecutive sandbox errors for retry limit
-                if sb_result["status"] != "ok":
-                    sandbox_errors += 1
-                else:
-                    sandbox_errors = 0
-
-                if is_tabular:
-                    # List[dict] → show as table widget
-                    last_result = {"results": sb_val}
-                    last_tool = "python"
-                    last_params = {"code": code}
-                # Scalar → don't touch last_result/last_tool; previous tool's widget stays
 
                 logger.info("Sandbox exec: %s", compact[:200])
                 await _emit("thinking")
@@ -457,6 +442,12 @@ async def _unified_loop(
             fallback += f" (LLM error: {error_msg})"
         else:
             fallback += " (reached maximum reasoning steps)"
+
+    # Report dict populated by sandbox → becomes the widget data
+    if sandbox.report:
+        last_result = sandbox.report
+        last_tool = "python"
+        last_params = {}
 
     if last_result and last_tool:
         resp = _tool_response(last_tool, last_result, last_params, fallback)
