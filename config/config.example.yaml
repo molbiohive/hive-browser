@@ -54,6 +54,8 @@ logging:
 
 chat:
   max_history_pairs: 20        # LLM conversation memory depth
+  widget_data_threshold: 16384 # bytes — strip widget data above this on save
+  rerun_stale_widgets: 3       # auto-rerun on chat load: 0=none, N=last N, -1=all
 
 watcher:
   root: ~/sequences          # directory to watch for sequence files
