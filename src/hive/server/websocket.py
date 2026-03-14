@@ -268,6 +268,14 @@ async def websocket_endpoint(websocket: WebSocket):
                             "title": saved.get("title"),
                             "model": current_model_id,
                         })
+                        # Auto-rerun stale widgets in background
+                        max_rerun = config.chat.rerun_stale_widgets if config else 3
+                        if max_rerun != 0:
+                            asyncio.create_task(
+                                _rerun_stale_widgets(
+                                    conn_id, chat, registry, user.id, max_rerun,
+                                )
+                            )
                 continue
 
             # Handle tool re-run (for stale widgets in loaded chats)
@@ -554,10 +562,54 @@ def _fallback_title(user_message: str) -> str:
     return title
 
 
+async def _rerun_stale_widgets(
+    conn_id: str,
+    chat: dict,
+    registry,
+    user_id: int | None,
+    max_rerun: int = 3,
+):
+    """Re-execute tools for stale widgets after chat load.
+
+    Iterates messages in reverse (last stale first).
+    max_rerun: -1 = all, 0 = none, N > 0 = last N stale widgets.
+    """
+    current_user_id.set(user_id)
+    messages = chat.get("messages", [])
+    rerun_count = 0
+    for idx in range(len(messages) - 1, -1, -1):
+        if max_rerun > 0 and rerun_count >= max_rerun:
+            break
+        msg = messages[idx]
+        widget = msg.get("widget")
+        if not widget or not widget.get("stale"):
+            continue
+        tool_name = widget.get("tool")
+        params = widget.get("params", {})
+        tool = registry.get(tool_name) if tool_name else None
+        if not tool:
+            continue
+        try:
+            result = await tool.execute(params, mode="rerun")
+            await manager.send_json(conn_id, {
+                "type": "widget_data",
+                "messageIndex": idx,
+                "data": result,
+            })
+            widget["data"] = result
+            widget.pop("stale", None)
+        except Exception as e:
+            logger.warning("Stale rerun %s[%d] failed: %s", tool_name, idx, e)
+        rerun_count += 1
+
+
 def _strip_large_widget_data(msg: dict, threshold: int) -> dict:
     """Return a copy with large widget data replaced by a stale marker."""
     widget = msg.get("widget")
     if not widget or not widget.get("data") or widget.get("type") == "form":
+        return msg
+    # Always persist sandbox report data — can't be re-run without workspace
+    if widget.get("tool") == "python":
         return msg
     data_size = len(json.dumps(widget["data"], default=str))
     if data_size > threshold:
