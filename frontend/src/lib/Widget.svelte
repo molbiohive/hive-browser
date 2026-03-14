@@ -2,6 +2,8 @@
 	import { rerunTool } from '$lib/stores/chat.ts';
 	import { copyToClipboard } from '$lib/clipboard.ts';
 	import DataTable from '$lib/DataTable.svelte';
+	import TabBar from '$lib/TabBar.svelte';
+	import CopyableSequence from '$lib/CopyableSequence.svelte';
 
 	// Auto-discover widget components: FooWidget.svelte -> type "foo"
 	const modules = import.meta.glob('./*Widget.svelte', { eager: true });
@@ -22,30 +24,49 @@
 	const isStale = $derived(widget.stale || (!widget.data && widget.type !== 'form'));
 	const WidgetComponent = $derived(widgetComponents[widget.type]);
 
-	// Generic fallback: auto-detect arrays → table rows, scalars → key-value
-	const fallbackRows = $derived.by(() => {
-		if (WidgetComponent || !widget.data || widget.data.error) return null;
-		for (const val of Object.values(widget.data)) {
+	// Detect all list[dict] values -> tabbed tables
+	const fallbackTables = $derived.by(() => {
+		if (WidgetComponent || !widget.data || widget.data.error) return [];
+		const tables = [];
+		for (const [key, val] of Object.entries(widget.data)) {
 			if (Array.isArray(val) && val.length > 0 && typeof val[0] === 'object') {
-				return val;
+				tables.push({
+					id: key,
+					label: key.replace(/_/g, ' '),
+					rows: val,
+					columns: Object.keys(val[0]).map(k => ({
+						key: k,
+						label: k.replace(/_/g, ' '),
+					})),
+				});
 			}
 		}
-		return null;
+		return tables;
 	});
 
-	const fallbackColumns = $derived.by(() => {
-		if (!fallbackRows?.length) return [];
-		return Object.keys(fallbackRows[0]).map((key) => ({
-			key,
-			label: key.replace(/_/g, ' '),
-		}));
+	// Detect long DNA/RNA/protein-like strings -> CopyableSequence
+	const SEQ_MIN = 20;
+	const SEQ_RE = /^[A-Za-z*\s]+$/;
+
+	const fallbackSequences = $derived.by(() => {
+		if (WidgetComponent || !widget.data || widget.data.error) return [];
+		return Object.entries(widget.data)
+			.filter(([, v]) => typeof v === 'string' && v.length >= SEQ_MIN && SEQ_RE.test(v))
+			.map(([key, val]) => ({ key, sequence: val }));
 	});
 
+	// Scalars -- exclude arrays, objects, and detected sequences
 	const fallbackScalars = $derived.by(() => {
 		if (WidgetComponent || !widget.data) return [];
+		const seqKeys = new Set(fallbackSequences.map(s => s.key));
 		return Object.entries(widget.data).filter(
-			([, v]) => !Array.isArray(v) && typeof v !== 'object'
+			([k, v]) => !Array.isArray(v) && typeof v !== 'object' && !seqKeys.has(k)
 		);
+	});
+
+	let activeTab = $state('');
+	$effect(() => {
+		if (fallbackTables.length > 0) activeTab = fallbackTables[0].id;
 	});
 
 	const isForm = $derived(widget.type === 'form');
@@ -139,8 +160,27 @@
 							{/each}
 						</div>
 					{/if}
-					{#if fallbackRows}
-						<DataTable rows={fallbackRows} columns={fallbackColumns} defaultPageSize={10} />
+
+					{#each fallbackSequences as { key, sequence }}
+						<div class="seq-block">
+							<div class="seq-label">{key.replace(/_/g, ' ')}</div>
+							<CopyableSequence {sequence}
+								label="{sequence.length} characters — click to copy" />
+						</div>
+					{/each}
+
+					{#if fallbackTables.length === 1}
+						<DataTable rows={fallbackTables[0].rows}
+							columns={fallbackTables[0].columns} defaultPageSize={10} />
+					{:else if fallbackTables.length > 1}
+						<TabBar tabs={fallbackTables.map(t => ({ id: t.id, label: t.label }))}
+							active={activeTab} onchange={(id) => activeTab = id} />
+						{#each fallbackTables as table}
+							{#if table.id === activeTab}
+								<DataTable rows={table.rows}
+									columns={table.columns} defaultPageSize={10} />
+							{/if}
+						{/each}
 					{/if}
 				{/if}
 			</div>
@@ -268,5 +308,13 @@
 		color: var(--text-muted);
 		overflow-wrap: break-word;
 		word-break: break-word;
+	}
+
+	.seq-block { margin-bottom: 0.5rem; }
+	.seq-label {
+		font-size: 0.75rem;
+		color: var(--text-faint);
+		margin-bottom: 0.2rem;
+		font-weight: 500;
 	}
 </style>
