@@ -6,6 +6,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from hive.context import current_user_id
 from hive.db import session as db
 from hive.tools.base import Tool
 from hive.tools.resolve import resolve_input
@@ -80,6 +81,15 @@ class SitesTool(Tool):
 
         async with db.async_session_factory() as session:
             enzymes = await load_enzymes(session)
+
+            # Filter to user's active enzyme collection if one is selected
+            from hive.cloning.collections import get_active_enzyme_names
+
+            user_id = current_user_id.get()
+            active_names = await get_active_enzyme_names(session, user_id)
+            if active_names:
+                active_upper = {n.upper() for n in active_names}
+                enzymes = {k: v for k, v in enzymes.items() if k in active_upper}
 
         cutters = find_all_cutters(
             cleaned, enzymes, circular=inp.circular, max_cuts=inp.max_cuts,
