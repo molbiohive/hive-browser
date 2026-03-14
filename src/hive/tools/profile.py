@@ -8,6 +8,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from hive.config import display_file_path
+from hive.libs.classify import analyze_primer
 from hive.context import current_user_id
 from hive.db import session as db
 from hive.tools.base import Tool
@@ -190,6 +191,42 @@ class ProfileTool(Tool):
                 except Exception as e:
                     logger.warning("Primer prediction failed: %s", e)
 
+            primers = _dedup_primers(
+                [
+                    {
+                        "pid": p["pid"],
+                        "name": p["name"],
+                        "start": p["start"],
+                        "end": p["end"],
+                        "strand": p["strand"],
+                        "length": p["length"],
+                        "sequence": p.get("sequence"),
+                        "source": "file",
+                    }
+                    for p in parts_list
+                    if p["annotation_type"] == "primer_bind"
+                ] + [
+                    {
+                        "pid": pp["primer_id"],
+                        "name": pp["name"],
+                        "start": pp["start"],
+                        "end": pp["end"],
+                        "strand": pp["strand"],
+                        "length": pp["primer_length"],
+                        "sequence": pp.get("primer_sequence"),
+                        "source": "predicted",
+                    }
+                    for pp in predicted_primers
+                ]
+            )
+
+            # Compute Tm for each primer with a sequence
+            for p in primers:
+                pseq = p.get("sequence")
+                if pseq and len(pseq) >= 5:
+                    stats = analyze_primer(pseq)
+                    p["tm"] = float(stats["tm"])
+
             return {
                 "sequence": {
                     "sid": seq.id,
@@ -214,34 +251,7 @@ class ProfileTool(Tool):
                     for p in parts_list
                     if p["annotation_type"] != "primer_bind"
                 ],
-                "primers": _dedup_primers(
-                    [
-                        {
-                            "pid": p["pid"],
-                            "name": p["name"],
-                            "start": p["start"],
-                            "end": p["end"],
-                            "strand": p["strand"],
-                            "length": p["length"],
-                            "sequence": p.get("sequence"),
-                            "source": "file",
-                        }
-                        for p in parts_list
-                        if p["annotation_type"] == "primer_bind"
-                    ] + [
-                        {
-                            "pid": pp["primer_id"],
-                            "name": pp["name"],
-                            "start": pp["start"],
-                            "end": pp["end"],
-                            "strand": pp["strand"],
-                            "length": pp["primer_length"],
-                            "sequence": pp.get("primer_sequence"),
-                            "source": "predicted",
-                        }
-                        for pp in predicted_primers
-                    ]
-                ),
+                "primers": primers,
                 "cut_sites": cut_sites,
                 "file": {
                     "path": display_file_path(seq.file.file_path),

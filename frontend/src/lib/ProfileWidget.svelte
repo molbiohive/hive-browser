@@ -19,7 +19,10 @@
 	const primerColumns = [
 		{ key: 'pid', label: 'PID' },
 		{ key: 'name', label: 'Name' },
+		{ key: 'location', label: 'Location', format: (row) => `${row.start}..${row.end}` },
+		{ key: 'strand', label: 'Strand', format: (row) => row.strand > 0 ? '+' : '\u2212' },
 		{ key: 'length', label: 'Length', format: (row) => row.length ? `${row.length} bp` : '' },
+		{ key: 'tm', label: 'Tm', format: (row) => row.tm != null ? `${row.tm.toFixed(1)}` : '' },
 	];
 
 	const cutSiteColumns = [
