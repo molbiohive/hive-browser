@@ -129,11 +129,6 @@ async def websocket_endpoint(websocket: WebSocket):
         await manager.send_json(conn_id, {
             "type": "init",
             "config": {
-                "search_columns": (
-                    config.tools.search.columns
-                    if config
-                    else ["name", "size_bp", "topology", "features"]
-                ),
                 "max_history_pairs": max_pairs,
                 "planner_available": tool_rag is not None,
             },

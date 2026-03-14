@@ -53,18 +53,7 @@ static:
 # ── Docker ────────────────────────────────────────────────
 
 docker-init:
-	@EXAMPLE_VER=$$(grep -m1 '^version:' config/config.example.yaml | awk '{print $$2}'); \
-	if [ -f config/config.docker.yaml ]; then \
-		DOCKER_VER=$$(grep -m1 '^version:' config/config.docker.yaml | awk '{print $$2}'); \
-		if [ "$$EXAMPLE_VER" != "$$DOCKER_VER" ]; then \
-			cp config/config.docker.yaml config/config.docker.yaml.bak; \
-			cp config/config.example.yaml config/config.docker.yaml; \
-			echo "Config version changed ($$DOCKER_VER -> $$EXAMPLE_VER)"; \
-			echo "Old config saved to config/config.docker.yaml.bak"; \
-			echo "Review config/config.docker.yaml and re-run."; \
-			exit 1; \
-		fi; \
-	else \
+	@if [ ! -f config/config.docker.yaml ]; then \
 		cp config/config.example.yaml config/config.docker.yaml; \
 		echo "Created config/config.docker.yaml"; \
 	fi

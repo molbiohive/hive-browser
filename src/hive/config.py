@@ -58,14 +58,6 @@ class DepsConfig(BaseSettings):
     mafft: MafftConfig = Field(default_factory=MafftConfig)
 
 
-class SearchConfig(BaseSettings):
-    columns: list[str] = ["name", "size_bp", "topology", "features"]
-
-
-class ToolsConfig(BaseSettings):
-    search: SearchConfig = Field(default_factory=SearchConfig)
-
-
 class LogConfig(BaseSettings):
     level: str = "INFO"  # root log level
     llm_dump: bool = False  # write full LLM payloads to llm.jsonl
@@ -97,17 +89,12 @@ class ServerConfig(BaseSettings):
     port: int = 8080
 
 
-CURRENT_CONFIG_VERSION = 5
-
-
 class Settings(BaseSettings):
-    version: int = CURRENT_CONFIG_VERSION
     data_root: str = "./data"
     server: ServerConfig = Field(default_factory=ServerConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
     deps: DepsConfig = Field(default_factory=DepsConfig)
-    tools: ToolsConfig = Field(default_factory=ToolsConfig)
     chat: ChatConfig = Field(default_factory=ChatConfig)
     logging: LogConfig = Field(default_factory=LogConfig)
     watcher: WatcherConfig = Field(default_factory=WatcherConfig)

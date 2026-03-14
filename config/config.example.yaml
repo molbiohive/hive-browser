@@ -2,8 +2,6 @@
 # Copy this file to config.local.yaml and adjust values.
 # Select config via: HIVE_CONFIG=config/config.local.yaml
 
-version: 5
-
 server:
   host: "0.0.0.0"
   port: 8080
@@ -43,10 +41,6 @@ deps:
     default_max_hits: 50
   mafft:
     bin_dir: ""                # empty = use PATH
-
-tools:
-  search:
-    columns: [name, size_bp, topology, features]  # fields shown in search results
 
 logging:
   level: "INFO"                # root log level (DEBUG, INFO, WARNING, ERROR)

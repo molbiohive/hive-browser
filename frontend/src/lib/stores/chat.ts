@@ -41,7 +41,6 @@ interface ChatMeta {
 }
 
 interface AppConfig {
-	search_columns: string[];
 	max_history_pairs: number;
 	planner_available: boolean;
 }
@@ -79,7 +78,6 @@ const initialState: ChatState = {
 };
 
 const defaultConfig: AppConfig = {
-	search_columns: ['name', 'size_bp', 'topology', 'features'],
 	max_history_pairs: 20,
 	planner_available: false,
 };
