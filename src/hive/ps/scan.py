@@ -56,19 +56,7 @@ class ReindexProcess(Process):
         self.dep_registry = dep_registry
 
     async def run(self, ctx: ProcessContext) -> str:
-        from sqlalchemy import update
-
-        from hive.db.models import IndexedFile
-        from hive.db.session import async_session_factory
-
-        async with async_session_factory() as s:
-            result = await s.execute(
-                update(IndexedFile)
-                .where(IndexedFile.status == "active")
-                .values(file_hash="")
-            )
-            await s.commit()
-            reset_count = result.rowcount
-
-        count = await scan_and_ingest(self.config, dep_registry=self.dep_registry, ctx=ctx)
-        return f"{reset_count} hashes reset, {count} files re-parsed"
+        count = await scan_and_ingest(
+            self.config, dep_registry=self.dep_registry, ctx=ctx, force=True,
+        )
+        return f"{count} files re-parsed"

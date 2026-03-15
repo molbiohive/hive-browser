@@ -26,6 +26,7 @@ async def scan_and_ingest(
     dep_registry: DepRegistry | None = None,
     batch_size: int = 100,
     ctx: ProcessContext | None = None,
+    force: bool = False,
 ) -> int:
     """Scan directory and ingest all parseable files. Returns count of newly indexed files."""
     root = Path(config.root).expanduser().resolve()
@@ -68,6 +69,7 @@ async def scan_and_ingest(
             try:
                 result = await ingest_file(
                     session, path, match, commit=False, watcher_root=watcher_root,
+                    force=force,
                 )
                 if result is not None:
                     indexed += 1

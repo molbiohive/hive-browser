@@ -128,6 +128,7 @@ async def ingest_file(
     match: MatchResult,
     commit: bool = True,
     watcher_root: str | None = None,
+    force: bool = False,
 ) -> IndexedFile | None:
     """Parse a file and upsert its data into the database.
 
@@ -142,17 +143,20 @@ async def ingest_file(
     )
     existing_file = existing.scalar_one_or_none()
 
-    if existing_file and existing_file.file_mtime:
-        existing_ts = existing_file.file_mtime.timestamp()
-        if abs(existing_ts - stat.st_mtime) < 1.0:
-            logger.debug("Unchanged (mtime): %s", file_path.name)
+    if not force:
+        if existing_file and existing_file.file_mtime:
+            existing_ts = existing_file.file_mtime.timestamp()
+            if abs(existing_ts - stat.st_mtime) < 1.0:
+                logger.debug("Unchanged (mtime): %s", file_path.name)
+                return None
+
+        file_hash = hash_file(file_path)
+
+        if existing_file and existing_file.file_hash == file_hash:
+            logger.debug("Unchanged (hash): %s", file_path.name)
             return None
-
-    file_hash = hash_file(file_path)
-
-    if existing_file and existing_file.file_hash == file_hash:
-        logger.debug("Unchanged (hash): %s", file_path.name)
-        return None
+    else:
+        file_hash = hash_file(file_path)
 
     # Parse the file
     try:
