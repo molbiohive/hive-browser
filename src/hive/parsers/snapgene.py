@@ -45,8 +45,8 @@ def parse_snapgene(filepath: Path, extract: list[str] | None = None) -> ParseRes
                 start=getattr(p, "start", None),
                 end=getattr(p, "end", None),
                 strand=(
-                    _parse_strand(getattr(p, "strand", None))
-                    if getattr(p, "strand", None) is not None
+                    _parse_strand(getattr(p, "bind_strand", None))
+                    if getattr(p, "bind_strand", None) is not None
                     else None
                 ),
             ))
