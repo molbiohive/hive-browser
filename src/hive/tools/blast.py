@@ -69,20 +69,6 @@ class BlastInput(BaseModel):
     )
 
 
-class BlastHit(BaseModel):
-    subject: str
-    identity: float
-    alignment_length: int
-    mismatches: int
-    gaps: int
-    q_start: int
-    q_end: int
-    s_start: int
-    s_end: int
-    evalue: float
-    bitscore: float
-
-
 class BlastTool(Tool):
     name = "blast"
     description = (

@@ -16,14 +16,11 @@
 		file_path: { key: 'file_path', label: 'File' },
 	};
 
-	const HIDDEN_KEYS = new Set([]);
-
 	// Auto-discover columns from data — show everything
 	const columns = $derived.by(() => {
 		const results = data?.results;
 		if (!results?.length) return [];
-		const keys = Object.keys(results[0]).filter(k => !HIDDEN_KEYS.has(k));
-		return keys.map(k => columnDefs[k] || { key: k, label: k.replace(/_/g, ' ') });
+		return Object.keys(results[0]).map(k => columnDefs[k] || { key: k, label: k.replace(/_/g, ' ') });
 	});
 
 	function viewProfile(row) {

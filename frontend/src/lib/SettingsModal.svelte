@@ -21,8 +21,6 @@
 	let itemsLoading = $state(false);
 	let searchQuery = $state('');
 	let selected = $state(new Set());
-	let _debounceTimer = null;
-
 	const enzymeCollectionId = $derived($currentUser?.preferences?.enzyme_collection_id ?? null);
 	const primerCollectionId = $derived($currentUser?.preferences?.primer_collection_id ?? null);
 

@@ -54,7 +54,6 @@ chat:
 watcher:
   root: ~/sequences          # directory to watch for sequence files
   recursive: true
-  poll_interval: 5
 
   rules:
     - match: "*.dna"

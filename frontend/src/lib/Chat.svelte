@@ -1,7 +1,7 @@
 <script>
 	import { onMount } from 'svelte';
 	import { chatStore, chatList, appConfig, statusBar, connect, sendMessage, cancelRequest, loadChat, newChat, fetchChatList, deleteChat, setPreference } from '$lib/stores/chat.ts';
-	import { currentUser, needsAuth, clearToken, setToken, getUserToken } from '$lib/stores/user.ts';
+	import { currentUser, needsAuth, setToken, getUserToken } from '$lib/stores/user.ts';
 	import { leftPanelOpen, rightPanelOpen } from '$lib/stores/panels.ts';
 	import MessageBubble from '$lib/MessageBubble.svelte';
 	import CommandPalette from '$lib/CommandPalette.svelte';

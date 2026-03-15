@@ -1,7 +1,6 @@
 """Async database session management."""
 
 import logging
-from collections.abc import AsyncGenerator
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -35,25 +34,3 @@ async def init_db(config: DatabaseConfig) -> bool:
         return False
 
 
-async def create_tables():
-    """Create all tables from models (for dev/testing — use Alembic in production)."""
-    from hive.db.models import Base
-
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    logger.info("Tables created")
-
-
-async def drop_tables():
-    """Drop all tables (for testing only)."""
-    from hive.db.models import Base
-
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-    logger.info("Tables dropped")
-
-
-async def get_session() -> AsyncGenerator[AsyncSession, None]:
-    """Yield an async session for dependency injection."""
-    async with async_session_factory() as session:
-        yield session

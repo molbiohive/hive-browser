@@ -3,7 +3,6 @@
 import json
 import logging
 import re
-from dataclasses import dataclass
 from pathlib import Path
 
 from sqlalchemy import func, select
@@ -54,20 +53,6 @@ async def load_enzymes(session: AsyncSession) -> dict[str, Enzyme]:
     rows = (await session.execute(select(Enzyme))).scalars().all()
     _enzyme_cache = {e.name.upper(): e for e in rows}
     return _enzyme_cache
-
-
-def clear_cache():
-    """Clear the enzyme cache (for testing or after import)."""
-    global _enzyme_cache
-    _enzyme_cache = None
-
-
-@dataclass
-class CutSite:
-    """A single cut site on the sequence."""
-    position: int     # 0-based position of the cut on the sense strand
-    enzyme: str       # enzyme name
-    strand: int       # +1 sense, -1 antisense (for non-palindromic)
 
 
 def find_cut_sites(

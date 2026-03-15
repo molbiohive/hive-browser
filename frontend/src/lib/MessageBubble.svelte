@@ -50,8 +50,8 @@
 			{#if message.widget}
 				<Widget widget={message.widget} {messageIndex} />
 			{/if}
-			{#if message.widget?.chain || message.chain}
-				<ChainSteps chain={message.widget?.chain || message.chain} />
+			{#if message.widget?.chain}
+				<ChainSteps chain={message.widget.chain} />
 			{/if}
 		</div>
 

@@ -80,7 +80,6 @@ class WatcherRule(BaseSettings):
 class WatcherConfig(BaseSettings):
     root: str = "~/sequences"
     recursive: bool = True
-    poll_interval: int = 5
     rules: list[WatcherRule] = Field(default_factory=list)
 
 

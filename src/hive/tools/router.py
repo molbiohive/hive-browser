@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any
 
 from hive.llm.client import LLMClient
 from hive.llm.prompts import (
-    build_multi_tool_schema,
+    build_tool_schema,
     build_system_prompt,
 )
 from hive.sandbox import SandboxRunner, Workspace
@@ -161,7 +161,7 @@ async def _unified_loop(
 
     all_tools = registry.llm_tools()
     tool_map = {t.name: t for t in all_tools}
-    all_schemas = build_multi_tool_schema(all_tools)
+    all_schemas = build_tool_schema(all_tools)
 
     last_result = None
     last_tool = None
@@ -208,7 +208,7 @@ async def _unified_loop(
                 selected = await tool_rag.select(user_input)
 
             tool_map = {t.name: t for t in selected}
-            schemas = build_multi_tool_schema(selected)
+            schemas = build_tool_schema(selected)
             logger.info(
                 "RAG selected %d tools: %s",
                 len(selected), sorted(t.name for t in selected),

@@ -356,7 +356,7 @@ class TestPrompts:
         config = Settings()
         registry = ToolFactory.discover(config)
         tool = registry.get("search")
-        schema = build_tool_schema(tool)
+        schema = build_tool_schema([tool])
 
         assert len(schema) == 1
         assert schema[0]["type"] == "function"
@@ -370,7 +370,7 @@ class TestPrompts:
         config = Settings()
         registry = ToolFactory.discover(config)
         search = registry.get("search")
-        schema = build_tool_schema(search)
+        schema = build_tool_schema([search])
         # guidelines is concise, description is verbose
         assert schema[0]["function"]["description"] == search.guidelines
         assert schema[0]["function"]["description"] != search.description

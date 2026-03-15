@@ -1,7 +1,5 @@
 """Deterministic part classification -- pure functions, no DB, no async."""
 
-import math
-
 # Standard genetic code (NCBI table 1)
 _START_CODONS = {"ATG"}
 _STOP_CODONS = {"TAA", "TAG", "TGA"}

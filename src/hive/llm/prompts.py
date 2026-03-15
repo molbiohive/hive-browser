@@ -98,20 +98,8 @@ def _slim_schema(schema: dict) -> dict:
     return schema
 
 
-def build_tool_schema(tool: Tool) -> list[dict]:
-    """Single tool's function schema in OpenAI format."""
-    return [{
-        "type": "function",
-        "function": {
-            "name": tool.name,
-            "description": _tool_desc(tool),
-            "parameters": tool.input_schema(),
-        },
-    }]
-
-
-def build_multi_tool_schema(tools: list[Tool]) -> list[dict]:
-    """Multiple tools' function schemas in OpenAI format (uses slim LLM schemas)."""
+def build_tool_schema(tools: list[Tool]) -> list[dict]:
+    """Build function schemas in OpenAI format (uses slim LLM schemas)."""
     return [
         {
             "type": "function",
