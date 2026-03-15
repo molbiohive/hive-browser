@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import logging
-import time
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from hive.config import WatcherConfig
@@ -16,32 +14,6 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# Minimum seconds between startup scans (20 minutes)
-SCAN_COOLDOWN = 1200
-
-
-def _token_path(data_root: str) -> Path:
-    """Return path for the .last_scan timestamp file inside data_root."""
-    p = Path(data_root).expanduser().resolve()
-    p.mkdir(parents=True, exist_ok=True)
-    return p / ".last_scan"
-
-
-def _read_last_scan(data_root: str) -> float:
-    """Read last scan timestamp, or 0 if missing."""
-    try:
-        return float(_token_path(data_root).read_text().strip())
-    except (FileNotFoundError, ValueError):
-        return 0.0
-
-
-def _write_last_scan(data_root: str) -> None:
-    """Write current time as last scan timestamp."""
-    try:
-        _token_path(data_root).write_text(str(time.time()))
-    except OSError as e:
-        logger.warning("Could not write scan token: %s", e)
-
 
 class ScanProcess(Process):
     """Initial directory scan on startup."""
@@ -51,48 +23,36 @@ class ScanProcess(Process):
 
     def __init__(self, config: WatcherConfig, data_root: str, dep_registry: DepRegistry | None = None):
         self.config = config
-        self.data_root = data_root
         self.dep_registry = dep_registry
 
     async def run(self, ctx: ProcessContext) -> str:
-        last = _read_last_scan(self.data_root)
-        elapsed = time.time() - last
-        if elapsed < SCAN_COOLDOWN:
-            remaining = int(SCAN_COOLDOWN - elapsed)
-            logger.info("Scan skipped: last scan %ds ago (cooldown %ds)", int(elapsed), SCAN_COOLDOWN)
-            return f"Skipped, last scan {int(elapsed)}s ago ({remaining}s remaining)"
-
         count = await scan_and_ingest(self.config, dep_registry=self.dep_registry, ctx=ctx)
-        _write_last_scan(self.data_root)
         return f"{count} files indexed"
 
 
 class RescanProcess(Process):
-    """Force full directory rescan (ignores cooldown)."""
+    """Force full directory rescan."""
 
     name = "rescan"
     description = "Full directory rescan"
 
     def __init__(self, config: WatcherConfig, data_root: str, dep_registry: DepRegistry | None = None):
         self.config = config
-        self.data_root = data_root
         self.dep_registry = dep_registry
 
     async def run(self, ctx: ProcessContext) -> str:
         count = await scan_and_ingest(self.config, dep_registry=self.dep_registry, ctx=ctx)
-        _write_last_scan(self.data_root)
         return f"{count} files indexed"
 
 
 class ReindexProcess(Process):
-    """Reset all file hashes and rescan (forces re-parse, ignores cooldown)."""
+    """Reset all file hashes and rescan (forces re-parse)."""
 
     name = "reindex"
     description = "Re-parse all files"
 
     def __init__(self, config: WatcherConfig, data_root: str, dep_registry: DepRegistry | None = None):
         self.config = config
-        self.data_root = data_root
         self.dep_registry = dep_registry
 
     async def run(self, ctx: ProcessContext) -> str:
@@ -111,5 +71,4 @@ class ReindexProcess(Process):
             reset_count = result.rowcount
 
         count = await scan_and_ingest(self.config, dep_registry=self.dep_registry, ctx=ctx)
-        _write_last_scan(self.data_root)
         return f"{reset_count} hashes reset, {count} files re-parsed"
