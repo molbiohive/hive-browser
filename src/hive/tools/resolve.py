@@ -112,3 +112,15 @@ async def resolve_input(session: AsyncSession, raw: str) -> tuple[str, dict]:
             "names": [n.name for n in part.names],
         }
     return raw, {"source": "raw"}
+
+
+def dedup_primers(primers: list[dict]) -> list[dict]:
+    """Deduplicate primers by (name, start). File-native entries come first."""
+    seen: set[tuple] = set()
+    out: list[dict] = []
+    for p in primers:
+        key = (p.get("name", ""), p.get("start"))
+        if key not in seen:
+            seen.add(key)
+            out.append(p)
+    return out

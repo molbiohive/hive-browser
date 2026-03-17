@@ -12,21 +12,10 @@ from hive.libs.classify import analyze_primer
 from hive.context import current_user_id
 from hive.db import session as db
 from hive.tools.base import Tool
-from hive.tools.resolve import resolve_sequence
+from hive.tools.resolve import dedup_primers, resolve_sequence
 
 logger = logging.getLogger(__name__)
 
-
-def _dedup_primers(primers: list[dict]) -> list[dict]:
-    """Deduplicate primers by (name, start). File-native entries come first."""
-    seen: set[tuple] = set()
-    out: list[dict] = []
-    for p in primers:
-        key = (p.get("name", ""), p.get("start"))
-        if key not in seen:
-            seen.add(key)
-            out.append(p)
-    return out
 
 
 class ProfileInput(BaseModel):
@@ -191,7 +180,7 @@ class ProfileTool(Tool):
                 except Exception as e:
                     logger.warning("Primer prediction failed: %s", e)
 
-            primers = _dedup_primers(
+            primers = dedup_primers(
                 [
                     {
                         "pid": p["pid"],
