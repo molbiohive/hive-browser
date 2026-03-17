@@ -8,6 +8,7 @@ import re
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 
+from hive.context import current_chat_tasks
 from hive.llm.client import LLMClient
 from hive.llm.prompts import (
     build_tool_schema,
@@ -220,6 +221,18 @@ async def _unified_loop(
     messages = [{"role": "system", "content": build_system_prompt()}]
     if history:
         messages.extend(history)
+
+    # Inject current chat tasks as context (if any)
+    chat_tasks = current_chat_tasks.get()
+    if chat_tasks:
+        task_lines = []
+        for t in chat_tasks:
+            mark = "x" if t.get("done") else " "
+            task_lines.append(f"- [{mark}] {t.get('text', '')}")
+        messages.append({"role": "system", "content": (
+            "Current tasks:\n" + "\n".join(task_lines)
+        )})
+
     if plan_text:
         messages.append({"role": "user", "content": (
             f"[Plan]\n{plan_text}\n\n[User request]\n{user_input}"
