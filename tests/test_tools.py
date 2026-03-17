@@ -213,7 +213,7 @@ class TestToolFactoryInternal:
         registry = ToolFactory.discover(config)
         search = registry.get("search")
         assert search is not None
-        assert search.widget == "table"
+        assert search.widget == "search"
         assert "llm" in search.tags
         assert search.group() == "search"
 
