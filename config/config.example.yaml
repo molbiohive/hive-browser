@@ -59,7 +59,7 @@ watcher:
     - match: "*.dna"
       action: parse
       parser: sgffp
-      extract: [sequence, features, primers, notes]
+      extract: [sequence, features, primers, notes, history]
 
     - match: "*.rna"
       action: parse
