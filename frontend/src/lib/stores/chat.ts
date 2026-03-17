@@ -110,6 +110,14 @@ export const statusBar = writable<StatusBar>({
 export const modelList = writable<ModelInfo[]>([]);
 export const currentModel = writable<string | null>(null);
 
+// Per-chat task list
+interface Task {
+	id: string;
+	text: string;
+	done: boolean;
+}
+export const tasks = writable<Task[]>([]);
+
 let ws: WebSocket | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -229,9 +237,12 @@ export function connect() {
 				chatTitle: data.title,
 				messages: data.messages || [],
 			}));
+			tasks.set(data.tasks || []);
 			if (data.model) {
 				currentModel.set(data.model);
 			}
+		} else if (data.type === 'tasks_updated') {
+			tasks.set(data.tasks || []);
 		} else if (data.type === 'feedback_saved') {
 		console.log('[ws] feedback saved');
 	} else if (data.type === 'widget_data') {
@@ -375,6 +386,7 @@ export function loadChat(chatId: string) {
 
 export function newChat() {
 	chatStore.set({ ...initialState, connected: true, isWaiting: false });
+	tasks.set([]);
 	if (ws && ws.readyState === WebSocket.OPEN) {
 		ws.send(JSON.stringify({ type: 'new_chat' }));
 	}
@@ -390,6 +402,21 @@ export async function fetchChatList() {
 	} catch (e) {
 		console.warn('[chat] failed to fetch chat list:', e);
 	}
+}
+
+export function addTask(text: string) {
+	if (!ws || ws.readyState !== WebSocket.OPEN) return;
+	ws.send(JSON.stringify({ type: 'task_add', text }));
+}
+
+export function toggleTask(id: string) {
+	if (!ws || ws.readyState !== WebSocket.OPEN) return;
+	ws.send(JSON.stringify({ type: 'task_toggle', taskId: id }));
+}
+
+export function removeTask(id: string) {
+	if (!ws || ws.readyState !== WebSocket.OPEN) return;
+	ws.send(JSON.stringify({ type: 'task_remove', taskId: id }));
 }
 
 export async function deleteChat(chatId: string) {
