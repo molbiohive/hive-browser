@@ -61,7 +61,7 @@ class SearchResultItem(BaseModel):
 class SearchTool(Tool):
     name = "search"
     description = "Search sequences by name, features, tags (directory context), and metadata."
-    widget = "table"
+    widget = "search"
     tags = {"llm", "search"}
     guidelines = (
         "Fuzzy keyword search across sequences AND parts. Returns both matching "
