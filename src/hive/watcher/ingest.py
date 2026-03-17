@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from hive.cloning.seq import reverse_complement
 from hive.db.models import (
+    CloningStep,
     IndexedFile,
     Part,
     PartInstance,
@@ -267,6 +268,71 @@ async def ingest_file(
             strand=p.strand,
         ))
         await annotate_part(session, part.id, "primer_bind", p.sequence, "DNA", name=p.name)
+
+    # Ingest cloning history steps
+    history_steps = meta.get("history", [])
+    if history_steps:
+        # Delete existing steps (full replace on re-index)
+        await session.execute(
+            delete(CloningStep).where(CloningStep.sequence_id == seq.id)
+        )
+        await session.flush()
+
+        # Insert steps, resolving parent_step_id via node_id mapping
+        node_to_step: dict[int, int] = {}
+        for step_data in history_steps:
+            parent_node = step_data.get("parent_node_id")
+            parent_step_id = node_to_step.get(parent_node) if parent_node is not None else None
+            step = CloningStep(
+                sequence_id=seq.id,
+                node_id=step_data["node_id"],
+                parent_step_id=parent_step_id,
+                name=step_data.get("name", ""),
+                operation=step_data.get("operation", "invalid"),
+                seq_len=step_data.get("seq_len", 0),
+                circular=step_data.get("circular", False),
+                molecule_type=step_data.get("molecule_type", "DNA"),
+                oligos=step_data.get("oligos", []),
+                enzymes=step_data.get("enzymes", []),
+                features=step_data.get("features", []),
+                primers=step_data.get("primers", []),
+                parameters=step_data.get("parameters", {}),
+            )
+            session.add(step)
+            await session.flush()
+            node_to_step[step_data["node_id"]] = step.id
+
+            # Create Parts from history oligos (primers with their own sequences)
+            for oligo in step_data.get("oligos", []):
+                oligo_seq = oligo.get("sequence")
+                if not oligo_seq:
+                    continue
+                part = await get_or_create_part(session, oligo_seq, "DNA")
+                await add_part_name(
+                    session, part.id, oligo.get("name", ""),
+                    source="history",
+                    source_detail=f"step:{step.id}",
+                )
+                await annotate_part(
+                    session, part.id, "primer_bind", oligo_seq, "DNA",
+                    name=oligo.get("name"),
+                )
+
+            # Create Parts from history node primers
+            for hp in step_data.get("primers", []):
+                hp_seq = hp.get("sequence")
+                if not hp_seq:
+                    continue
+                part = await get_or_create_part(session, hp_seq, "DNA")
+                await add_part_name(
+                    session, part.id, hp.get("name", ""),
+                    source="history",
+                    source_detail=f"step:{step.id}",
+                )
+                await annotate_part(
+                    session, part.id, "primer_bind", hp_seq, "DNA",
+                    name=hp.get("name"),
+                )
 
     if commit:
         await session.commit()

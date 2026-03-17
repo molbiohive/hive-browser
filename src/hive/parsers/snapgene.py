@@ -17,6 +17,94 @@ def _parse_strand(strand) -> int:
     return _STRAND_MAP.get(str(strand), 0)
 
 
+def _serialize_history_tree(node) -> list[dict]:
+    """Flatten history tree to list of node dicts for DB ingestion."""
+    result = []
+
+    def _walk(n, parent_id=None):
+        enzymes = []
+        for s in getattr(n, "input_summaries", []):
+            for name, count in getattr(s, "enzymes", []):
+                enzymes.append({"name": name, "site_count": count})
+
+        # Extract features from this history node
+        features = []
+        for f in getattr(n, "features", []):
+            features.append({
+                "name": getattr(f, "name", ""),
+                "type": getattr(f, "type", "misc_feature"),
+                "start": getattr(f, "start", 0),
+                "end": getattr(f, "end", 0),
+                "strand": _parse_strand(getattr(f, "strand", ".")),
+                "qualifiers": dict(f.qualifiers) if hasattr(f, "qualifiers") else {},
+            })
+
+        # Extract primers from this history node
+        primers = []
+        for p in getattr(n, "primers", []):
+            primers.append({
+                "name": getattr(p, "name", ""),
+                "sequence": getattr(p, "sequence", ""),
+                "start": getattr(p, "start", None),
+                "end": getattr(p, "end", None),
+                "strand": (
+                    _parse_strand(getattr(p, "bind_strand", None))
+                    if getattr(p, "bind_strand", None) is not None
+                    else None
+                ),
+            })
+
+        result.append({
+            "node_id": n.id,
+            "parent_node_id": parent_id,
+            "name": getattr(n, "name", ""),
+            "operation": getattr(n, "operation", "invalid"),
+            "seq_len": getattr(n, "seq_len", 0),
+            "circular": getattr(n, "circular", False),
+            "molecule_type": getattr(n, "type", "DNA"),
+            "oligos": [
+                {
+                    "name": o.name,
+                    "sequence": o.sequence,
+                    "phosphorylated": getattr(o, "phosphorylated", False),
+                }
+                for o in getattr(n, "oligos", [])
+            ],
+            "enzymes": enzymes,
+            "features": features,
+            "primers": primers,
+            "parameters": getattr(n, "parameters", {}),
+        })
+        for child in getattr(n, "children", []):
+            _walk(child, n.id)
+
+    _walk(node)
+    return result
+
+
+def _history_keywords(steps: list[dict]) -> str:
+    """Build searchable keyword string from history steps."""
+    words = set()
+    for s in steps:
+        if s.get("name"):
+            words.add(s["name"])
+        if s.get("operation"):
+            words.add(s["operation"])
+        for o in s.get("oligos", []):
+            if o.get("name"):
+                words.add(o["name"])
+        for e in s.get("enzymes", []):
+            if e.get("name"):
+                words.add(e["name"])
+        for f in s.get("features", []):
+            if f.get("name"):
+                words.add(f["name"])
+        for p in s.get("primers", []):
+            if p.get("name"):
+                words.add(p["name"])
+    return " ".join(sorted(words))
+
+
 def parse_snapgene(filepath: Path, extract: list[str] | None = None) -> ParseResult:
     """Parse a SnapGene file (.dna, .rna, .prot) and return structured data."""
     from sgffp import SgffReader
@@ -62,6 +150,13 @@ def parse_snapgene(filepath: Path, extract: list[str] | None = None) -> ParseRes
 
     molecule_type = _BLOCK_MOLECULE_TYPE.get(sgff.sequence.block_id, "DNA")
     meta["molecule_type"] = molecule_type
+
+    # Extract cloning history tree
+    if extract is None or "history" in extract:
+        if hasattr(sgff, "has_history") and sgff.has_history and sgff.history.tree:
+            meta["history"] = _serialize_history_tree(sgff.history.tree.root)
+            # Build searchable keywords for trgm matching
+            meta["history_keywords"] = _history_keywords(meta["history"])
 
     description = None
     if hasattr(sgff, "notes") and sgff.notes and sgff.notes.exists:
