@@ -184,10 +184,6 @@ async def ingest_file(
 
     # Upsert IndexedFile
     if existing_file:
-        # Delete old sequences (cascades to part_instances)
-        await session.execute(
-            delete(Sequence).where(Sequence.file_id == existing_file.id)
-        )
         existing_file.file_hash = file_hash
         existing_file.format = file_path.suffix.lstrip(".")
         existing_file.status = "active"
@@ -214,20 +210,44 @@ async def ingest_file(
         if tags:
             meta["tags"] = tags
 
-    # Insert Sequence (with new fields)
-    seq = Sequence(
-        file_id=indexed.id,
-        name=result.name,
-        length=result.size_bp,
-        topology=result.topology,
-        sequence=result.sequence,
-        sequence_hash=hash_sequence(result.sequence),
-        molecule=result.molecule,
-        description=result.description,
-        meta=meta or None,
+    # Upsert Sequence — update in-place to keep SID stable
+    existing_seq = await session.execute(
+        select(Sequence).where(Sequence.file_id == indexed.id)
     )
-    session.add(seq)
-    await session.flush()  # Get seq.id
+    seq = existing_seq.scalar_one_or_none()
+
+    if seq:
+        # Update fields in-place (SID stays the same)
+        seq.name = result.name
+        seq.length = result.size_bp
+        seq.topology = result.topology
+        seq.sequence = result.sequence
+        seq.sequence_hash = hash_sequence(result.sequence)
+        seq.molecule = result.molecule
+        seq.description = result.description
+        seq.meta = meta or None
+        # Delete child rows that will be recreated below
+        await session.execute(
+            delete(PartInstance).where(PartInstance.seq_id == seq.id)
+        )
+        await session.execute(
+            delete(CloningStep).where(CloningStep.sequence_id == seq.id)
+        )
+        await session.flush()
+    else:
+        seq = Sequence(
+            file_id=indexed.id,
+            name=result.name,
+            length=result.size_bp,
+            topology=result.topology,
+            sequence=result.sequence,
+            sequence_hash=hash_sequence(result.sequence),
+            molecule=result.molecule,
+            description=result.description,
+            meta=meta or None,
+        )
+        session.add(seq)
+        await session.flush()  # Get seq.id
 
     # For each ParsedFeature: extract subsequence, hash, get_or_create Part
     for f in result.features:
@@ -272,12 +292,6 @@ async def ingest_file(
     # Ingest cloning history steps
     history_steps = meta.get("history", [])
     if history_steps:
-        # Delete existing steps (full replace on re-index)
-        await session.execute(
-            delete(CloningStep).where(CloningStep.sequence_id == seq.id)
-        )
-        await session.flush()
-
         # Insert steps, resolving parent_step_id via node_id mapping
         node_to_step: dict[int, int] = {}
         for step_data in history_steps:
