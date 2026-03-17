@@ -34,7 +34,7 @@ def do_run_migrations(connection):
 async def run_migrations_online():
     connectable = create_async_engine(_db_url)
     async with connectable.connect() as connection:
-        await connection.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+        await connection.execute(text("CREATE EXTENSION IF NOT EXISTS pg_search"))
         await connection.commit()
         await connection.run_sync(do_run_migrations)
     await connectable.dispose()

@@ -70,6 +70,7 @@ class Sequence(Base):
     sequence_hash: Mapped[str] = mapped_column(Text, default="")
     molecule: Mapped[str] = mapped_column(Text, default="DNA")  # DNA | RNA | protein
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    search_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     meta: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
@@ -91,10 +92,6 @@ class Sequence(Base):
         return self.length
 
     __table_args__ = (
-        Index("idx_seq_name_trgm", "name", postgresql_using="gin",
-              postgresql_ops={"name": "gin_trgm_ops"}),
-        Index("idx_seq_desc_trgm", "description", postgresql_using="gin",
-              postgresql_ops={"description": "gin_trgm_ops"}),
         Index("idx_seq_meta", "meta", postgresql_using="gin"),
         Index("idx_seq_hash", "sequence_hash"),
     )
@@ -178,8 +175,6 @@ class PartName(Base):
 
     __table_args__ = (
         UniqueConstraint("part_id", "name", "source", name="uq_part_name_source"),
-        Index("idx_partname_trgm", "name", postgresql_using="gin",
-              postgresql_ops={"name": "gin_trgm_ops"}),
     )
 
 
@@ -201,8 +196,6 @@ class PartInstance(Base):
     __table_args__ = (
         Index("idx_pi_seq_start", "seq_id", "start"),
         Index("idx_pi_part", "part_id"),
-        Index("idx_pi_anntype_trgm", "annotation_type", postgresql_using="gin",
-              postgresql_ops={"annotation_type": "gin_trgm_ops"}),
     )
 
 

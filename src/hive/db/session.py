@@ -26,8 +26,8 @@ async def init_db(config: DatabaseConfig) -> bool:
 
     try:
         async with engine.begin() as conn:
-            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
-        logger.info("Database connected, pg_trgm extension ready")
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_search"))
+        logger.info("Database connected, pg_search extension ready")
         return True
     except Exception as e:
         logger.warning("Database not available: %s", e)

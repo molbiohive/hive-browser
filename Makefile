@@ -26,7 +26,7 @@ setup-dev:
 	@createuser -s $(DB_USER) 2>/dev/null || true
 	@psql -U $(DB_USER) -c "ALTER USER $(DB_USER) WITH PASSWORD '$(DB_PASS)';" 2>/dev/null || true
 	@createdb -U $(DB_USER) $(DB_NAME) 2>/dev/null || true
-	@psql -U $(DB_USER) -d $(DB_NAME) -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;" 2>/dev/null || true
+	@psql -U $(DB_USER) -d $(DB_NAME) -c "CREATE EXTENSION IF NOT EXISTS pg_search;" 2>/dev/null || true
 	@echo "Database ready: $(DB_NAME)"
 	HIVE_CONFIG=config/config.local.yaml uv run alembic upgrade head
 

@@ -24,6 +24,25 @@ from hive.utils import hash_sequence
 from hive.watcher.rules import MatchResult
 
 
+def build_search_text(result: ParseResult, tags: list[str] | None = None) -> str:
+    """Build denormalized search text from parsed result for BM25 indexing."""
+    parts = [result.name]
+    if result.description:
+        parts.append(result.description)
+    for f in result.features:
+        if f.name:
+            parts.append(f.name)
+    for p in result.primers:
+        if p.name:
+            parts.append(p.name)
+    if tags:
+        parts.extend(tags)
+    meta = result.meta or {}
+    if meta.get("history_keywords"):
+        parts.append(meta["history_keywords"])
+    return " ".join(parts)
+
+
 def extract_tags(file_path: Path, watcher_root: str) -> list[str]:
     """Extract parent directory names relative to watcher root as tags."""
     try:
@@ -216,6 +235,8 @@ async def ingest_file(
     )
     seq = existing_seq.scalar_one_or_none()
 
+    search_text = build_search_text(result, meta.get("tags"))
+
     if seq:
         # Update fields in-place (SID stays the same)
         seq.name = result.name
@@ -225,6 +246,7 @@ async def ingest_file(
         seq.sequence_hash = hash_sequence(result.sequence)
         seq.molecule = result.molecule
         seq.description = result.description
+        seq.search_text = search_text
         seq.meta = meta or None
         # Delete child rows that will be recreated below
         await session.execute(
@@ -244,6 +266,7 @@ async def ingest_file(
             sequence_hash=hash_sequence(result.sequence),
             molecule=result.molecule,
             description=result.description,
+            search_text=search_text,
             meta=meta or None,
         )
         session.add(seq)
