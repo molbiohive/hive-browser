@@ -15,6 +15,7 @@ from sqlalchemy import (
     Index,
     Integer,
     SmallInteger,
+    String,
     Text,
     UniqueConstraint,
     func,
@@ -81,6 +82,9 @@ class Sequence(Base):
     part_instances: Mapped[list["PartInstance"]] = relationship(
         back_populates="sequence", cascade="all, delete-orphan"
     )
+    cloning_steps: Mapped[list["CloningStep"]] = relationship(
+        back_populates="sequence", cascade="all, delete-orphan"
+    )
 
     @property
     def size_bp(self) -> int:
@@ -93,6 +97,39 @@ class Sequence(Base):
               postgresql_ops={"description": "gin_trgm_ops"}),
         Index("idx_seq_meta", "meta", postgresql_using="gin"),
         Index("idx_seq_hash", "sequence_hash"),
+    )
+
+
+class CloningStep(Base):
+    __tablename__ = "cloning_steps"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    sequence_id: Mapped[int] = mapped_column(
+        ForeignKey("sequences.id", ondelete="CASCADE"), nullable=False,
+    )
+    node_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    parent_step_id: Mapped[int | None] = mapped_column(
+        ForeignKey("cloning_steps.id"), nullable=True,
+    )
+    name: Mapped[str] = mapped_column(String, nullable=False, default="")
+    operation: Mapped[str] = mapped_column(String, nullable=False, default="invalid")
+    seq_len: Mapped[int] = mapped_column(Integer, default=0)
+    circular: Mapped[bool] = mapped_column(Boolean, default=False)
+    molecule_type: Mapped[str] = mapped_column(String, default="DNA")
+    oligos: Mapped[list] = mapped_column(JSON, default=list)
+    enzymes: Mapped[list] = mapped_column(JSON, default=list)
+    features: Mapped[list] = mapped_column(JSON, default=list)
+    primers: Mapped[list] = mapped_column(JSON, default=list)
+    parameters: Mapped[dict] = mapped_column(JSON, default=dict)
+
+    sequence: Mapped[Sequence] = relationship(back_populates="cloning_steps")
+    parent_step: Mapped["CloningStep | None"] = relationship(
+        remote_side=[id], back_populates="children",
+    )
+    children: Mapped[list["CloningStep"]] = relationship(back_populates="parent_step")
+
+    __table_args__ = (
+        UniqueConstraint("sequence_id", "node_id", name="uq_cloning_step_seq_node"),
     )
 
 
