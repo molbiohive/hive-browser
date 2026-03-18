@@ -1,4 +1,4 @@
-"""Search tool — fuzzy metadata + part name search using pg_trgm.
+"""Search tool — BM25 full-text search using ParadeDB pg_search.
 
 Supports boolean queries: "KanR && circular" (AND), "GFP || RFP" (OR).
 """
@@ -9,7 +9,7 @@ import re
 from typing import Any
 
 from pydantic import BaseModel, Field
-from sqlalchemy import Text, and_, cast, desc, func, or_, select
+from sqlalchemy import Text, cast, desc, func, literal_column, select, text
 from sqlalchemy.orm import selectinload
 
 from hive.config import display_file_path
@@ -30,6 +30,17 @@ def _parse_bool_query(query: str) -> tuple[list[str], str]:
         terms = [t.strip() for t in re.split(r"\s*\|\|\s*", query) if t.strip()]
         return (terms, "or") if len(terms) > 1 else (terms, "single")
     return [query.strip()], "single"
+
+
+def _bm25_query(terms: list[str], op: str) -> str:
+    """Build a ParadeDB query string from parsed terms and operator.
+
+    Each term is quoted to handle multi-word and hyphenated names.
+    """
+    escaped = [f'"{t}"' for t in terms]
+    if op == "and":
+        return " AND ".join(escaped)
+    return " OR ".join(escaped)
 
 
 class SearchInput(BaseModel):
@@ -64,10 +75,10 @@ class SearchTool(Tool):
     widget = "search"
     tags = {"llm", "search"}
     guidelines = (
-        "Fuzzy keyword search across sequences AND parts. Returns both matching "
+        "BM25 keyword search across sequences AND parts. Returns both matching "
         "sequences (with SIDs) and matching parts (with PIDs and instance counts). "
         "IMPORTANT: When user says 'X and Y' or 'X with Y' or 'X that have Y', "
-        "ALWAYS use && in query: 'X && Y'. Without && terms are single-term fuzzy. "
+        "ALWAYS use && in query: 'X && Y'. Without && terms are single-term search. "
         "Use query='*' to list ALL sequences (useful for 'show everything', 'list all'). "
         "If the user mentions a project, folder, or directory context, "
         "put it in the tags parameter. "
@@ -105,7 +116,7 @@ class SearchTool(Tool):
 
 
     async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
-        """Execute search with pg_trgm similarity + filters.
+        """Execute search with ParadeDB BM25 full-text search.
 
         Supports boolean queries: "KanR && circular" (AND), "GFP || RFP" (OR).
         """
@@ -119,56 +130,17 @@ class SearchTool(Tool):
             return await self._execute_all(inp)
 
         terms, op = _parse_bool_query(inp.query)
+        bm25_q = _bm25_query(terms, op)
+
+        # Choose BM25 operator: &&& (conjunction) for AND, ||| (disjunction) for OR/single
+        bm25_op = "&&&" if op == "and" else "|||"
 
         async with db.async_session_factory() as session:
-            # Per-term: similarity expressions, part name subqueries, match conditions
-            term_scores = []
-            term_conditions = []
-            pn_subs = []
+            # BM25 search on sequences via search_text + name
+            score_expr = literal_column("pdb.score(sequences.id)")
 
-            for i, term in enumerate(terms):
-                seq_sim = func.similarity(Sequence.name, term)
-                desc_sim = func.coalesce(func.similarity(Sequence.description, term), 0)
-                tags_sim = func.coalesce(
-                    func.similarity(cast(Sequence.meta["tags"], Text), term), 0
-                )
-
-                # Part name similarity subquery (replaces Feature name subquery)
-                pn_sub = (
-                    select(
-                        PartInstance.seq_id,
-                        func.max(func.similarity(PartName.name, term)).label(f"ps_{i}"),
-                    )
-                    .join(PartName, PartInstance.part_id == PartName.part_id)
-                    .group_by(PartInstance.seq_id)
-                    .subquery(name=f"pn_{i}")
-                )
-                part_score = func.coalesce(getattr(pn_sub.c, f"ps_{i}"), 0)
-
-                # Exact match on topology (circular/linear)
-                topo_match = func.lower(Sequence.topology) == func.lower(term)
-
-                score = func.greatest(seq_sim, desc_sim, part_score, tags_sim)
-                condition = or_(
-                    seq_sim > 0.1, desc_sim > 0.1, part_score > 0.1,
-                    tags_sim > 0.1, topo_match,
-                )
-
-                term_scores.append(score)
-                term_conditions.append(condition)
-                pn_subs.append(pn_sub)
-
-            # Ordering: worst term for AND (all must be good), best for OR
-            if len(term_scores) == 1:
-                combined = term_scores[0]
-            elif op == "and":
-                combined = func.least(*term_scores)
-            else:
-                combined = func.greatest(*term_scores)
-
-            # Base query
             stmt = (
-                select(Sequence, combined.label("score"), IndexedFile.file_path)
+                select(Sequence, score_expr.label("score"), IndexedFile.file_path)
                 .join(IndexedFile, Sequence.file_id == IndexedFile.id)
                 .options(
                     selectinload(Sequence.part_instances)
@@ -176,26 +148,16 @@ class SearchTool(Tool):
                     .selectinload(Part.names)
                 )
                 .where(IndexedFile.status == "active")
+                .where(text(
+                    f"(sequences.search_text {bm25_op} :bm25_q OR sequences.name {bm25_op} :bm25_q)"
+                ).bindparams(bm25_q=bm25_q))
+                .order_by(score_expr.desc())
             )
 
-            # Join part name subqueries
-            for pn_sub in pn_subs:
-                stmt = stmt.outerjoin(pn_sub, Sequence.id == pn_sub.c.seq_id)
-
-            # Boolean condition
-            if op == "and":
-                stmt = stmt.where(and_(*term_conditions))
-            elif op == "or":
-                stmt = stmt.where(or_(*term_conditions))
-            else:
-                stmt = stmt.where(term_conditions[0])
-
-            stmt = stmt.order_by(combined.desc())
-
-            # Tags filter (directory/project context from LLM)
+            # Tags filter
             if inp.tags:
                 stmt = stmt.where(
-                    func.similarity(cast(Sequence.meta["tags"], Text), inp.tags) > 0.1
+                    cast(Sequence.meta["tags"], Text).contains(inp.tags)
                 )
 
             # Apply filters
@@ -230,7 +192,7 @@ class SearchTool(Tool):
                 )
 
             # --- Part-level search ---
-            parts = await _search_parts(session, terms, op)
+            parts = await _search_parts(session, bm25_q)
 
         return {
             "results": results,
@@ -257,7 +219,7 @@ class SearchTool(Tool):
 
             if inp.tags:
                 stmt = stmt.where(
-                    func.similarity(cast(Sequence.meta["tags"], Text), inp.tags) > 0.1
+                    cast(Sequence.meta["tags"], Text).contains(inp.tags)
                 )
             if topo := inp.filters.get("topology"):
                 stmt = stmt.where(Sequence.topology == topo)
@@ -297,54 +259,25 @@ class SearchTool(Tool):
         }
 
 
-async def _search_parts(
-    session: Any, terms: list[str], op: str,
-) -> list[dict]:
-    """Search parts by name and annotation type similarity."""
-    term_scores = []
-    term_conditions = []
+async def _search_parts(session: Any, bm25_q: str) -> list[dict]:
+    """Search parts by name using ParadeDB BM25 on part_names."""
+    score_expr = literal_column("pdb.score(part_names.id)")
 
-    for term in terms:
-        name_score = func.max(func.similarity(PartName.name, term))
-        type_score = func.max(func.coalesce(
-            func.similarity(PartInstance.annotation_type, term), 0,
-        ))
-        score_expr = func.greatest(name_score, type_score)
-        term_scores.append(score_expr)
-        term_conditions.append(score_expr > 0.15)
-
-    # Build combined score expression
-    if len(term_scores) == 1:
-        combined = term_scores[0]
-    elif op == "and":
-        combined = func.least(*term_scores)
-    else:
-        combined = func.greatest(*term_scores)
-
-    # Group by Part, get best match score across name + type
-    stmt = (
-        select(Part.id, combined.label("score"))
-        .join(PartName, Part.id == PartName.part_id)
-        .join(PartInstance, Part.id == PartInstance.part_id)
-        .group_by(Part.id)
+    # BM25 search on part_names (disjunction -- any term matches)
+    pn_stmt = (
+        select(
+            PartName.part_id,
+            func.max(score_expr).label("score"),
+        )
+        .where(text("part_names.name ||| :bm25_q").bindparams(bm25_q=bm25_q))
+        .group_by(PartName.part_id)
+        .order_by(desc("score"))
     )
-
-    # Apply boolean conditions
-    if op == "and":
-        for cond in term_conditions:
-            stmt = stmt.having(cond)
-    elif op == "or":
-        stmt = stmt.having(or_(*term_conditions))
-    else:
-        stmt = stmt.having(term_conditions[0])
-
-    stmt = stmt.order_by(desc("score")).limit(20)
-    rows = (await session.execute(stmt)).all()
+    rows = (await session.execute(pn_stmt)).all()
 
     if not rows:
         return []
 
-    # Load full Part objects with names and instances
     part_ids = [r[0] for r in rows]
     score_map = {r[0]: round(float(r[1]), 2) for r in rows}
 

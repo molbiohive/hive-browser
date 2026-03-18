@@ -308,7 +308,7 @@ async def list_primer_parts():
 
 @router.get("/search")
 async def search_endpoint(request: Request, q: str = ""):
-    """Direct pg_trgm search -- reuses SearchTool.execute()."""
+    """Direct BM25 search -- reuses SearchTool.execute()."""
     q = q.strip()
     if len(q) < 2:
         return {"results": [], "total": 0, "parts": [], "parts_total": 0, "query": q}

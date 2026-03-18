@@ -155,7 +155,7 @@ def parse_snapgene(filepath: Path, extract: list[str] | None = None) -> ParseRes
     if extract is None or "history" in extract:
         if hasattr(sgff, "has_history") and sgff.has_history and sgff.history.tree:
             meta["history"] = _serialize_history_tree(sgff.history.tree.root)
-            # Build searchable keywords for trgm matching
+            # Build searchable keywords for BM25 matching
             meta["history_keywords"] = _history_keywords(meta["history"])
 
     description = None
