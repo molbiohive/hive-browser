@@ -332,7 +332,6 @@ async def ingest_file(
                 oligos=step_data.get("oligos", []),
                 enzymes=step_data.get("enzymes", []),
                 features=step_data.get("features", []),
-                primers=step_data.get("primers", []),
                 parameters=step_data.get("parameters", {}),
             )
             session.add(step)
@@ -355,21 +354,6 @@ async def ingest_file(
                     name=oligo.get("name"),
                 )
 
-            # Create Parts from history node primers
-            for hp in step_data.get("primers", []):
-                hp_seq = hp.get("sequence")
-                if not hp_seq:
-                    continue
-                part = await get_or_create_part(session, hp_seq, "DNA")
-                await add_part_name(
-                    session, part.id, hp.get("name", ""),
-                    source="history",
-                    source_detail=f"step:{step.id}",
-                )
-                await annotate_part(
-                    session, part.id, "primer_bind", hp_seq, "DNA",
-                    name=hp.get("name"),
-                )
 
     if commit:
         await session.commit()

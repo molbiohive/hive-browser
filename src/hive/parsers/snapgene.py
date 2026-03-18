@@ -17,7 +17,7 @@ def _parse_strand(strand) -> int:
     return _STRAND_MAP.get(str(strand), 0)
 
 
-def _serialize_history_tree(node) -> list[dict]:
+def _serialize_history_tree(node, history) -> list[dict]:
     """Flatten history tree to list of node dicts for DB ingestion."""
     result = []
 
@@ -27,32 +27,20 @@ def _serialize_history_tree(node) -> list[dict]:
             for name, count in getattr(s, "enzymes", []):
                 enzymes.append({"name": name, "site_count": count})
 
-        # Extract features from this history node
+        # Use block 11 content for properly parsed SgffFeature objects.
+        # Tree node .features is raw XML dicts — not usable directly.
         features = []
-        for f in getattr(n, "features", []):
-            features.append({
-                "name": getattr(f, "name", ""),
-                "type": getattr(f, "type", "misc_feature"),
-                "start": getattr(f, "start", 0),
-                "end": getattr(f, "end", 0),
-                "strand": _parse_strand(getattr(f, "strand", ".")),
-                "qualifiers": dict(f.qualifiers) if hasattr(f, "qualifiers") else {},
-            })
-
-        # Extract primers from this history node
-        primers = []
-        for p in getattr(n, "primers", []):
-            primers.append({
-                "name": getattr(p, "name", ""),
-                "sequence": getattr(p, "sequence", ""),
-                "start": getattr(p, "start", None),
-                "end": getattr(p, "end", None),
-                "strand": (
-                    _parse_strand(getattr(p, "bind_strand", None))
-                    if getattr(p, "bind_strand", None) is not None
-                    else None
-                ),
-            })
+        content = history.get_node(n.id)
+        if content:
+            for f in content.features:
+                features.append({
+                    "name": getattr(f, "name", ""),
+                    "type": getattr(f, "type", "misc_feature"),
+                    "start": getattr(f, "start", 0),
+                    "end": getattr(f, "end", 0),
+                    "strand": _parse_strand(getattr(f, "strand", ".")),
+                    "qualifiers": dict(f.qualifiers) if hasattr(f, "qualifiers") else {},
+                })
 
         result.append({
             "node_id": n.id,
@@ -72,7 +60,6 @@ def _serialize_history_tree(node) -> list[dict]:
             ],
             "enzymes": enzymes,
             "features": features,
-            "primers": primers,
             "parameters": getattr(n, "parameters", {}),
         })
         for child in getattr(n, "children", []):
@@ -99,9 +86,6 @@ def _history_keywords(steps: list[dict]) -> str:
         for f in s.get("features", []):
             if f.get("name"):
                 words.add(f["name"])
-        for p in s.get("primers", []):
-            if p.get("name"):
-                words.add(p["name"])
     return " ".join(sorted(words))
 
 
@@ -154,7 +138,7 @@ def parse_snapgene(filepath: Path, extract: list[str] | None = None) -> ParseRes
     # Extract cloning history tree
     if extract is None or "history" in extract:
         if hasattr(sgff, "has_history") and sgff.has_history and sgff.history.tree:
-            meta["history"] = _serialize_history_tree(sgff.history.tree.root)
+            meta["history"] = _serialize_history_tree(sgff.history.tree.root, sgff.history)
             # Build searchable keywords for BM25 matching
             meta["history_keywords"] = _history_keywords(meta["history"])
 
