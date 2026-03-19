@@ -12,28 +12,21 @@ dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.34",
     "websockets>=14.0",
-
     # Database
     "sqlalchemy[asyncio]>=2.0",
     "asyncpg>=0.30",
     "alembic>=1.14",
-
     # Data validation
     "pydantic>=2.0",
     "pydantic-settings>=2.0",
-
     # File parsing
-    "sgffp>=0.1",
-
+    "sgffp>=0.15.1",
     # Config
     "pyyaml>=6.0",
-
     # File watching
     "watchfiles>=1.0",
-
     # HTTP client (admin CLI)
     "httpx>=0.28",
-
     # LLM provider abstraction (Ollama, Anthropic, OpenAI, etc.)
     "litellm>=1.50",
 ]

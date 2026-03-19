@@ -563,7 +563,7 @@ wheels = [
 
 [[package]]
 name = "hive-browser"
-version = "0.4.0"
+version = "0.5.0"
 source = { editable = "." }
 dependencies = [
     { name = "alembic" },
@@ -599,7 +599,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.0" },
     { name = "pydantic-settings", specifier = ">=2.0" },
     { name = "pyyaml", specifier = ">=6.0" },
-    { name = "sgffp", specifier = ">=0.1" },
+    { name = "sgffp", specifier = ">=0.15.1" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.34" },
     { name = "watchfiles", specifier = ">=1.0" },
@@ -1599,14 +1599,14 @@ wheels = [
 
 [[package]]
 name = "sgffp"
-version = "0.15.0"
+version = "0.15.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "xmltodict" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c7/0e/a714f6cdadda457ee1d302c02ec294ec254d170a69199eb1cd449c8d9e4c/sgffp-0.15.0.tar.gz", hash = "sha256:a10db57c3a10eabc4f9e2acc53e2cb293f32a77eed8b56e05aa1f40cc1e5b0f6", size = 121558, upload-time = "2026-03-09T11:54:18.248Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7a/e2/9a37b72d7e277c49ef6b18be7ecb66e7bbe025b7864b24b0e7a9a0e86b0d/sgffp-0.15.1.tar.gz", hash = "sha256:d8bc98da038983688c07df2fbb359d61d4a5d62a0c8989c805ef1481bb268966", size = 153527, upload-time = "2026-03-19T13:45:19.013Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/42/7f/91d1938cfd0cd75278e7daf18efddddbcbfcd811813c9584179c3801001c/sgffp-0.15.0-py3-none-any.whl", hash = "sha256:233d82a964643a9b5e4d51b1d3b31b6d9454756f20b66dd814669ce6f83a1977", size = 44136, upload-time = "2026-03-09T11:54:15.831Z" },
+    { url = "https://files.pythonhosted.org/packages/23/6a/63345e58e8dd700b4c90cb97640f82586c0c140cf2a7e99d745f1fca376a/sgffp-0.15.1-py3-none-any.whl", hash = "sha256:841089cdc2fb6602b17c31265e64033456cef4f390672438fa6d0c2d1077fe9b", size = 44474, upload-time = "2026-03-19T13:45:17.747Z" },
 ]
 
 [[package]]
