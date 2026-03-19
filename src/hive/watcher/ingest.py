@@ -302,14 +302,15 @@ async def ingest_file(
         await add_part_name(
             session, part.id, p.name, source="file", source_detail=file_path.name,
         )
-        session.add(PartInstance(
-            part_id=part.id,
-            seq_id=seq.id,
-            annotation_type="primer_bind",
-            start=p.start,
-            end=p.end,
-            strand=p.strand,
-        ))
+        if p.start is not None and p.end is not None:
+            session.add(PartInstance(
+                part_id=part.id,
+                seq_id=seq.id,
+                annotation_type="primer_bind",
+                start=p.start,
+                end=p.end,
+                strand=p.strand,
+            ))
         await annotate_part(session, part.id, "primer_bind", p.sequence, "DNA", name=p.name)
 
     # Ingest cloning history steps

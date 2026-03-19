@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+from hive.cloning.primers import find_primer_sites
 from hive.parsers.base import ParsedFeature, ParsedPrimer, ParseResult
 
 # sgffp block IDs → molecule type
@@ -122,6 +123,27 @@ def parse_snapgene(filepath: Path, extract: list[str] | None = None) -> ParseRes
                     else None
                 ),
             ))
+
+        # Map primers with null locations via 3' anchor scanning
+        unmapped = [
+            {"id": i, "name": pr.name, "sequence": pr.sequence}
+            for i, pr in enumerate(primers)
+            if pr.start is None and pr.sequence
+        ]
+        if unmapped:
+            parent_seq = sgff.sequence.value
+            is_circular = sgff.sequence.topology == "circular"
+            hits = find_primer_sites(parent_seq, unmapped, circular=is_circular)
+            for hit in hits:
+                idx = hit["primer_id"]
+                primers[idx] = ParsedPrimer(
+                    name=primers[idx].name,
+                    sequence=primers[idx].sequence,
+                    tm=primers[idx].tm,
+                    start=hit["start"],
+                    end=hit["end"],
+                    strand=hit["strand"],
+                )
 
     meta = {}
     if (
