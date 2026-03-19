@@ -1,9 +1,10 @@
 # Hive Browser — Development & Deployment
 
-.PHONY: setup-dev \
-        dev back-dev front-dev static \
+.PHONY: setup \
+        dev back-dev front-dev static build \
         docker-init docker-build docker-up docker-down docker-update docker-all docker-logs \
-        test lint check-deps check-backend check-frontend check-all clean
+        test test-all test-backend test-frontend lint fmt \
+        check-deps check-backend check-frontend check-all clean
 
 SHELL := /bin/bash
 
@@ -13,7 +14,7 @@ DB_PASS ?= hive
 
 # ── Setup ─────────────────────────────────────────────────
 
-setup-dev:
+setup:
 	uv sync --group dev
 	cd frontend && bun install
 	@mkdir -p data/{blast,chats,tools,logs,archive}
@@ -45,6 +46,8 @@ back-dev:
 
 front-dev:
 	cd frontend && bun run dev
+
+build: static
 
 static:
 	cd frontend && bun install && bun run build
@@ -96,11 +99,21 @@ define check_bin
 		|| printf "  %-12s MISSING\n" "$(1)"
 endef
 
-test:
+test: test-backend
+
+test-all: test-backend test-frontend
+
+test-backend:
 	uv run pytest -v
+
+test-frontend:
+	cd frontend && bun run build
 
 lint:
 	uv run ruff check src/ tests/
+
+fmt:
+	uv run ruff format src/ tests/
 
 check-deps:
 	@echo "System dependencies:"
