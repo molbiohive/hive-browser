@@ -99,13 +99,20 @@ def parse_snapgene(filepath: Path, extract: list[str] | None = None) -> ParseRes
     features = []
     if extract is None or "features" in extract:
         for f in sgff.features:
+            quals = dict(f.qualifiers) if hasattr(f, "qualifiers") else {}
+            segments = getattr(f, "segments", [])
+            if segments and any(getattr(s, "translated", False) for s in segments):
+                quals["translated"] = True
+            rf = getattr(f, "reading_frame", None)
+            if rf is not None:
+                quals["reading_frame"] = rf
             features.append(ParsedFeature(
                 name=f.name,
                 type=f.type,
                 start=f.start,
                 end=f.end,
                 strand=_parse_strand(f.strand),
-                qualifiers=dict(f.qualifiers) if hasattr(f, "qualifiers") else {},
+                qualifiers=quals,
             ))
 
     primers = []

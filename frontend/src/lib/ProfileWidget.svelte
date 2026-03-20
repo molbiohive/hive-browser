@@ -1,5 +1,5 @@
 <script>
-	import { mapToParts, mapToCutSites } from '$lib/hatchlings.ts';
+	import { mapToParts, mapToCutSites, mapToTranslations } from '$lib/hatchlings.ts';
 	import { PlasmidViewer, SequenceViewer, Tooltip, SelectionState } from '@molbiohive/hatchlings';
 	import DataTable from '$lib/DataTable.svelte';
 	import TabBar from '$lib/TabBar.svelte';
@@ -37,6 +37,7 @@
 	const topology = $derived(seq?.topology || 'circular');
 
 	const parts = $derived(mapToParts(data?.features, data?.primers));
+	const translations = $derived(mapToTranslations(data?.translations));
 
 	const cappedCutSites = $derived.by(() => {
 		const sites = data?.cut_sites;
@@ -132,12 +133,14 @@
 				seq={seqData}
 				{parts}
 				cutSites={cappedCutSites}
+				{translations}
 				{topology}
 				{selectionState}
 				width={seqPanelW}
 				height={seqHeight}
 				showComplement={true}
 				showAnnotations={true}
+				showTranslations={translations.length > 0}
 				onhoverinfo={(info) => { hover = info; }}
 			/>
 			{/if}

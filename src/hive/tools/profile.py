@@ -216,6 +216,33 @@ class ProfileTool(Tool):
                     stats = analyze_primer(pseq)
                     p["tm"] = float(stats["tm"])
 
+            # Build translations from features with translated segments
+            translations = []
+            for p in parts_list:
+                quals = p.get("qualifiers") or {}
+                aa = quals.get("translation")
+                if not quals.get("translated") or not aa:
+                    continue
+                # Multi-segment CDS: comma-separated AAs → concatenate
+                if "," in aa:
+                    aa = aa.replace(",", "")
+                # Frame from codon_start (1-based) or reading_frame
+                cs = quals.get("codon_start")
+                rf = quals.get("reading_frame")
+                if cs is not None:
+                    frame = int(cs) - 1
+                elif rf is not None:
+                    frame = abs(int(rf)) - 1
+                else:
+                    frame = 0
+                translations.append({
+                    "start": p["start"],
+                    "end": p["end"],
+                    "strand": p["strand"],
+                    "aminoAcids": aa,
+                    "frame": max(0, min(2, frame)),
+                })
+
             return {
                 "sequence": {
                     "sid": seq.id,
@@ -240,6 +267,7 @@ class ProfileTool(Tool):
                     for p in parts_list
                     if p["annotation_type"] != "primer_bind"
                 ],
+                "translations": translations,
                 "primers": primers,
                 "cut_sites": cut_sites,
                 "file": {

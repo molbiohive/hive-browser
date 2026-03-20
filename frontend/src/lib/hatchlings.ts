@@ -2,7 +2,7 @@
  * Shared helpers for mapping backend data to @molbiohive/hatchlings types.
  */
 
-import type { Part, CutSite } from '@molbiohive/hatchlings';
+import type { Part, CutSite, Translation } from '@molbiohive/hatchlings';
 
 /** Default feature colors by annotation type */
 const FEATURE_COLORS: Record<string, string> = {
@@ -72,6 +72,22 @@ export function mapToParts(
 	}
 
 	return parts;
+}
+
+/**
+ * Map backend translations to Hatchlings Translation[].
+ */
+export function mapToTranslations(
+	translations: Array<Record<string, any>> | undefined,
+): Translation[] {
+	if (!translations) return [];
+	return translations.map((t) => ({
+		start: t.start,
+		end: t.end,
+		strand: t.strand > 0 ? 1 : -1 as 1 | -1,
+		aminoAcids: t.aminoAcids,
+		frame: t.frame ?? 0,
+	}));
 }
 
 /**
