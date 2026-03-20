@@ -120,29 +120,17 @@ def _to_cloning_node(step: CloningStep, children_map: dict[int, list]) -> dict:
         "topology": "circular" if step.circular else "linear",
     }
 
-    # Always include features and primers on every node (for full report)
+    # Map features to hatchlings Part[] format (CloningNode expects "parts", not "features")
     if step.features:
-        node["features"] = [
+        node["parts"] = [
             {
                 "name": f.get("name", ""),
                 "type": f.get("type", "misc_feature"),
                 "start": f.get("start", 0),
                 "end": f.get("end", 0),
-                "strand": f.get("strand", 0),
+                "strand": f.get("strand", 1) or 1,
             }
             for f in step.features
-        ]
-
-    if step.primers:
-        node["primers"] = [
-            {
-                "name": p.get("name", ""),
-                "sequence": p.get("sequence", ""),
-                "start": p.get("start"),
-                "end": p.get("end"),
-                "strand": p.get("strand"),
-            }
-            for p in step.primers
         ]
 
     kids = children_map.get(step.node_id, [])
