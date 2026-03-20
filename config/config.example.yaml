@@ -33,7 +33,6 @@ llm:
   tool_rag_threshold: 0.3       # min cosine similarity to include a tool
   tool_rag_top_k: 8             # max tools returned by RAG
   sandbox_max_retries: 3         # max consecutive sandbox errors before LLM gives up
-  context_char_limit: 24000      # max chars in LLM context (0 = no limit)
 deps:
   blast:
     bin_dir: ""                # empty = use PATH; or set to /usr/local/bin etc.
@@ -50,6 +49,7 @@ chat:
   max_history_pairs: 20        # LLM conversation memory depth
   widget_data_threshold: 16384 # bytes — strip widget data above this on save
   rerun_stale_widgets: 3       # auto-rerun on chat load: 0=none, N=last N, -1=all
+  workspace_max_bytes: 500000  # evict oldest workspace entries above this size
 
 watcher:
   root: ~/sequences          # directory to watch for sequence files

@@ -43,7 +43,7 @@ async def route_input(
     tool_rag: ToolRAG | None = None,
     use_planner: bool = True,
     sandbox_max_retries: int = 3,
-    context_char_limit: int = 0,
+    workspace: Workspace | None = None,
 ) -> dict[str, Any]:
     """
     Route user input → tool execution → response.
@@ -106,7 +106,7 @@ async def route_input(
             tool_rag=tool_rag,
             use_planner=use_planner,
             sandbox_max_retries=sandbox_max_retries,
-            context_char_limit=context_char_limit,
+            workspace=workspace,
         )
 
     # ── Mode 3: Natural language — unified agentic loop ──
@@ -126,7 +126,7 @@ async def route_input(
         tool_rag=tool_rag,
         use_planner=use_planner,
         sandbox_max_retries=sandbox_max_retries,
-        context_char_limit=context_char_limit,
+        workspace=workspace,
     )
 
 
@@ -146,7 +146,7 @@ async def _unified_loop(
     tool_rag: ToolRAG | None = None,
     use_planner: bool = True,
     sandbox_max_retries: int = 3,
-    context_char_limit: int = 0,
+    workspace: Workspace | None = None,
 ) -> dict[str, Any]:
     """Unified agentic loop — LLM converses and chains tools as needed.
 
@@ -168,7 +168,8 @@ async def _unified_loop(
     last_tool = None
     last_params = {}
     chain = []  # [{tool, params, summary, widget}]
-    workspace = Workspace()
+    if workspace is None:
+        workspace = Workspace()
     sandbox = SandboxRunner(workspace, output_limit=sandbox_output_limit)
     tokens = {"in": 0, "out": 0}
     exceeded = False
@@ -233,12 +234,17 @@ async def _unified_loop(
             "Current tasks:\n" + "\n".join(task_lines)
         )})
 
+    # Inject historical workspace summary so LLM knows what data is available
+    ws_history = ""
+    if len(workspace) > 0:
+        ws_history = f"\n\n[Workspace from previous messages]\n{workspace.describe_all()}"
+
     if plan_text:
         messages.append({"role": "user", "content": (
-            f"[Plan]\n{plan_text}\n\n[User request]\n{user_input}"
+            f"[Plan]\n{plan_text}\n\n[User request]\n{user_input}{ws_history}"
         )})
     else:
-        messages.append({"role": "user", "content": user_input})
+        messages.append({"role": "user", "content": f"{user_input}{ws_history}"})
 
     for turn in range(max_turns):
         turn_tools = schemas
@@ -259,9 +265,6 @@ async def _unified_loop(
             "PAYLOAD turn %d: %d msgs (%d chars) + %d tool schemas (%d chars)",
             turn, len(messages), msg_chars, len(turn_tools) if turn_tools else 0, schema_chars,
         )
-        if context_char_limit > 0:
-            _trim_context(messages, context_char_limit)
-
         try:
             response = await llm_client.chat(messages, tools=turn_tools)
         except Exception as e:
@@ -346,6 +349,12 @@ async def _unified_loop(
                 python_turns += 1
                 code = params.get("code", "")
                 sb_result = sandbox.execute(code)
+
+                # Auto-rerun: if NameError on an evicted handle, restore and retry once
+                if sb_result["status"] == "error":
+                    if await _try_restore_evicted(sb_result, workspace, registry):
+                        sb_result = sandbox.execute(code)
+
                 compact = sandbox.summary_for_llm(sb_result)
                 ws_info = workspace.describe_all()
                 if ws_info:
@@ -471,34 +480,60 @@ async def _unified_loop(
     return {"type": "message", "content": fallback, "tokens": tokens, "chain": chain}
 
 
-# ── Context Trimmer ──
+# ── Evicted Handle Auto-Rerun ──
+
+_NAMEERROR_HANDLE_RE = re.compile(r"name '(r\d+)' is not defined")
 
 
-def _trim_context(messages: list[dict], limit: int) -> None:
-    """Trim oldest tool-result messages when context exceeds char limit.
+async def _try_restore_evicted(
+    sb_result: dict,
+    workspace: Workspace,
+    registry: ToolRegistry,
+) -> bool:
+    """If sandbox NameError references an evicted handle, re-run the tool and restore.
 
-    Replaces content of the oldest ``role="tool"`` messages with ``[trimmed]``
-    until total chars are within *limit*. Never trims the last tool message
-    (the LLM needs it for the current turn). Modifies *messages* in-place.
+    Restores only the failed handle's tool call group. Returns True if sandbox
+    should be retried. One retry per sandbox call — if the retry fails on a
+    different evicted handle, the error goes back to the LLM.
     """
-    total = sum(len(str(m.get("content", ""))) for m in messages)
-    if total <= limit:
-        return
+    error_str = sb_result.get("error", "")
+    if "NameError" not in error_str:
+        return False
 
-    # Indices of tool messages, excluding the very last one
-    tool_indices = [i for i, m in enumerate(messages) if m.get("role") == "tool"]
-    if len(tool_indices) > 1:
-        tool_indices = tool_indices[:-1]  # protect the last tool msg
-    else:
-        return  # nothing safe to trim
+    match = _NAMEERROR_HANDLE_RE.search(error_str)
+    if not match:
+        return False
 
-    for idx in tool_indices:
-        old_len = len(str(messages[idx].get("content", "")))
-        messages[idx] = {**messages[idx], "content": "[trimmed]"}
-        total -= old_len - len("[trimmed]")
-        logger.warning("Context trimmed: msg %d (%d chars removed)", idx, old_len)
-        if total <= limit:
-            break
+    handle = match.group(1)
+    idx = workspace._handle_index(handle)
+    if idx is None:
+        return False
+
+    entry = workspace._entries[idx]
+    if not entry.evicted:
+        return False
+
+    tool = registry.get(entry.tool)
+    if not tool:
+        return False
+
+    try:
+        result = await tool.execute(entry.params, mode="rerun")
+    except Exception as e:
+        logger.warning("Auto-rerun %s failed: %s", entry.tool, e)
+        return False
+
+    # Restore all evicted entries from the same tool call
+    for e in workspace._entries:
+        if not e.evicted or e.tool != entry.tool or e.params != entry.params:
+            continue
+        if e.field_name == "_result":
+            workspace.restore(e.handle, result)
+        elif e.field_name in result:
+            workspace.restore(e.handle, result[e.field_name])
+
+    logger.info("Auto-restored evicted handle %s via %s rerun", handle, entry.tool)
+    return True
 
 
 # ── Tool Message Builder ──

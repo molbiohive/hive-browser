@@ -47,6 +47,7 @@ NEVER list or restate individual items -- the user sees a rich widget.
 
 ## Workspace & Report
 - ALL tool results are stored in workspace as r0, r1, r2, etc.
+- Workspace persists across messages. Data from earlier turns is available via the same handles.
 - Scalar values (counts, percentages) are shown inline in the descriptor.
 - Use python(code="...") to query workspace and build output.
 - Must assign `feedback` -- a short caption for the user (e.g. "Found 5 CDS features").

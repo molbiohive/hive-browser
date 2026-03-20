@@ -15,7 +15,6 @@ from hive.tools.router import (
     _help_response,
     _parse_args,
     _tool_response,
-    _trim_context,
     route_input,
 )
 
@@ -873,51 +872,6 @@ class TestSandboxIntegration:
         assert "python" in tool_names_3
 
 
-# ── Context Trimming ──
 
-
-class TestContextTrim:
-    def test_no_trim_under_limit(self):
-        msgs = [
-            {"role": "system", "content": "sys"},
-            {"role": "user", "content": "hi"},
-            {"role": "tool", "content": "result data"},
-        ]
-        _trim_context(msgs, 10000)
-        assert msgs[2]["content"] == "result data"
-
-    def test_trim_oldest_tool_message(self):
-        msgs = [
-            {"role": "system", "content": "sys"},
-            {"role": "user", "content": "hi"},
-            {"role": "tool", "content": "A" * 5000},
-            {"role": "tool", "content": "B" * 5000},
-        ]
-        _trim_context(msgs, 6000)
-        # Oldest tool msg trimmed, newest preserved
-        assert msgs[2]["content"] == "[trimmed]"
-        assert msgs[3]["content"] == "B" * 5000
-
-    def test_trim_preserves_last_tool(self):
-        """The last tool message is never trimmed."""
-        msgs = [
-            {"role": "system", "content": "sys"},
-            {"role": "tool", "content": "X" * 10000},
-        ]
-        _trim_context(msgs, 100)
-        # Only one tool message -- can't trim it
-        assert msgs[1]["content"] == "X" * 10000
-
-    def test_trim_multiple_until_under_limit(self):
-        msgs = [
-            {"role": "system", "content": "s"},
-            {"role": "tool", "content": "A" * 3000},
-            {"role": "tool", "content": "B" * 3000},
-            {"role": "tool", "content": "C" * 3000},
-        ]
-        _trim_context(msgs, 4000)
-        assert msgs[1]["content"] == "[trimmed]"
-        assert msgs[2]["content"] == "[trimmed]"
-        assert msgs[3]["content"] == "C" * 3000
 
 

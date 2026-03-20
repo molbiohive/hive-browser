@@ -14,6 +14,7 @@ from sqlalchemy import func, select
 from hive.db import session as db
 from hive.db.models import IndexedFile, Part, Sequence, User
 from hive.context import current_chat_tasks, current_user_id
+from hive.sandbox import Workspace
 from hive.tools.router import route_input
 from hive.users.service import create_feedback, get_user_by_token, update_preferences
 
@@ -116,7 +117,7 @@ async def websocket_endpoint(websocket: WebSocket):
     use_planner = bool((user.preferences or {}).get("use_planner", True))
 
     # Per-connection chat tracking (mutable dict so background tasks can update it)
-    chat = {"id": None, "messages": [], "title_generated": False, "model": current_model_id, "tasks": []}
+    chat = {"id": None, "messages": [], "title_generated": False, "model": current_model_id, "tasks": [], "workspace": Workspace()}
 
     try:
         # Send config, tool metadata, models, user, and initial status to frontend
@@ -234,6 +235,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 chat["title_sent"] = False
                 chat["model"] = current_model_id
                 chat["tasks"] = []
+                chat["workspace"] = Workspace()
                 manager.histories[conn_id] = []
                 continue
 
@@ -246,6 +248,8 @@ async def websocket_endpoint(websocket: WebSocket):
                         chat["id"] = requested_id
                         chat["messages"] = saved.get("messages", [])
                         chat["tasks"] = saved.get("tasks", [])
+                        ws_data = saved.get("workspace", [])
+                        chat["workspace"] = Workspace.from_json(ws_data) if ws_data else Workspace()
                         chat["title_generated"] = bool(saved.get("title"))
                         manager.histories[conn_id] = [
                             {"role": m["role"], "content": m["content"]}
@@ -428,7 +432,7 @@ async def _handle_message(
             tool_rag=tool_rag,
             use_planner=use_planner,
             sandbox_max_retries=config.llm.sandbox_max_retries if config else 3,
-            context_char_limit=config.llm.context_char_limit if config else 0,
+            workspace=chat["workspace"],
         )
 
         # Track user message (skip bare commands that just show a form)
@@ -512,9 +516,18 @@ async def _handle_message(
                 chat["id"] = chat_storage.new_chat_id()
             threshold = config.chat.widget_data_threshold if config else 2048
             messages_to_save = [_strip_large_widget_data(m, threshold) for m in chat["messages"]]
+
+            # Evict oldest workspace entries if over limit
+            ws: Workspace = chat["workspace"]
+            max_ws = config.chat.workspace_max_bytes if config else 500_000
+            evicted = ws.evict(max_ws)
+            if evicted:
+                logger.info("Workspace evicted %d entries (limit %d bytes)", evicted, max_ws)
+
             chat_storage.save(
                 chat["id"], messages_to_save, user_slug=user_slug,
                 model=chat.get("model"), tasks=chat.get("tasks"),
+                workspace=ws.to_json(),
             )
 
             # Generate title once (LLM with fallback to first message words)

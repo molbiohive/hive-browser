@@ -41,13 +41,14 @@ class ChatStorage:
         created: datetime | None = None,
         model: str | None = None,
         tasks: list[dict] | None = None,
+        workspace: list[dict] | None = None,
     ):
         if created is None:
             created = datetime.now(UTC)
 
         filepath = self._filepath(chat_id, user_slug)
 
-        # Preserve existing title/created/model/tasks if updating
+        # Preserve existing title/created/model/tasks/workspace if updating
         existing = self.load(chat_id, user_slug)
         if existing:
             created = datetime.fromisoformat(existing["created"])
@@ -57,6 +58,8 @@ class ChatStorage:
                 model = existing.get("model")
             if tasks is None:
                 tasks = existing.get("tasks")
+            if workspace is None:
+                workspace = existing.get("workspace")
 
         data = {
             "id": chat_id,
@@ -65,6 +68,7 @@ class ChatStorage:
             "model": model,
             "messages": messages,
             "tasks": tasks or [],
+            "workspace": workspace or [],
         }
 
         with open(filepath, "w") as f:

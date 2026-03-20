@@ -39,7 +39,6 @@ class LLMConfig(BaseSettings):
     sandbox_max_retries: int = 3  # max consecutive sandbox errors before dropping python schema
     sandbox_output_limit: int = 4000  # max chars for sandbox/tool output sent to LLM
     python_max_turns: int = 6  # max python sandbox calls per query
-    context_char_limit: int = 24000  # max chars in LLM context (0 = no limit)
     model_config = {"env_prefix": "LLM_"}
 
 
@@ -67,6 +66,7 @@ class ChatConfig(BaseSettings):
     max_history_pairs: int = 20
     widget_data_threshold: int = 16384  # bytes — strip widget data above this size
     rerun_stale_widgets: int = 3  # auto-rerun on chat load: 0=none, N=last N, -1=all
+    workspace_max_bytes: int = 500_000  # evict oldest workspace entries above this size
 
 
 class WatcherRule(BaseSettings):
