@@ -57,7 +57,7 @@ class ExtractTool(Tool):
         source = result.get("source", "")
         return f"Extracted {name} from {source}: {length} bp"
 
-    async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
+    async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         inp = ExtractInput(**params)
 
         if inp.sid is None and not inp.sequence_name:

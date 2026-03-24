@@ -115,7 +115,7 @@ class SearchTool(Tool):
         return f"No results for '{query}'."
 
 
-    async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
+    async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         """Execute search with ParadeDB BM25 full-text search.
 
         Supports boolean queries: "KanR && circular" (AND), "GFP || RFP" (OR).

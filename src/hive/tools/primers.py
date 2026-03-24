@@ -55,7 +55,7 @@ class PrimersTool(Tool):
         count = result.get("primers_found", 0)
         return f"{name}: {count} primer(s) found" if name else f"{count} primer(s) found"
 
-    async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
+    async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         inp = PrimersInput(**params)
 
         if not db.async_session_factory:

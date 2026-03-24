@@ -60,7 +60,7 @@ class SitesTool(Tool):
         unique = sum(1 for c in result.get("cutters", []) if c["num_cuts"] == 1)
         return f"Found {found} enzymes that cut ({unique} unique cutters) out of {total} scanned"
 
-    async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
+    async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         inp = SitesInput(**params)
         seq = inp.sequence
         if seq.strip().lower().startswith(("sid:", "pid:")) and db.async_session_factory:

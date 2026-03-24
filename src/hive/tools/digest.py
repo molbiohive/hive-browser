@@ -125,7 +125,7 @@ class DigestTool(Tool):
             parts.append(f"{rxn['name']}: {rxn['total_cuts']} cut(s), {len(frags)} fragment(s)")
         return "; ".join(parts) if parts else "No reactions"
 
-    async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
+    async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         inp = DigestInput(**params)
         seq = inp.sequence
         if seq.strip().lower().startswith(("sid:", "pid:")) and db.async_session_factory:

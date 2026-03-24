@@ -61,7 +61,7 @@ class ProfileTool(Tool):
             return "Sequence not found."
         return f"{seq['name']} — {seq['size_bp']} bp, {seq['topology']}"
 
-    async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
+    async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         """Fetch complete sequence profile from the database."""
         inp = ProfileInput(**params)
 

@@ -58,15 +58,7 @@ class Tool(ABC):
 
     @abstractmethod
     async def execute(self, params: dict[str, Any], **kwargs: Any) -> dict[str, Any]:
-        """Execute the tool with the given parameters and return results.
-
-        Standard kwargs passed by the router:
-            mode: "direct" (//cmd), "guided" (/cmd), "natural" (LLM), "rerun" (widget refresh)
-
-        Subclasses declare only the kwargs they need, e.g.:
-            async def execute(self, params, mode="direct"):       # simple tool
-            async def execute(self, params, mode="direct", user=None):  # user-aware
-        """
+        """Execute the tool with the given parameters and return results."""
         ...
 
     def input_schema(self) -> dict:

@@ -289,7 +289,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 tool = registry.get(tool_name) if tool_name else None
                 if tool:
                     try:
-                        result = await tool.execute(params, mode="rerun")
+                        result = await tool.execute(params)
                         await manager.send_json(conn_id, {
                             "type": "widget_data",
                             "messageIndex": message_index,
@@ -656,7 +656,7 @@ async def _rerun_stale_widgets(
         if not tool:
             continue
         try:
-            result = await tool.execute(params, mode="rerun")
+            result = await tool.execute(params)
             await manager.send_json(conn_id, {
                 "type": "widget_data",
                 "messageIndex": idx,

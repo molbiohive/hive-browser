@@ -74,7 +74,7 @@ class PartsTool(Tool):
         seq_name = result.get("sequence_name", "")
         return f"{total} part(s) on {seq_name}"
 
-    async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
+    async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         inp = PartsInput(**{k: v for k, v in params.items() if v is not None})
 
         if inp.pid is not None:
@@ -196,7 +196,6 @@ class PartsTool(Tool):
             blast = BlastTool(config=self._config)
             result = await blast.execute(
                 {"sequence": part.sequence, "max_hits": 10},
-                mode="direct",
             )
             return result.get("hits", [])
         except Exception as e:

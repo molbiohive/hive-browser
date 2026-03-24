@@ -70,7 +70,7 @@ class AlignTool(Tool):
         count = result.get("count", 0)
         return f"Aligned {count} sequences."
 
-    async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
+    async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         if not self._dep:
             return {"error": "MAFFT not configured"}
 

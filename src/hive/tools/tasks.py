@@ -45,7 +45,7 @@ class TasksTool(Tool):
         done = sum(1 for t in tasks if t.get("done"))
         return f"{len(tasks)} task(s), {done} done"
 
-    async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
+    async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         inp = TasksInput(**params)
         tasks = current_chat_tasks.get()
 

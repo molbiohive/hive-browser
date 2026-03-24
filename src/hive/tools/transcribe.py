@@ -40,7 +40,7 @@ class TranscribeTool(Tool):
             return f"Error: {error}"
         return f"Transcribed to {result.get('length', 0)} nt mRNA"
 
-    async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
+    async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         inp = TranscribeInput(**params)
         seq = inp.sequence
         if seq.strip().lower().startswith(("sid:", "pid:")) and db.async_session_factory:

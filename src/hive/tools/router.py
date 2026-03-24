@@ -71,7 +71,7 @@ async def route_input(
             return _form_response(tool_name, tool.description, tool.input_schema())
 
         params = _parse_args(args_text)
-        result = await tool.execute(params, mode="direct")
+        result = await tool.execute(params)
         return _tool_response(tool_name, result, params, tool.format_result(result))
 
     # ── Mode 2: Guided — /command ──
@@ -88,7 +88,7 @@ async def route_input(
                 return _form_response(tool_name, tool.description, tool.input_schema())
 
             params = _parse_args(text)
-            result = await tool.execute(params, mode="guided")
+            result = await tool.execute(params)
             return _tool_response(tool_name, result, params, tool.format_result(result))
 
         # LLM-assisted: run through unified loop with tool hint
@@ -409,7 +409,7 @@ async def _unified_loop(
                         logger.info("Workspace inject: %s (%d chars)", key, len(str(cached)))
 
             await _emit("tool", tool_name)
-            result = await tool.execute(params, mode="natural")
+            result = await tool.execute(params)
             sandbox_errors = 0  # regular tool success resets sandbox error budget
 
             # Store full result in workspace (error results bypass)
@@ -518,7 +518,7 @@ async def _try_restore_evicted(
         return False
 
     try:
-        result = await tool.execute(entry.params, mode="rerun")
+        result = await tool.execute(entry.params)
     except Exception as e:
         logger.warning("Auto-rerun %s failed: %s", entry.tool, e)
         return False

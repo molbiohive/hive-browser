@@ -53,7 +53,7 @@ class HistoryTool(Tool):
         steps = result.get("steps", 0)
         return f"{name} -- {steps} cloning step(s)"
 
-    async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
+    async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         inp = HistoryInput(**params)
 
         if inp.sid is None and not inp.name:

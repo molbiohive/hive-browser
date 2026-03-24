@@ -122,7 +122,7 @@ class BlastTool(Tool):
         )
 
     async def execute(
-        self, params: dict[str, Any], mode: str = "direct",
+        self, params: dict[str, Any],
     ) -> dict[str, Any]:
         """Run BLAST+ against the local index."""
         if not params.get("sequence"):

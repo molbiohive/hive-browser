@@ -40,7 +40,7 @@ class GCTool(Tool):
         length = result.get("length", 0)
         return f"GC content: {gc:.1f}% ({length} bp)"
 
-    async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
+    async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         inp = GCInput(**params)
         seq = inp.sequence
         if seq.strip().lower().startswith(("sid:", "pid:")) and db.async_session_factory:

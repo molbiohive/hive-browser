@@ -40,7 +40,7 @@ class RevCompTool(Tool):
             return f"Error: {error}"
         return f"Reverse complement: {result.get('length', 0)} bp"
 
-    async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
+    async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         inp = RevCompInput(**params)
         seq = inp.sequence
         if seq.strip().lower().startswith(("sid:", "pid:")) and db.async_session_factory:
