@@ -700,7 +700,7 @@ class TestSandboxIntegration:
         # Verify cache info appears in the tool message sent to LLM
         tool_msg = [m for m in llm.chat.call_args_list[-1][0][0]
                     if isinstance(m, dict) and m.get("role") == "tool"]
-        assert any("Workspace" in m.get("content", "") for m in tool_msg)
+        assert any("Stored:" in m.get("content", "") for m in tool_msg)
 
     async def test_python_dispatched_to_sandbox(self):
         """python tool calls go to sandbox, not ToolRegistry."""
@@ -843,7 +843,7 @@ class TestSandboxIntegration:
         ])
         await route_input("count results", reg, llm_client=llm)
 
-        # Check the tool message for the python call includes cache info
+        # Check the tool message for the python call has feedback
         last_call_msgs = llm.chat.call_args_list[-1][0][0]
         python_tool_msgs = [
             m for m in last_call_msgs
@@ -851,7 +851,6 @@ class TestSandboxIntegration:
             and "feedback = 1" in m.get("content", "")
         ]
         assert len(python_tool_msgs) == 1
-        assert "Workspace:" in python_tool_msgs[0]["content"]
 
     async def test_sandbox_retries_exhaust_drops_python_schema(self):
         """After N consecutive sandbox errors, python schema is dropped."""

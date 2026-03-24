@@ -466,18 +466,20 @@ class TestStoreResult:
         """All-scalar dict stores only _result."""
         ws = Workspace()
         data = {"a": 1, "b": 2.0, "c": True}
-        ws.store_result(data, "tool")
+        handles = ws.store_result(data, "tool")
         assert len(ws) == 1
         assert ws.get("r0") is data
+        assert handles == ["r0"]
 
     def test_list_broken_out(self):
         """Non-empty lists are stored as separate entries."""
         ws = Workspace()
         items = [{"x": 1}]
         data = {"items": items, "count": 1}
-        ws.store_result(data, "tool")
+        handles = ws.store_result(data, "tool")
         assert len(ws) == 2  # _result + items
         assert ws.get("r1") is items
+        assert handles == ["r0", "r1"]
 
     def test_long_string_broken_out(self):
         """Strings >= 200 chars are stored as separate entries."""
@@ -533,3 +535,17 @@ class TestStoreResult:
         data = {"items": items}
         ws.store_result(data, "tool")
         assert ws.get("r0")["items"] is ws.get("r1")
+
+    def test_describe_handles(self):
+        """describe_handles shows only specified handles."""
+        ws = Workspace()
+        ws.store("results", [{"a": 1}], "search")
+        ws.store("sequence", "ATGC" * 100, "profile")
+        desc = ws.describe_handles(["r1"])
+        assert "r1:" in desc
+        assert "r0:" not in desc
+
+    def test_describe_handles_empty(self):
+        """describe_handles with invalid handles returns empty string."""
+        ws = Workspace()
+        assert ws.describe_handles(["r99"]) == ""

@@ -70,6 +70,10 @@ class Workspace:
             lines.append(self.describe(f"r{i}"))
         return "\n".join(lines)
 
+    def describe_handles(self, handles: list[str]) -> str:
+        """Describe only the given handles, one per line."""
+        return "\n".join(self.describe(h) for h in handles if self.describe(h))
+
     def namespace(self) -> dict[str, Any]:
         """Non-evicted handles as Python variables for sandbox injection."""
         return {entry.handle: entry.value for entry in self._entries if not entry.evicted}
@@ -79,26 +83,29 @@ class Workspace:
         result: dict[str, Any],
         tool: str,
         params: dict[str, Any] | None = None,
-    ) -> str:
+    ) -> list[str]:
         """Store full tool result and break out complex sub-values.
 
         Always stores the complete result dict as ``_result``.  Then stores
         lists, large strings (>=200 chars), and dicts (>2 keys) as separate
         entries for direct sandbox access.  Python references are shared --
         no memory duplication.
+
+        Returns list of new handle names created by this call.
         """
         p = params or {}
-        self.store("_result", result, tool, p)
+        handles: list[str] = []
+        handles.append(self.store("_result", result, tool, p))
         for key, val in result.items():
             if key == "error":
                 continue
             if isinstance(val, list) and val:
-                self.store(key, val, tool, p)
+                handles.append(self.store(key, val, tool, p))
             elif isinstance(val, str) and len(val) >= 200:
-                self.store(key, val, tool, p)
+                handles.append(self.store(key, val, tool, p))
             elif isinstance(val, dict) and len(val) > 2:
-                self.store(key, val, tool, p)
-        return "r0"  # handle of _result
+                handles.append(self.store(key, val, tool, p))
+        return handles
 
     def find_by_field(self, field_name: str, min_length: int = 0) -> str | None:
         """Find most recent non-evicted string whose field name matches.

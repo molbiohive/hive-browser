@@ -357,9 +357,6 @@ async def _unified_loop(
                         sb_result = sandbox.execute(code)
 
                 compact = sandbox.summary_for_llm(sb_result)
-                ws_info = workspace.describe_all()
-                if ws_info:
-                    compact += f"\n\nWorkspace:\n{ws_info}"
                 messages.append({
                     "role": "tool",
                     "tool_call_id": tc["id"],
@@ -415,8 +412,8 @@ async def _unified_loop(
 
             # Store full result in workspace (error results bypass)
             if "error" not in result:
-                workspace.store_result(result, tool_name, params)
-                compact = _build_tool_message(tool_name, result, workspace)
+                new_handles = workspace.store_result(result, tool_name, params)
+                compact = _build_tool_message(tool_name, workspace, new_handles)
             else:
                 compact = f"Error: {result['error']}"
 
@@ -546,16 +543,16 @@ async def _try_restore_evicted(
 # ── Tool Message Builder ──
 
 
-def _build_tool_message(tool_name: str, result: dict, workspace: Workspace) -> str:
-    """Build concise tool message for LLM: confirmation + workspace descriptor.
+def _build_tool_message(tool_name: str, workspace: Workspace, new_handles: list[str]) -> str:
+    """Build concise tool message for LLM: confirmation + new handles only.
 
-    Scalar values are shown inline. Complex data (lists, dicts, strings) are
-    available in workspace — LLM queries them via python sandbox.
+    Only shows handles created by this tool call to reduce token waste.
+    Full workspace is visible via the python sandbox schema.
     """
     parts = [f"{tool_name}: done."]
-    ws_info = workspace.describe_all()
-    if ws_info:
-        parts.append(f"\nWorkspace:\n{ws_info}")
+    desc = workspace.describe_handles(new_handles)
+    if desc:
+        parts.append(f"\nStored:\n{desc}")
     return "\n".join(parts)
 
 
