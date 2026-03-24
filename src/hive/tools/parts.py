@@ -35,7 +35,7 @@ class PartsTool(Tool):
     name = "parts"
     description = "Look up a part by PID, or list all parts on a sequence by SID."
     widget = "parts"
-    tags = {"llm", "info"}
+    tags = {"llm", "info", "batch"}
     guidelines = (
         "Look up a part by PID (canonical data: names, instances across sequences, "
         "annotations, libraries, sequence) or list all parts on a sequence by SID "

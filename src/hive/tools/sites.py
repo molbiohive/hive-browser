@@ -31,7 +31,7 @@ class SitesTool(Tool):
     name = "sites"
     description = "Find all restriction enzymes that cut a sequence."
     widget = "text"
-    tags = {"llm", "analysis"}
+    tags = {"llm", "analysis", "batch"}
     guidelines = "Find all restriction enzymes that cut a sequence. Use max_cuts=1 for unique cutters."
 
     def __init__(self, **_):

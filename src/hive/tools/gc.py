@@ -22,8 +22,9 @@ class GCTool(Tool):
     name = "gc"
     description = "Calculate GC content and nucleotide composition of a DNA sequence."
     widget = "text"
-    tags = {"llm", "analysis"}
+    tags = {"llm", "analysis", "batch"}
     guidelines = "GC content and nucleotide composition. Accepts sequence, sid:N, or pid:N."
+    batch_param = "sequence"
 
     def __init__(self, **_):
         pass

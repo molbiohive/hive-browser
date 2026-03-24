@@ -30,7 +30,7 @@ class ProfileTool(Tool):
         "plasmid map, annotated viewer, metadata, features, primers, cut sites."
     )
     widget = "profile"
-    tags = {"llm", "info", "visual"}
+    tags = {"llm", "info", "visual", "batch"}
     guidelines = (
         "Full sequence details and close-up visual inspection. "
         "Use sid (from search results) or name."

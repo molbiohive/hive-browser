@@ -11,7 +11,7 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 # Known system tags — everything else is a group identifier
-SYSTEM_TAGS = {"llm", "hidden"}
+SYSTEM_TAGS = {"llm", "hidden", "batch"}
 
 
 class Tool(ABC):

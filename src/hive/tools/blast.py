@@ -76,7 +76,7 @@ class BlastTool(Tool):
         "Supports blastn, blastp, blastx, tblastn, tblastx."
     )
     widget = "blast"
-    tags = {"llm", "search"}
+    tags = {"llm", "search", "batch"}
     guidelines = (
         "Sequence similarity search using BLAST+. Supports blastn "
         "(nucl vs nucl), blastp (prot vs prot), blastx (nucl query "

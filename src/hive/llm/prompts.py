@@ -103,19 +103,36 @@ def _slim_schema(schema: dict) -> dict:
     return schema
 
 
+_BATCH_PARAMS = {"sequence", "sid", "pid"}
+
+
 def build_tool_schema(tools: list[Tool]) -> list[dict]:
-    """Build function schemas in OpenAI format (uses slim LLM schemas)."""
-    return [
-        {
+    """Build function schemas in OpenAI format (uses slim LLM schemas).
+
+    For tools tagged ``"batch"``, auto-adds plural array params for known
+    identifiers (sequence, sid, pid) found in the tool's schema.
+    """
+    schemas = []
+    for t in tools:
+        params = _slim_schema(t.llm_schema())
+        if "batch" in t.tags:
+            props = params.get("properties", {})
+            for name in _BATCH_PARAMS & props.keys():
+                prop = props[name]
+                props[name + "s"] = {
+                    "type": "array",
+                    "items": {"type": prop.get("type", "string")},
+                    "description": f"Multiple {name}s for batch processing",
+                }
+        schemas.append({
             "type": "function",
             "function": {
                 "name": t.name,
                 "description": _tool_desc(t),
-                "parameters": _slim_schema(t.llm_schema()),
+                "parameters": params,
             },
-        }
-        for t in tools
-    ]
+        })
+    return schemas
 
 
 # ── Planning prompt (used by ToolRAG) ──

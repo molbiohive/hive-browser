@@ -407,7 +407,24 @@ async def _unified_loop(
                         logger.info("Workspace inject: %s (%d chars)", key, len(str(cached)))
 
             await _emit("tool", tool_name)
-            result = await tool.execute(params)
+
+            # Batch fan-out: tools tagged "batch" auto-expand plural params
+            result = None
+            if "batch" in tool.tags:
+                for singular in ("sequence", "sid", "pid"):
+                    plural = singular + "s"
+                    if plural in params and isinstance(params[plural], list):
+                        items = params.pop(plural)
+                        results = []
+                        for item in items:
+                            r = await tool.execute({**params, singular: item})
+                            r["_label"] = str(item)[:80]
+                            results.append(r)
+                        result = {"results": results, "count": len(results)}
+                        break  # one plural per call
+
+            if result is None:
+                result = await tool.execute(params)
             sandbox_errors = 0  # regular tool success resets sandbox error budget
 
             # Store full result in workspace (error results bypass)

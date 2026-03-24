@@ -24,8 +24,9 @@ class RevCompTool(Tool):
     name = "revcomp"
     description = "Get the reverse complement of a DNA sequence."
     widget = "text"
-    tags = {"llm", "analysis"}
+    tags = {"llm", "analysis", "batch"}
     guidelines = "Reverse complement. Accepts sequence, sid:N, or pid:N."
+    batch_param = "sequence"
 
     def __init__(self, **_):
         pass
