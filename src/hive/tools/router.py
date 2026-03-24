@@ -192,15 +192,12 @@ async def _unified_loop(
     if tool_rag:
         try:
             if use_planner:
-                # Mode 1: Planner ON — planning call decides intent, plan guides RAG + agent
-                prefix, plan_content, plan_usage = await tool_rag.plan(
+                # Planner ON — cheap LLM call produces task description, RAG selects tools
+                plan_content, plan_usage = await tool_rag.plan(
                     user_input, llm_client, history,
                 )
                 tokens["in"] += plan_usage.get("in", 0)
                 tokens["out"] += plan_usage.get("out", 0)
-
-                if prefix == "ANSWER":
-                    return {"type": "message", "content": plan_content, "tokens": tokens}
 
                 # RAG on plan content (planner's description of steps)
                 selected = await tool_rag.select(plan_content)
@@ -269,7 +266,7 @@ async def _unified_loop(
             response = await llm_client.chat(messages, tools=turn_tools)
         except Exception as e:
             logger.error("LLM call failed (turn %d): %s", turn, e)
-            error_msg = str(e)
+            error_msg = _sanitize_llm_error(str(e))
             exceeded = True
             break
 
@@ -316,11 +313,15 @@ async def _unified_loop(
                 resp["tokens"] = tokens
                 if chain:
                     resp["chain"] = chain
+                if plan_text:
+                    resp["plan"] = plan_text
                 return resp
 
             resp = {"type": "message", "content": content, "tokens": tokens}
             if chain:
                 resp["chain"] = chain
+            if plan_text:
+                resp["plan"] = plan_text
             return resp
 
         # Append assistant message with tool_calls
@@ -453,9 +454,10 @@ async def _unified_loop(
         )
 
     if not chain:
-        if error_msg:
-            return _error(f"LLM error: {error_msg}")
-        return _error("No tools were called during reasoning.")
+        resp = _error(f"LLM error: {error_msg}") if error_msg else _error("No tools were called during reasoning.")
+        if plan_text:
+            resp["plan"] = plan_text
+        return resp
 
     # Max turns exceeded — use last step's summary as fallback
     fallback = chain[-1]["summary"] if chain else ""
@@ -475,9 +477,14 @@ async def _unified_loop(
         resp = _tool_response(last_tool, last_result, last_params, fallback)
         resp["tokens"] = tokens
         resp["chain"] = chain
+        if plan_text:
+            resp["plan"] = plan_text
         return resp
 
-    return {"type": "message", "content": fallback, "tokens": tokens, "chain": chain}
+    resp = {"type": "message", "content": fallback, "tokens": tokens, "chain": chain}
+    if plan_text:
+        resp["plan"] = plan_text
+    return resp
 
 
 # ── Evicted Handle Auto-Rerun ──
@@ -553,6 +560,22 @@ def _build_tool_message(tool_name: str, result: dict, workspace: Workspace) -> s
 
 
 # ── Helpers ──
+
+
+def _sanitize_llm_error(raw: str) -> str:
+    """Turn raw LLM exceptions into short user-facing messages."""
+    lowered = raw.lower()
+    if "rate" in lowered and "limit" in lowered:
+        return "Rate limit reached"
+    if "auth" in lowered:
+        return "LLM auth failed"
+    if "timeout" in lowered:
+        return "LLM request timed out"
+    if "connect" in lowered:
+        return "Could not connect to LLM"
+    # Unknown: first sentence, capped
+    first = raw.split(".")[0].split("\n")[0]
+    return first[:120] if len(first) > 120 else first
 
 
 def _parse_args(text: str) -> dict:

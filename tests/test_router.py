@@ -33,7 +33,7 @@ class EchoTool(Tool):
     def __init__(self, **_):
         pass
 
-    async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
+    async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         return {"echo": params}
 
 
@@ -49,7 +49,7 @@ class RequiredTool(Tool):
     def __init__(self, **_):
         pass
 
-    async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
+    async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         return {"result": params.get("query", "")}
 
 
@@ -64,7 +64,7 @@ class DirectOnlyTool(Tool):
     def __init__(self, **_):
         pass
 
-    async def execute(self, params: dict[str, Any], mode: str = "direct") -> dict[str, Any]:
+    async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         return {"ok": True}
 
 
@@ -356,7 +356,7 @@ class TestAgenticLoop:
             def __init__(self, **_):
                 pass
 
-            async def execute(self, params, mode="direct"):
+            async def execute(self, params):
                 return {"sequence": "A" * 300}  # > pipe_min_length
 
         class ConsumerTool(Tool):
@@ -369,7 +369,7 @@ class TestAgenticLoop:
             def __init__(self, **_):
                 pass
 
-            async def execute(self, params, mode="direct"):
+            async def execute(self, params):
                 return {"length": len(params.get("sequence", ""))}
 
         reg = ToolRegistry()
@@ -397,12 +397,44 @@ class TestAgenticLoop:
         assert resp["tool"] == "echo"
 
     async def test_llm_error_graceful(self, registry):
-        """LLM raises exception -> loop breaks gracefully with error message."""
+        """LLM raises exception -> loop breaks gracefully with sanitized error."""
         llm = self._mock_llm([Exception("Connection failed")])
         resp = await route_input("test error", registry, llm_client=llm)
         assert resp["type"] == "message"
         assert "LLM error" in resp["content"]
-        assert "Connection failed" in resp["content"]
+        assert "Could not connect" in resp["content"]
+
+
+# ── Error Sanitization ──
+
+
+class TestErrorSanitization:
+    def test_rate_limit(self):
+        from hive.tools.router import _sanitize_llm_error
+        assert _sanitize_llm_error("Rate limit exceeded: 429") == "Rate limit reached"
+
+    def test_auth_error(self):
+        from hive.tools.router import _sanitize_llm_error
+        assert _sanitize_llm_error("AuthenticationError: invalid key") == "LLM auth failed"
+
+    def test_timeout(self):
+        from hive.tools.router import _sanitize_llm_error
+        assert _sanitize_llm_error("Request timeout after 30s") == "LLM request timed out"
+
+    def test_connection_error(self):
+        from hive.tools.router import _sanitize_llm_error
+        assert _sanitize_llm_error("ConnectionError: refused") == "Could not connect to LLM"
+
+    def test_unknown_capped(self):
+        from hive.tools.router import _sanitize_llm_error
+        long_msg = "x" * 200
+        result = _sanitize_llm_error(long_msg)
+        assert len(result) <= 120
+
+    def test_unknown_first_sentence(self):
+        from hive.tools.router import _sanitize_llm_error
+        result = _sanitize_llm_error("Something broke. More details here.")
+        assert result == "Something broke"
 
 
 # ── Tool RAG Integration ──
@@ -445,31 +477,35 @@ class TestToolRAGIntegration:
 
     # ── Planner ON (default) ──
 
-    async def test_planner_on_answer_skips_agent_loop(self, registry):
-        """Planner ON + ANSWER prefix returns directly, no tool calls."""
+    async def test_planner_always_runs_agent_loop(self, registry):
+        """Planner ON always runs agent loop -- no ANSWER shortcut."""
         from hive.llm.tool_rag import ToolRAG
 
         rag = ToolRAG(tools=registry.llm_tools(), threshold=0.2, top_k=5)
 
         llm = self._mock_llm([
-            self._text_response("ANSWER: GFP is Green Fluorescent Protein."),
+            # Plan call
+            self._text_response("respond conversationally"),
+            # Agent loop
+            self._text_response("Hello! How can I help?"),
         ])
         resp = await route_input(
-            "What is GFP?", registry, llm_client=llm,
+            "hello", registry, llm_client=llm,
             tool_rag=rag, use_planner=True,
         )
         assert resp["type"] == "message"
-        assert "Green Fluorescent Protein" in resp["content"]
-        assert llm.chat.call_count == 1
+        assert "Hello" in resp["content"]
+        assert resp.get("plan") == "respond conversationally"
+        assert llm.chat.call_count == 2  # plan + agent
 
     async def test_planner_on_action_narrows_tools(self, registry):
-        """Planner ON + ACTION triggers RAG on plan, agent sees plan text."""
+        """Planner produces task description, RAG selects tools, agent sees plan."""
         from hive.llm.tool_rag import ToolRAG
 
         rag = ToolRAG(tools=registry.llm_tools(), threshold=0.2, top_k=5)
 
         llm = self._mock_llm([
-            self._text_response("ACTION: Echo the input back."),
+            self._text_response("Echo the input back."),
             self._text_response("Here is your echo."),
         ])
         resp = await route_input(
@@ -494,15 +530,17 @@ class TestToolRAGIntegration:
         rag = ToolRAG(tools=registry.llm_tools(), threshold=0.2, top_k=5)
 
         llm = self._mock_llm([
-            self._text_response("ANSWER: Simple answer.",
+            self._text_response("respond conversationally",
                                 usage={"prompt_tokens": 50, "completion_tokens": 10}),
+            self._text_response("Hi!",
+                                usage={"prompt_tokens": 80, "completion_tokens": 5}),
         ])
         resp = await route_input(
             "hello", registry, llm_client=llm,
             tool_rag=rag, use_planner=True,
         )
-        assert resp["tokens"]["in"] == 50
-        assert resp["tokens"]["out"] == 10
+        assert resp["tokens"]["in"] == 130  # 50 + 80
+        assert resp["tokens"]["out"] == 15  # 10 + 5
 
     async def test_planner_on_failure_falls_through(self, registry):
         """If planning call fails, all tools are used (graceful degradation)."""
@@ -640,7 +678,7 @@ class TestSandboxIntegration:
             def __init__(self, **_):
                 pass
 
-            async def execute(self, params, mode="direct"):
+            async def execute(self, params):
                 return {
                     "results": [
                         {"sid": 1, "name": "GFP", "size_bp": 720},
@@ -676,7 +714,7 @@ class TestSandboxIntegration:
             def __init__(self, **_):
                 pass
 
-            async def execute(self, params, mode="direct"):
+            async def execute(self, params):
                 return {
                     "results": [
                         {"sid": 1, "name": "GFP"},
@@ -717,7 +755,7 @@ class TestSandboxIntegration:
             def __init__(self, **_):
                 pass
 
-            async def execute(self, params, mode="direct"):
+            async def execute(self, params):
                 return {
                     "results": [{"sid": 1, "topology": "circular"}],
                 }
@@ -756,7 +794,7 @@ class TestSandboxIntegration:
             def __init__(self, **_):
                 pass
 
-            async def execute(self, params, mode="direct"):
+            async def execute(self, params):
                 return {"results": [{"sid": 1}]}
 
         reg = ToolRegistry()
@@ -790,7 +828,7 @@ class TestSandboxIntegration:
             def __init__(self, **_):
                 pass
 
-            async def execute(self, params, mode="direct"):
+            async def execute(self, params):
                 return {"results": [{"sid": 1, "name": "GFP"}]}
 
         reg = ToolRegistry()
@@ -827,7 +865,7 @@ class TestSandboxIntegration:
             def __init__(self, **_):
                 pass
 
-            async def execute(self, params, mode="direct"):
+            async def execute(self, params):
                 return {"results": [{"sid": 1, "name": "GFP"}]}
 
         reg = ToolRegistry()

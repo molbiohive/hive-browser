@@ -6,6 +6,7 @@
 
 	let { message, messageIndex = -1 } = $props();
 	let thinkingExpanded = $state(false);
+	let planExpanded = $state(false);
 
 	// Configure marked for inline rendering (no wrapping <p> for short responses)
 	marked.setOptions({ breaks: true, gfm: true });
@@ -31,6 +32,17 @@
 	<div class="msg-wrapper">
 		<div class="bubble {message.role}" class:has-widget={!!message.widget}>
 			{#if message.role === 'assistant'}
+				{#if message.plan}
+					<div class="thinking-block">
+						<button class="thinking-toggle" onclick={() => planExpanded = !planExpanded}>
+							Plan
+							<span class="arrow">{planExpanded ? '\u25B4' : '\u25BE'}</span>
+						</button>
+						{#if planExpanded}
+							<pre class="thinking-content">{message.plan}</pre>
+						{/if}
+					</div>
+				{/if}
 				{#if message.thinking}
 					<div class="thinking-block">
 						<button class="thinking-toggle" onclick={() => thinkingExpanded = !thinkingExpanded}>

@@ -135,31 +135,20 @@ class TestPlan:
         })
         return client
 
-    async def test_answer_prefix(self, rag):
-        llm = self._mock_llm("ANSWER: GFP is Green Fluorescent Protein.")
-        prefix, content, usage = await rag.plan("What is GFP?", llm)
-        assert prefix == "ANSWER"
-        assert "Green Fluorescent Protein" in content
+    async def test_returns_plan_text_and_usage(self, rag):
+        llm = self._mock_llm("Search the database for GFP sequences.")
+        plan_text, usage = await rag.plan("find GFP", llm)
+        assert "GFP" in plan_text
         assert usage["in"] == 50
+        assert usage["out"] == 10
 
-    async def test_action_prefix(self, rag):
-        llm = self._mock_llm("ACTION: Search for GFP sequences in the database.")
-        prefix, content, usage = await rag.plan("find GFP", llm)
-        assert prefix == "ACTION"
-        assert "Search" in content
-
-    async def test_missing_prefix_defaults_to_action(self, rag):
-        llm = self._mock_llm("Search for GFP sequences and extract the promoter.")
-        prefix, content, _ = await rag.plan("find GFP", llm)
-        assert prefix == "ACTION"
-
-    async def test_case_insensitive_prefix(self, rag):
-        llm = self._mock_llm("answer: This is a simple question.")
-        prefix, _, _ = await rag.plan("hello", llm)
-        assert prefix == "ANSWER"
+    async def test_conversational_plan(self, rag):
+        llm = self._mock_llm("respond conversationally")
+        plan_text, _ = await rag.plan("hello", llm)
+        assert "conversationally" in plan_text
 
     async def test_plan_passes_history(self, rag):
-        llm = self._mock_llm("ANSWER: Yes.")
+        llm = self._mock_llm("Follow up on the previous search.")
         history = [{"role": "user", "content": "prev"}, {"role": "assistant", "content": "ok"}]
         await rag.plan("follow up", llm, history=history)
         call_args = llm.chat.call_args[0][0]

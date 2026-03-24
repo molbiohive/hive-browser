@@ -117,10 +117,10 @@ class ToolRAG:
         user_input: str,
         llm_client: LLMClient,
         history: list[dict] | None = None,
-    ) -> tuple[str, str, dict[str, int]]:
-        """Run the planning call. Returns (prefix, content, usage_dict).
+    ) -> tuple[str, dict[str, int]]:
+        """Run the planning call. Returns (plan_text, usage_dict).
 
-        prefix is "ACTION" or "ANSWER".
+        Planner always produces a task description -- never answers directly.
         """
         messages = build_plan_messages(self._catalog, user_input, history)
         response = await llm_client.chat(messages)
@@ -132,15 +132,7 @@ class ToolRAG:
         }
 
         raw = (response["choices"][0]["message"].get("content") or "").strip()
-
-        # Parse prefix
-        if raw.upper().startswith("ANSWER:"):
-            return "ANSWER", raw[7:].strip(), usage_dict
-        if raw.upper().startswith("ACTION:"):
-            return "ACTION", raw[7:].strip(), usage_dict
-        # Missing prefix — default to ACTION (safer: will trigger RAG)
-        logger.debug("Planning response missing prefix, defaulting to ACTION: %s", raw[:80])
-        return "ACTION", raw, usage_dict
+        return raw, usage_dict
 
     # ── RAG Selection ──
 
