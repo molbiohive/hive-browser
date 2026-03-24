@@ -55,6 +55,7 @@ NEVER list or restate individual items -- the user sees a rich widget.
   Tables: report["features"] = [{{...}}, ...] (each list[dict] = a table tab).
   Sequences: report["protein"] = "MKLIV..." (long strings = copyable blocks).
   Scalars: report["gc"] = 52.3 (shown in header row).
+- Variables you create in python calls persist across calls within the same message.
 - Available: len, sum, min, max, sorted, filter, map, comprehensions. No imports.
 
 ## Structured Output

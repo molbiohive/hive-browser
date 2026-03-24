@@ -287,6 +287,33 @@ class TestSafeExec:
         assert result["status"] == "ok"
         assert result["feedback"] == 5
 
+    def test_user_vars_returned_on_success(self):
+        """New variables created in code are returned in user_vars."""
+        result = safe_exec("x = 42\ny = [1, 2]\nfeedback = 'done'")
+        assert result["status"] == "ok"
+        assert result["user_vars"] == {"x": 42, "y": [1, 2]}
+
+    def test_user_vars_excludes_feedback(self):
+        """feedback is not included in user_vars."""
+        result = safe_exec("feedback = 'hi'")
+        assert "feedback" not in result["user_vars"]
+
+    def test_user_vars_excludes_underscore(self):
+        """Private variables (_-prefixed) are excluded from user_vars."""
+        result = safe_exec("_tmp = 1\nfeedback = 'ok'")
+        assert "_tmp" not in result["user_vars"]
+
+    def test_user_vars_not_in_error(self):
+        """Error results don't have user_vars."""
+        result = safe_exec("")
+        assert "user_vars" not in result
+
+    def test_user_vars_excludes_injected(self):
+        """Injected variables are not re-captured in user_vars."""
+        result = safe_exec("z = 99\nfeedback = data", {"data": [1]})
+        assert result["user_vars"] == {"z": 99}
+        assert "data" not in result["user_vars"]
+
 
 # ── SandboxRunner ──
 
@@ -391,6 +418,45 @@ class TestSandboxRunner:
         ws = Workspace()
         runner = SandboxRunner(ws, output_limit=2000)
         assert runner.output_limit == 2000
+
+    def test_user_vars_persist_across_calls(self):
+        """Variables from call 1 are accessible in call 2."""
+        ws = Workspace()
+        runner = SandboxRunner(ws)
+        r1 = runner.execute("filtered = [1, 2, 3]\nfeedback = 'stored'")
+        assert r1["status"] == "ok"
+        r2 = runner.execute("feedback = len(filtered)")
+        assert r2["status"] == "ok"
+        assert r2["feedback"] == 3
+
+    def test_user_vars_shown_in_schema(self):
+        """tool_schema description includes persisted variable names."""
+        ws = Workspace()
+        runner = SandboxRunner(ws)
+        runner.execute("my_data = [1, 2]\nfeedback = 'ok'")
+        schema = runner.tool_schema()
+        desc = schema["function"]["description"]
+        assert "my_data" in desc
+        assert "Persisted variables" in desc
+
+    def test_user_vars_not_in_schema_when_empty(self):
+        """No persisted variables line when none exist."""
+        ws = Workspace()
+        runner = SandboxRunner(ws)
+        schema = runner.tool_schema()
+        assert "Persisted variables" not in schema["function"]["description"]
+
+    def test_user_vars_dont_override_workspace(self):
+        """Workspace handles take precedence over user vars with same name."""
+        ws = Workspace()
+        ws.store("results", [{"a": 1}], "search")
+        runner = SandboxRunner(ws)
+        # Create user var named r0
+        runner.execute("r0 = 'overwritten'\nfeedback = 'ok'")
+        # Workspace namespace is applied after _user_vars, so r0 = workspace data
+        result = runner.execute("feedback = len(r0)")
+        assert result["status"] == "ok"
+        assert result["feedback"] == 1  # workspace [{"a": 1}], not string
 
 
 class TestStoreResult:

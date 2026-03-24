@@ -97,6 +97,8 @@ def safe_exec(code: str, variables: dict[str, Any] | None = None) -> dict[str, A
     except SyntaxError as e:
         return {"status": "error", "error": f"SyntaxError: {e}", "stdout": ""}
 
+    pre_keys = set(namespace.keys())
+
     try:
         with contextlib.redirect_stdout(stdout_buf):
             exec(compiled, namespace)  # noqa: S102
@@ -123,4 +125,17 @@ def safe_exec(code: str, variables: dict[str, Any] | None = None) -> dict[str, A
         else "scalar"
     )
 
-    return {"status": "ok", "feedback": value, "stdout": stdout, "type": result_type}
+    # Capture user-created variables (not feedback, not _-prefixed, not builtins)
+    user_vars = {
+        k: namespace[k]
+        for k in set(namespace.keys()) - pre_keys
+        if k != "feedback" and not k.startswith("_")
+    }
+
+    return {
+        "status": "ok",
+        "feedback": value,
+        "stdout": stdout,
+        "type": result_type,
+        "user_vars": user_vars,
+    }

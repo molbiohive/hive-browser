@@ -20,6 +20,7 @@ class SandboxRunner:
         self.workspace = workspace
         self.output_limit = output_limit
         self.report: dict[str, Any] = {}  # LLM-populated, persists across calls
+        self._user_vars: dict[str, Any] = {}  # variables from previous python calls
 
     def tool_schema(self) -> dict:
         """OpenAI-format function schema with dynamic workspace description."""
@@ -30,6 +31,9 @@ class SandboxRunner:
             "Assign named values: report[\"features\"] = [...].\n"
             "Must assign to `feedback` (caption text for the widget)."
         )
+        if self._user_vars:
+            names = ", ".join(sorted(self._user_vars))
+            desc += f"\nPersisted variables from previous calls: {names}"
         return {
             "type": "function",
             "function": {
@@ -49,10 +53,14 @@ class SandboxRunner:
         }
 
     def execute(self, code: str) -> dict[str, Any]:
-        """Run *code* with all workspace handles + report dict as variables."""
-        variables = self.workspace.namespace()
+        """Run *code* with all workspace handles + report dict + persisted vars."""
+        variables = dict(self._user_vars)  # start with persisted user variables
+        variables.update(self.workspace.namespace())  # workspace handles win
         variables["report"] = self.report  # mutable dict — changes persist
-        return safe_exec(code, variables)
+        result = safe_exec(code, variables)
+        if result["status"] == "ok" and result.get("user_vars"):
+            self._user_vars.update(result["user_vars"])
+        return result
 
     def summary_for_llm(self, result: dict[str, Any]) -> str:
         """Compact result summary for LLM context."""
