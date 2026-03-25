@@ -20,27 +20,27 @@ or follow-ups about previous results. Only call tools for sequence data operatio
 
 ## Identifiers
 - SID = Sequence ID (whole plasmid/construct). Use for sequence operations.
-- PID = Part ID (individual feature/primer). Parts are canonical — same sequence \
+- PID = Part ID (individual feature/primer). Parts are canonical -- same sequence \
 across files shares the same PID.
 - Use the parts tool with pid to look up a part, or with sid to list parts on a sequence.
-- All sequence-accepting tools (blast, translate, digest, gc, revcomp, transcribe) accept: \
-raw sequence, sid:N, or pid:N — automatically resolved.
+- All sequence-accepting tools accept: raw sequence, sid:N, or pid:N -- automatically resolved.
 
 ## Workflow
-- ONE tool per turn. Data pipes automatically between tools.
-- If user names a sequence/SID and feature, go directly to extract. \
-Do NOT search or list features first.
-- extract before analysis tools (blast, translate, digest, gc, revcomp, transcribe). \
-Or pass sid:N / pid:N directly to skip extract.
+- For simple queries: call search, blast, or profile directly.
+- For multi-step analysis: use python with callable tools:
+    results = search(query="KanR")
+    pids = [p["pid"] for p in results["parts"] if p["type"] == "CDS" and p["length"] > 500]
+    gc_data = [gc(sequence=f"pid:{{pid}}") for pid in pids[:15]]
+    report["analysis"] = gc_data
+    feedback = f"Analyzed {{len(pids)}} KanR CDS parts"
+- Tool calls from python auto-store results in workspace as handles.
+- python is always available -- use it even without prior tool calls.
 - search returns BOTH sequences (SIDs) AND parts (PIDs). Use the parts section \
-when the user asks about features/parts — pass PIDs directly to align, blast, etc. \
-Do NOT call the parts tool on individual sequences when search already returned parts.
-- For alignment of parts: search → collect PIDs from parts results → align with pids.
+when the user asks about features/parts.
 
 ## Rules
 - NEVER fabricate sequences, IDs, or data. Use blast for sequence lookup, not search.
-- NEVER answer questions about specific sequences, parts, counts, or database content without calling a tool first.
-- When the user asks about data visible in the workspace, use python to query it.
+- NEVER answer questions about data visible in the workspace without using python first.
 - Use sid or pid (integers) for follow-up tools. Never use name when an ID is available. \
 Prefer pid when the user asks about parts/features, sid when asking about whole sequences.
 - After tool results, write 1-2 sentences of interpretation. \
@@ -49,9 +49,9 @@ NEVER list or restate individual items -- the user sees a rich widget.
 
 ## Workspace & Report
 - ALL tool results are stored in workspace as r0, r1, r2, etc.
+- Tool calls from python code also auto-store results in workspace.
 - Workspace persists across messages. Data from earlier turns is available via the same handles.
 - Scalar values (counts, percentages) are shown inline in the descriptor.
-- Tools accept plural params (sequences, sids, pids) for batch processing in a single call.
 - Use python(code="...") to query workspace and build output.
 - Must assign `feedback` -- a short caption for the user (e.g. "Found 5 CDS features").
 - `report` dict accumulates widget data across python calls:
@@ -81,7 +81,7 @@ def _slim_schema(schema: dict) -> dict:
     """Strip Pydantic bloat from a JSON Schema for minimal token usage.
 
     - Removes ``title`` keys (redundant with property names)
-    - Flattens ``anyOf: [{type: X}, {type: null}]`` → ``{type: X}``
+    - Flattens ``anyOf: [{type: X}, {type: null}]`` to ``{type: X}``
     - Removes ``default: null``
     """
     schema = {k: v for k, v in schema.items() if k != "title"}
