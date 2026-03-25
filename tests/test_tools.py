@@ -13,8 +13,7 @@ from hive.tools.factory import ToolFactory, _is_forbidden, _validate_imports
 class DummyTool(Tool):
     name = "dummy"
     description = "A test tool"
-    widget = "text"
-    tags = {"llm", "test"}
+    tags = {"test"}
     guidelines = "Use for testing."
 
     def __init__(self, **_):
@@ -50,8 +49,8 @@ class TestToolMetadata:
         meta = t.metadata()
         assert meta["name"] == "dummy"
         assert meta["description"] == "A test tool"
-        assert meta["widget"] == "text"
-        assert sorted(meta["tags"]) == ["llm", "test"]
+        assert "widget" not in meta
+        assert sorted(meta["tags"]) == ["test"]
 
     def test_schema(self):
         t = DummyTool()
@@ -60,13 +59,13 @@ class TestToolMetadata:
         assert schema["description"] == "A test tool"
         assert "properties" in schema["parameters"]
 
-    def test_group_returns_first_non_system_tag(self):
+    def test_group_returns_first_tag(self):
         t = DummyTool()
         assert t.group() == "test"
 
-    def test_group_returns_none_for_system_only(self):
+    def test_group_returns_none_for_empty_tags(self):
         t = DummyTool()
-        t.tags = {"llm"}
+        t.tags = set()
         assert t.group() is None
 
     def test_format_result_default_error(self):
@@ -125,30 +124,17 @@ class TestToolRegistry:
         reg.register(DummyTool())
         assert len(reg.all()) == 1
 
-    def test_llm_tools(self):
+    def test_tools_returns_all(self):
         reg = ToolRegistry()
         t1 = DummyTool()
-        t1.tags = {"llm", "search"}
+        t1.tags = {"search"}
         t2 = DummyTool()
         t2.name = "info"
-        t2.tags = {"info"}  # no llm tag
+        t2.tags = {"info"}
         reg.register(t1)
         reg.register(t2)
-        llm = reg.llm_tools()
-        assert len(llm) == 1
-        assert llm[0].name == "dummy"
-
-    def test_visible_tools_excludes_hidden(self):
-        reg = ToolRegistry()
-        t1 = DummyTool()
-        t2 = DummyTool()
-        t2.name = "secret"
-        t2.tags = {"hidden"}
-        reg.register(t1)
-        reg.register(t2)
-        visible = reg.visible_tools()
-        assert len(visible) == 1
-        assert visible[0].name == "dummy"
+        tools = reg.tools()
+        assert len(tools) == 2
 
     def test_metadata(self):
         reg = ToolRegistry()
@@ -213,30 +199,14 @@ class TestToolFactoryInternal:
         registry = ToolFactory.discover(config)
         search = registry.get("search")
         assert search is not None
-        assert search.widget == "search"
-        assert "llm" in search.tags
         assert search.group() == "search"
 
-    def test_llm_tools_subset(self):
+    def test_all_tools_registered(self):
         config = Settings()
         registry = ToolFactory.discover(config)
-        llm_names = {t.name for t in registry.llm_tools()}
-        all_names = {t.name for t in registry.all()}
-        # All LLM tools must be registered tools
-        assert llm_names <= all_names
-        # Core tools must be LLM-accessible
-        assert {"search", "blast", "profile", "digest"} <= llm_names
-
-    def test_visible_vs_hidden_tools(self):
-        """All current tools are visible (no hidden tools)."""
-        config = Settings()
-        registry = ToolFactory.discover(config)
-        visible = registry.visible_tools()
-        llm = registry.llm_tools()
-        assert len(visible) >= 10
-        assert len(llm) >= 10
-        hidden_names = {t.name for t in llm} - {t.name for t in visible}
-        assert hidden_names == set()
+        all_names = {t.name for t in registry.tools()}
+        # Core tools must be registered
+        assert {"search", "blast", "profile", "digest"} <= all_names
 
 
 # ── ToolFactory — External Discovery ──
@@ -250,8 +220,7 @@ class TestToolFactoryExternal:
             class GCTool(Tool):
                 name = "gc"
                 description = "Calculate GC content"
-                widget = "text"
-                tags = {"llm", "analysis"}
+                tags = {"analysis"}
                 params = {
                     "name": {"type": "string", "description": "Sequence name", "required": True},
                 }
@@ -348,28 +317,3 @@ class TestPrompts:
         assert "## Rules" in prompt
         assert "sid:N" in prompt
         assert "pid:N" in prompt
-
-    def test_tool_schema_format(self):
-        from hive.llm.prompts import build_tool_schema
-
-        config = Settings()
-        registry = ToolFactory.discover(config)
-        tool = registry.get("search")
-        schema = build_tool_schema([tool])
-
-        assert len(schema) == 1
-        assert schema[0]["type"] == "function"
-        assert schema[0]["function"]["name"] == "search"
-        assert "properties" in schema[0]["function"]["parameters"]
-
-    def test_tool_schema_uses_guidelines(self):
-        """When guidelines is set, it's used as the schema description (not description)."""
-        from hive.llm.prompts import build_tool_schema
-
-        config = Settings()
-        registry = ToolFactory.discover(config)
-        search = registry.get("search")
-        schema = build_tool_schema([search])
-        # guidelines is concise, description is verbose
-        assert schema[0]["function"]["description"] == search.guidelines
-        assert schema[0]["function"]["description"] != search.description

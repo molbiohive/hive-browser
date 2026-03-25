@@ -469,8 +469,7 @@ class TestToolCallables:
         class GcTool(Tool):
             name = "gc"
             description = "Calculate GC content"
-            widget = "text"
-            tags = {"llm", "analysis"}
+            tags = {"analysis"}
             params = {"sequence": {"type": "string", "description": "DNA sequence"}}
 
             def __init__(self, **_):
@@ -490,15 +489,14 @@ class TestToolCallables:
         assert "gc(sequence: string)" in desc
         assert "DNA sequence" in desc
 
-    async def test_direct_tools_excluded_from_signatures(self):
-        """Tools tagged 'direct' don't appear in sandbox signatures."""
+    async def test_all_tools_appear_in_signatures(self):
+        """All registered tools appear in sandbox signatures."""
         from hive.tools.base import Tool, ToolRegistry
 
         class SearchTool(Tool):
             name = "search"
             description = "Search"
-            widget = "table"
-            tags = {"llm", "direct"}
+            tags = {"search"}
             params = {"query": {"type": "string", "description": "Query"}}
 
             def __init__(self, **_):
@@ -510,8 +508,7 @@ class TestToolCallables:
         class GcTool(Tool):
             name = "gc"
             description = "GC content"
-            widget = "text"
-            tags = {"llm", "analysis"}
+            tags = {"analysis"}
             params = {"sequence": {"type": "string", "description": "DNA"}}
 
             def __init__(self, **_):
@@ -528,7 +525,7 @@ class TestToolCallables:
         runner = SandboxRunner(ws, registry=reg)
         desc = runner.tool_schema()["function"]["description"]
         assert "gc(" in desc
-        assert "search(" not in desc
+        assert "search(" in desc
 
     async def test_callable_from_sandbox(self):
         """Tools can be called as functions inside sandbox code."""
@@ -537,8 +534,7 @@ class TestToolCallables:
         class GcTool(Tool):
             name = "gc"
             description = "GC content"
-            widget = "text"
-            tags = {"llm", "analysis"}
+            tags = {"analysis"}
             params = {"sequence": {"type": "string", "description": "DNA"}}
 
             def __init__(self, **_):
@@ -557,8 +553,6 @@ class TestToolCallables:
         result = await runner.execute('r = gc(sequence="ATGC")\nfeedback = r["gc_percent"]')
         assert result["status"] == "ok"
         assert result["feedback"] == 50.0
-        assert len(runner.call_log) == 1
-        assert runner.call_log[0]["tool"] == "gc"
 
     async def test_tool_call_budget_exceeded(self):
         """Exceeding tool call budget raises RuntimeError."""
@@ -567,8 +561,7 @@ class TestToolCallables:
         class GcTool(Tool):
             name = "gc"
             description = "GC content"
-            widget = "text"
-            tags = {"llm", "analysis"}
+            tags = {"analysis"}
             params = {"sequence": {"type": "string", "description": "DNA"}}
 
             def __init__(self, **_):
@@ -595,8 +588,7 @@ class TestToolCallables:
         class GcTool(Tool):
             name = "gc"
             description = "GC content"
-            widget = "text"
-            tags = {"llm", "analysis"}
+            tags = {"analysis"}
             params = {"sequence": {"type": "string", "description": "DNA"}}
 
             def __init__(self, **_):

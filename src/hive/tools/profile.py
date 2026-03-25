@@ -29,8 +29,7 @@ class ProfileTool(Tool):
         "Full details and visual inspection of a specific sequence: "
         "plasmid map, annotated viewer, metadata, features, primers, cut sites."
     )
-    widget = "profile"
-    tags = {"llm", "info", "visual", "direct"}
+    tags = {"info"}
     guidelines = (
         "Full sequence details and close-up visual inspection. "
         "Use sid (from search results) or name."

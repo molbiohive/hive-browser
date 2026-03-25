@@ -36,25 +36,16 @@ class SandboxRunner:
         self._user_vars: dict[str, Any] = {}  # variables from previous python calls
         self._registry = registry
         self._tool_call_budget = tool_call_budget
-        self._call_log: list[dict] = []  # tracks tool calls made from sandbox
-
-    @property
-    def call_log(self) -> list[dict]:
-        return self._call_log
 
     def _make_tool_callables(self, loop: asyncio.AbstractEventLoop) -> dict[str, Any]:
-        """Build sync wrapper functions for each sandbox-callable tool.
-
-        Uses registry.sandbox_tools() — excludes tools tagged "direct" (search,
-        blast, profile) which have custom widgets and use function-calling only.
-        """
+        """Build sync wrapper functions for each registered tool."""
         if not self._registry:
             return {}
         callables: dict[str, Any] = {}
         budget = self._tool_call_budget
         call_count = [0]
 
-        for tool in self._registry.sandbox_tools():
+        for tool in self._registry.tools():
 
             def wrapper(_tool=tool, **kwargs):
                 call_count[0] += 1
@@ -66,12 +57,6 @@ class SandboxRunner:
                 result = future.result(timeout=30)
                 if "error" not in result:
                     self.workspace.store_result(result, _tool.name, dict(kwargs))
-                self._call_log.append({
-                    "tool": _tool.name,
-                    "params": dict(kwargs),
-                    "summary": _tool.format_result(result),
-                    "widget": _tool.widget,
-                })
                 return result
 
             callables[tool.name] = wrapper
@@ -84,7 +69,7 @@ class SandboxRunner:
         """
         if not self._registry:
             return ""
-        tools = self._registry.sandbox_tools()
+        tools = self._registry.tools()
         if not tools:
             return ""
         lines = ["Callable tools:"]

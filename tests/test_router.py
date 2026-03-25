@@ -21,13 +21,34 @@ from hive.tools.router import (
 # ── Helpers ──
 
 
+class SearchStubTool(Tool):
+    """Minimal search tool stub required by the agentic loop."""
+
+    name = "search"
+    description = "Search sequences"
+    tags = {"search"}
+    guidelines = "Search tool for testing."
+
+    def __init__(self, **_):
+        pass
+
+    def llm_schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {"query": {"type": "string", "description": "Query"}},
+            "required": ["query"],
+        }
+
+    async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
+        return {"results": [], "query": params.get("query", "")}
+
+
 class EchoTool(Tool):
     """Minimal tool that echoes params back."""
 
     name = "echo"
     description = "Echoes params"
-    widget = "text"
-    tags = {"llm", "test"}
+    tags = {"test"}
     guidelines = "Echo tool for testing."
 
     def __init__(self, **_):
@@ -42,8 +63,7 @@ class RequiredTool(Tool):
 
     name = "required"
     description = "Needs query param"
-    widget = "text"
-    tags = {"llm", "test"}
+    tags = {"test"}
     params = {"query": {"type": "string", "description": "Search text", "required": True}}
 
     def __init__(self, **_):
@@ -54,12 +74,11 @@ class RequiredTool(Tool):
 
 
 class DirectOnlyTool(Tool):
-    """Tool without llm tag — no LLM assistance."""
+    """Tool for direct-only testing."""
 
     name = "direct"
     description = "Direct only"
-    widget = "text"
-    tags = {"info"}  # no "llm" tag
+    tags = {"info"}
 
     def __init__(self, **_):
         pass
@@ -71,6 +90,7 @@ class DirectOnlyTool(Tool):
 @pytest.fixture()
 def registry():
     reg = ToolRegistry()
+    reg.register(SearchStubTool())
     reg.register(EchoTool())
     reg.register(RequiredTool())
     reg.register(DirectOnlyTool())
@@ -158,8 +178,7 @@ class TestResponseHelpers:
         assert resp["type"] == "message"
         assert "/echo" in resp["content"]
         assert "/required" in resp["content"]
-        # DirectOnlyTool has no "llm" tag → should show "(direct only)"
-        assert "direct only" in resp["content"]
+        assert "/direct" in resp["content"]
 
 
 # ── Route Input: Direct Mode ──
@@ -217,11 +236,15 @@ class TestGuidedNoLLM:
         assert resp["type"] == "tool_result"
         assert resp["data"]["echo"] == {"query": "hello"}
 
-    async def test_guided_no_llm_tag_shows_form(self, registry):
-        """Non-LLM tool with no args in guided mode shows a form."""
-        resp = await route_input("/direct", registry, llm_client=AsyncMock())
-        assert resp["type"] == "form"
-        assert resp["tool"] == "direct"
+    async def test_guided_no_args_with_llm_uses_loop(self, registry):
+        """Guided mode with LLM delegates to unified loop."""
+        llm = AsyncMock()
+        llm.chat = AsyncMock(return_value={
+            "choices": [{"message": {"content": "Here's the direct tool."}}],
+            "usage": {"prompt_tokens": 10, "completion_tokens": 5},
+        })
+        resp = await route_input("/direct", registry, llm_client=llm)
+        assert resp["type"] == "message"
 
     async def test_guided_unknown_tool(self, registry):
         resp = await route_input("/nonexistent args", registry)
@@ -349,8 +372,7 @@ class TestAgenticLoop:
         class LargeOutputTool(Tool):
             name = "producer"
             description = "Produces large output"
-            widget = "text"
-            tags = {"llm", "test"}
+            tags = {"test"}
             params = {"name": {"type": "string", "description": "Name"}}
 
             def __init__(self, **_):
@@ -362,8 +384,7 @@ class TestAgenticLoop:
         class ConsumerTool(Tool):
             name = "consumer"
             description = "Consumes sequence"
-            widget = "text"
-            tags = {"llm", "test"}
+            tags = {"test"}
             params = {"sequence": {"type": "string", "description": "Sequence"}}
 
             def __init__(self, **_):
@@ -373,6 +394,7 @@ class TestAgenticLoop:
                 return {"length": len(params.get("sequence", ""))}
 
         reg = ToolRegistry()
+        reg.register(SearchStubTool())
         reg.register(LargeOutputTool())
         reg.register(ConsumerTool())
 
@@ -460,7 +482,7 @@ class TestPlannerIntegration:
         """Planner ON always runs agent loop -- no ANSWER shortcut."""
         from hive.llm.planner import Planner
 
-        planner = Planner(tools=registry.llm_tools())
+        planner = Planner(tools=registry.tools())
 
         llm = self._mock_llm([
             # Plan call
@@ -481,7 +503,7 @@ class TestPlannerIntegration:
         """Planner produces task description, agent sees plan in user message."""
         from hive.llm.planner import Planner
 
-        planner = Planner(tools=registry.llm_tools())
+        planner = Planner(tools=registry.tools())
 
         llm = self._mock_llm([
             self._text_response("Echo the input back."),
@@ -506,7 +528,7 @@ class TestPlannerIntegration:
         """Token counts include both planning and agent loop usage."""
         from hive.llm.planner import Planner
 
-        planner = Planner(tools=registry.llm_tools())
+        planner = Planner(tools=registry.tools())
 
         llm = self._mock_llm([
             self._text_response("respond conversationally",
@@ -525,7 +547,7 @@ class TestPlannerIntegration:
         """If planning call fails, agent continues without plan."""
         from hive.llm.planner import Planner
 
-        planner = Planner(tools=registry.llm_tools())
+        planner = Planner(tools=registry.tools())
 
         llm = self._mock_llm([
             Exception("LLM down"),
@@ -544,7 +566,7 @@ class TestPlannerIntegration:
         """Planner OFF: no plan() call, agent runs directly."""
         from hive.llm.planner import Planner
 
-        planner = Planner(tools=registry.llm_tools())
+        planner = Planner(tools=registry.tools())
         planner.plan = AsyncMock()  # spy — should NOT be called
 
         llm = self._mock_llm([self._text_response("Done.")])
@@ -559,7 +581,7 @@ class TestPlannerIntegration:
         """Planner OFF: agent loop receives raw user input, not plan."""
         from hive.llm.planner import Planner
 
-        planner = Planner(tools=registry.llm_tools())
+        planner = Planner(tools=registry.tools())
 
         llm = self._mock_llm([self._text_response("Hello.")])
         await route_input(
@@ -622,11 +644,18 @@ class TestSandboxIntegration:
         class SearchTool(Tool):
             name = "search"
             description = "Search sequences"
-            widget = "table"
-            tags = {"llm", "test"}
+            tags = {"search"}
+            guidelines = "Search tool."
 
             def __init__(self, **_):
                 pass
+
+            def llm_schema(self) -> dict:
+                return {
+                    "type": "object",
+                    "properties": {"query": {"type": "string"}},
+                    "required": ["query"],
+                }
 
             async def execute(self, params):
                 return {
@@ -658,8 +687,15 @@ class TestSandboxIntegration:
         class SearchTool(Tool):
             name = "search"
             description = "Search"
-            widget = "table"
-            tags = {"llm", "test"}
+            tags = {"search"}
+            guidelines = "Search."
+
+            def llm_schema(self) -> dict:
+                return {
+                    "type": "object",
+                    "properties": {"query": {"type": "string"}},
+                    "required": ["query"],
+                }
 
             def __init__(self, **_):
                 pass
@@ -699,8 +735,15 @@ class TestSandboxIntegration:
         class SearchTool(Tool):
             name = "search"
             description = "Search"
-            widget = "table"
-            tags = {"llm", "test"}
+            tags = {"search"}
+            guidelines = "Search."
+
+            def llm_schema(self) -> dict:
+                return {
+                    "type": "object",
+                    "properties": {"query": {"type": "string"}},
+                    "required": ["query"],
+                }
 
             def __init__(self, **_):
                 pass
@@ -738,8 +781,15 @@ class TestSandboxIntegration:
         class SearchTool(Tool):
             name = "search"
             description = "Search"
-            widget = "table"
-            tags = {"llm", "test"}
+            tags = {"search"}
+            guidelines = "Search."
+
+            def llm_schema(self) -> dict:
+                return {
+                    "type": "object",
+                    "properties": {"query": {"type": "string"}},
+                    "required": ["query"],
+                }
 
             def __init__(self, **_):
                 pass
@@ -767,8 +817,15 @@ class TestSandboxIntegration:
         class SearchTool(Tool):
             name = "search"
             description = "Search"
-            widget = "table"
-            tags = {"llm", "test"}
+            tags = {"search"}
+            guidelines = "Search."
+
+            def llm_schema(self) -> dict:
+                return {
+                    "type": "object",
+                    "properties": {"query": {"type": "string"}},
+                    "required": ["query"],
+                }
 
             def __init__(self, **_):
                 pass
@@ -797,14 +854,21 @@ class TestSandboxIntegration:
         ]
         assert len(python_tool_msgs) == 1
 
-    async def test_sandbox_retries_exhaust_drops_python_schema(self):
-        """After N consecutive sandbox errors, python schema is dropped."""
+    async def test_python_schema_always_present_despite_errors(self):
+        """Python schema is never dropped, even after consecutive errors."""
 
         class SearchTool(Tool):
             name = "search"
             description = "Search"
-            widget = "table"
-            tags = {"llm", "test"}
+            tags = {"search"}
+            guidelines = "Search."
+
+            def llm_schema(self) -> dict:
+                return {
+                    "type": "object",
+                    "properties": {"query": {"type": "string"}},
+                    "required": ["query"],
+                }
 
             def __init__(self, **_):
                 pass
@@ -815,41 +879,20 @@ class TestSandboxIntegration:
         reg = ToolRegistry()
         reg.register(SearchTool())
 
-        # Use code that triggers NameError in the sandbox (status: "error")
         llm = self._mock_llm([
-            # Turn 0: search -> caches data
             self._tool_call_response("search", {"query": "x"}, call_id="c1"),
-            # Turn 1: sandbox error #1
             self._tool_call_response(
                 "python", {"code": "feedback = undefined_var_1"}, call_id="c2",
             ),
-            # Turn 2: sandbox error #2
             self._tool_call_response(
                 "python", {"code": "feedback = undefined_var_2"}, call_id="c3",
             ),
-            # Turn 3: sandbox error #3
-            self._tool_call_response(
-                "python", {"code": "feedback = undefined_var_3"}, call_id="c4",
-            ),
-            # Turn 4: LLM gives up and responds with text
             self._text_response("Could not process the data."),
         ])
-        resp = await route_input(
-            "process data", reg, llm_client=llm,
-            sandbox_max_retries=3, max_turns=10,
-        )
+        await route_input("process data", reg, llm_client=llm, max_turns=10)
 
-        # Verify the 5th LLM call (after 3 errors) has no python schema
-        # Calls: turn0(no python), turn1(+python), turn2(+python), turn3(+python),
-        #   turn4(python dropped)
-        assert llm.chat.call_count == 5
-        # Turn 4 (index 4): python schema should be gone
-        last_call_tools = llm.chat.call_args_list[4][1].get("tools", [])
+        # Python schema should still be present on the last LLM call
+        last_call_tools = llm.chat.call_args_list[-1][1].get("tools", [])
         tool_names = [t["function"]["name"] for t in last_call_tools]
-        assert "python" not in tool_names
-
-        # But turn 3 (index 3) still had python (only 2 errors at that point)
-        third_retry_tools = llm.chat.call_args_list[3][1].get("tools", [])
-        tool_names_3 = [t["function"]["name"] for t in third_retry_tools]
-        assert "python" in tool_names_3
+        assert "python" in tool_names
 

@@ -25,8 +25,7 @@ class HistoryInput(BaseModel):
 class HistoryTool(Tool):
     name = "history"
     description = "Show the cloning history of a sequence -- assembly steps, primers, enzymes used."
-    widget = "history"
-    tags = {"llm", "info"}
+    tags = {"info"}
     guidelines = "Show cloning history tree of a sequence. Use sid (from search results)."
 
     def __init__(self, **_):

@@ -10,10 +10,7 @@ from typing import TYPE_CHECKING, Any
 
 from hive.context import current_chat_tasks
 from hive.llm.client import LLMClient
-from hive.llm.prompts import (
-    build_tool_schema,
-    build_system_prompt,
-)
+from hive.llm.prompts import build_system_prompt
 from hive.sandbox import SandboxRunner, Workspace
 from hive.tools.base import ToolRegistry
 
@@ -38,13 +35,11 @@ async def route_input(
     max_turns: int = 5,
     pipe_min_length: int = 200,
     sandbox_output_limit: int = 4000,
-    python_max_turns: int = 6,
     on_progress: Callable[[dict], Awaitable[None]] | None = None,
     planner: Planner | None = None,
     use_planner: bool = True,
-    sandbox_max_retries: int = 3,
     workspace: Workspace | None = None,
-    tool_call_budget: int = 40,
+    tool_call_budget: int = 100,
 ) -> dict[str, Any]:
     """
     Route user input → tool execution → response.
@@ -83,8 +78,8 @@ async def route_input(
         if not tool:
             return _error(f"Unknown tool: {tool_name}")
 
-        if not llm_client or "llm" not in tool.tags:
-            # No LLM or tool opts out — execute directly
+        if not llm_client:
+            # No LLM — execute directly
             if not text:
                 return _form_response(tool_name, tool.description, tool.input_schema())
 
@@ -102,11 +97,9 @@ async def route_input(
             max_turns=max_turns,
             pipe_min_length=pipe_min_length,
             sandbox_output_limit=sandbox_output_limit,
-            python_max_turns=python_max_turns,
             on_progress=on_progress,
             planner=planner,
             use_planner=use_planner,
-            sandbox_max_retries=sandbox_max_retries,
             workspace=workspace,
             tool_call_budget=tool_call_budget,
         )
@@ -123,11 +116,9 @@ async def route_input(
         max_turns=max_turns,
         pipe_min_length=pipe_min_length,
         sandbox_output_limit=sandbox_output_limit,
-        python_max_turns=python_max_turns,
         on_progress=on_progress,
         planner=planner,
         use_planner=use_planner,
-        sandbox_max_retries=sandbox_max_retries,
         workspace=workspace,
         tool_call_budget=tool_call_budget,
     )
@@ -144,13 +135,11 @@ async def _unified_loop(
     max_turns: int = 5,
     pipe_min_length: int = 200,
     sandbox_output_limit: int = 4000,
-    python_max_turns: int = 6,
     on_progress: Callable[[dict], Awaitable[None]] | None = None,
     planner: Planner | None = None,
     use_planner: bool = True,
-    sandbox_max_retries: int = 3,
     workspace: Workspace | None = None,
-    tool_call_budget: int = 40,
+    tool_call_budget: int = 100,
 ) -> dict[str, Any]:
     """Unified agentic loop — LLM converses and chains tools as needed.
 
@@ -158,18 +147,29 @@ async def _unified_loop(
     and pure conversation. ALL tool results go to workspace — LLM sees
     descriptors and queries data via python sandbox.
 
-    When planner is provided and use_planner is True, a cheap planning call
-    produces a task description that augments the user input for context.
+    LLM sees exactly 2 tools: search (function-calling) + python (sandbox).
+    All other tools are callable from python code.
     """
 
-    # Direct tools get function-calling schemas; all others are sandbox-callable
-    tool_map = {t.name: t for t in registry.llm_tools()}
-    schemas = build_tool_schema(registry.direct_tools())
+    # All tools available for direct execution and workspace auto-fill
+    tool_map = {t.name: t for t in registry.tools()}
+
+    # Build search schema once — only search gets a function-calling schema
+    search = registry.get("search")
+    assert search, "search tool must be registered"
+    search_schema = {
+        "type": "function",
+        "function": {
+            "name": "search",
+            "description": search.guidelines or search.description,
+            "parameters": search.llm_schema(),
+        },
+    }
 
     last_result = None
     last_tool = None
     last_params = {}
-    chain = []  # [{tool, params, summary, widget}]
+    chain = []  # [{tool, params, summary}]
     if workspace is None:
         workspace = Workspace()
     sandbox = SandboxRunner(
@@ -182,8 +182,6 @@ async def _unified_loop(
     exceeded = False
     error_msg = ""  # LLM error message (vs max_turns exhaustion)
     plan_text = None  # plan injected into agent context
-    sandbox_errors = 0  # consecutive sandbox errors (for retry limit)
-    python_turns = 0  # separate python turn counter
 
     async def _emit(phase: str, tool: str | None = None):
         if on_progress:
@@ -235,11 +233,8 @@ async def _unified_loop(
         messages.append({"role": "user", "content": f"{user_input}{ws_history}"})
 
     for turn in range(max_turns):
-        # Python sandbox always available (skip after too many errors or max turns)
-        if sandbox_errors < sandbox_max_retries and python_turns < python_max_turns:
-            turn_tools = [*schemas, sandbox.tool_schema()]
-        else:
-            turn_tools = schemas
+        # search + python always available
+        turn_tools = [search_schema, sandbox.tool_schema()]
 
         # Log payload sizes for token debugging
         msg_chars = sum(len(str(m.get("content", ""))) for m in messages)
@@ -290,10 +285,6 @@ async def _unified_loop(
                 turn + 1, [s["tool"] for s in chain],
             )
 
-            # Append tool calls made from sandbox code to chain
-            if sandbox.call_log:
-                chain.extend(sandbox.call_log)
-
             # Report dict populated by sandbox → becomes the widget data
             if sandbox.report:
                 last_result = sandbox.report
@@ -303,6 +294,8 @@ async def _unified_loop(
             if last_result and last_tool:
                 resp = _tool_response(last_tool, last_result, last_params, content)
                 resp["tokens"] = tokens
+                if sandbox.report:
+                    resp["report"] = True
                 if chain:
                     resp["chain"] = chain
                 if plan_text:
@@ -339,7 +332,6 @@ async def _unified_loop(
 
             # Built-in sandbox -- not a registered tool
             if tool_name == "python":
-                python_turns += 1
                 code = params.get("code", "")
                 sb_result = await sandbox.execute(code)
 
@@ -358,9 +350,7 @@ async def _unified_loop(
                 # Human-readable chain summary (shown in UI, not sent to LLM)
                 if sb_result["status"] != "ok":
                     chain_summary = f"Error: {sb_result.get('error', 'unknown')}"
-                    sandbox_errors += 1
                 else:
-                    sandbox_errors = 0
                     desc = str(sb_result.get("feedback", ""))
                     chain_summary = desc[:80] if len(desc) > 80 else desc
 
@@ -368,7 +358,6 @@ async def _unified_loop(
                     "tool": "python",
                     "params": {"code": code},
                     "summary": chain_summary,
-                    "widget": "none",  # python never sets widget directly
                 })
 
                 logger.info("Sandbox exec: %s", compact[:200])
@@ -401,7 +390,6 @@ async def _unified_loop(
             await _emit("tool", tool_name)
 
             result = await tool.execute(params)
-            sandbox_errors = 0  # regular tool success resets sandbox error budget
 
             # Store full result in workspace (error results bypass)
             if "error" not in result:
@@ -426,7 +414,6 @@ async def _unified_loop(
                 "tool": tool_name,
                 "params": params,
                 "summary": tool.format_result(result),
-                "widget": tool.widget,
             })
             logger.info("Unified turn %d: %s(%s)", turn + 1, tool_name, json.dumps(params))
 
@@ -442,10 +429,6 @@ async def _unified_loop(
             "Unified loop hit max turns (%d): %s",
             max_turns, [s["tool"] for s in chain],
         )
-
-    # Append tool calls made from sandbox code to chain
-    if sandbox.call_log:
-        chain.extend(sandbox.call_log)
 
     if not chain:
         resp = _error(f"LLM error: {error_msg}") if error_msg else _error("No tools were called during reasoning.")
@@ -471,6 +454,8 @@ async def _unified_loop(
         resp = _tool_response(last_tool, last_result, last_params, fallback)
         resp["tokens"] = tokens
         resp["chain"] = chain
+        if sandbox.report:
+            resp["report"] = True
         if plan_text:
             resp["plan"] = plan_text
         return resp
@@ -604,9 +589,8 @@ def _form_response(tool_name: str, description: str, schema: dict) -> dict:
 def _help_response(registry: ToolRegistry) -> dict:
     """Build a help message listing all available commands."""
     lines = ["**Available commands:**\n"]
-    for tool in registry.visible_tools():
-        tag = "" if "llm" in tool.tags else " *(direct only)*"
-        lines.append(f"- **/{tool.name}**{tag} — {tool.description}")
+    for tool in registry.tools():
+        lines.append(f"- **/{tool.name}** — {tool.description}")
     lines.append("\nPrefix with `//` for direct execution (no LLM), e.g. `//search ampicillin`.")
     return {"type": "message", "content": "\n".join(lines)}
 

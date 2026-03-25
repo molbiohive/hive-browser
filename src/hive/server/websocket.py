@@ -424,16 +424,14 @@ async def _handle_message(
             registry=registry,
             llm_client=llm_client,
             history=manager.get_history(conn_id)[-4:],  # last 2 pairs
-            max_turns=config.llm.agent_max_turns if config else 5,
+            max_turns=config.llm.agent_max_turns if config else 30,
             pipe_min_length=config.llm.pipe_min_length if config else 200,
             sandbox_output_limit=config.llm.sandbox_output_limit if config else 4000,
-            python_max_turns=config.llm.python_max_turns if config else 6,
             on_progress=_progress,
             planner=planner,
             use_planner=use_planner,
-            sandbox_max_retries=config.llm.sandbox_max_retries if config else 3,
             workspace=chat["workspace"],
-            tool_call_budget=config.llm.tool_call_budget if config else 40,
+            tool_call_budget=config.llm.tool_call_budget if config else 100,
         )
 
         # Track user message (skip bare commands that just show a form)

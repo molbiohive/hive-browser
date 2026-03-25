@@ -10,9 +10,6 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# Known system tags — everything else is a group identifier
-SYSTEM_TAGS = {"llm", "hidden", "direct"}
-
 
 class Tool(ABC):
     """Base class for all tools (internal and external).
@@ -20,16 +17,14 @@ class Tool(ABC):
     Subclass attributes:
         name:        Tool identifier (used as registry key + LLM function name).
         description: Shown in help, command palette, and LLM prompts.
-        widget:      Widget type for frontend rendering (maps to FooWidget.svelte).
-        tags:        Behavioral flags + group identifiers. Known: "llm", "hidden".
+        tags:        Group identifiers for UI categorization (e.g. "search", "analysis", "info").
         guidelines:  Concise LLM-facing description (used in tool schema if set).
         params:      Declarative param definitions for external tools (dict → JSON Schema).
     """
 
     name: str
     description: str
-    widget: str = "text"
-    tags: set[str] = {"llm"}
+    tags: set[str] = set()
     guidelines: str = ""
     params: dict | None = None
 
@@ -98,15 +93,13 @@ class Tool(ABC):
         return {
             "name": self.name,
             "description": self.description,
-            "widget": self.widget,
             "tags": sorted(self.tags),
         }
 
     def group(self) -> str | None:
-        """Primary group tag (first non-system tag), or None."""
+        """Primary group tag, or None."""
         for tag in self.tags:
-            if tag not in SYSTEM_TAGS:
-                return tag
+            return tag
         return None
 
 
@@ -122,24 +115,13 @@ class ToolRegistry:
     def get(self, name: str) -> Tool | None:
         return self._tools.get(name)
 
-    def all(self) -> list[Tool]:
+    def tools(self) -> list[Tool]:
+        """All registered tools."""
         return list(self._tools.values())
 
-    def llm_tools(self) -> list[Tool]:
-        """Tools available to the LLM (tagged 'llm')."""
-        return [t for t in self._tools.values() if "llm" in t.tags]
-
-    def direct_tools(self) -> list[Tool]:
-        """Tools with custom widgets — use function-calling schemas only."""
-        return [t for t in self._tools.values() if "llm" in t.tags and "direct" in t.tags]
-
-    def sandbox_tools(self) -> list[Tool]:
-        """Tools callable from the python sandbox (llm but not direct)."""
-        return [t for t in self._tools.values() if "llm" in t.tags and "direct" not in t.tags]
-
-    def visible_tools(self) -> list[Tool]:
-        """Tools visible in command palette (not tagged 'hidden')."""
-        return [t for t in self._tools.values() if "hidden" not in t.tags]
+    # Keep all() as alias for backward compatibility during transition
+    def all(self) -> list[Tool]:
+        return list(self._tools.values())
 
     def metadata(self) -> list[dict]:
         """All tool metadata for frontend init."""

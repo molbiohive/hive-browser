@@ -75,8 +75,7 @@ class BlastTool(Tool):
         "Find similar sequences using BLAST+ alignment. "
         "Supports blastn, blastp, blastx, tblastn, tblastx."
     )
-    widget = "blast"
-    tags = {"llm", "search", "direct"}
+    tags = {"search"}
     guidelines = (
         "Sequence similarity search using BLAST+. Supports blastn "
         "(nucl vs nucl), blastp (prot vs prot), blastx (nucl query "

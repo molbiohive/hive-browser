@@ -24,8 +24,7 @@ class TranslateInput(BaseModel):
 class TranslateTool(Tool):
     name = "translate"
     description = "Translate a DNA or RNA sequence to protein."
-    widget = "text"
-    tags = {"llm", "analysis"}
+    tags = {"analysis"}
     guidelines = (
         "Translate DNA/RNA to protein. Accepts sequence, sid:N, or pid:N."
         " table=1 standard, table=11 bacterial."

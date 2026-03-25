@@ -92,9 +92,9 @@ async def lifespan(app: FastAPI):
     if config.llm.use_planner:
         from hive.llm.planner import Planner
 
-        llm_tools = app.state.tool_registry.llm_tools()
-        if llm_tools:
-            app.state.planner = Planner(tools=llm_tools)
+        all_tools = app.state.tool_registry.tools()
+        if all_tools:
+            app.state.planner = Planner(tools=all_tools)
 
     # --- Process registry ---
     from hive.ps import ProcessRegistry

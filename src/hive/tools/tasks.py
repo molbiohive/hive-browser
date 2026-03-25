@@ -26,8 +26,7 @@ class TasksInput(BaseModel):
 class TasksTool(Tool):
     name = "tasks"
     description = "Manage the chat task list."
-    widget = "tasks"
-    tags = {"llm"}
+    tags = set()
     guidelines = "Add, toggle, remove, or list tasks for the current chat."
 
     def __init__(self, **_):

@@ -16,8 +16,7 @@ from hive.tools.base import Tool
 class FakeTool(Tool):
     """Minimal tool for testing."""
 
-    widget = "text"
-    tags = {"llm"}
+    tags = set()
 
     def __init__(self, name: str, description: str, **_):
         self.name = name
