@@ -329,20 +329,20 @@ class TestSandboxRunner:
         assert "r0:" in schema["function"]["description"]
         assert "search" in schema["function"]["description"]
 
-    def test_execute_dispatches(self):
+    async def test_execute_dispatches(self):
         ws = Workspace()
         data = [{"id": 1}, {"id": 2}, {"id": 3}]
         ws.store("results", data, "search")
         runner = SandboxRunner(ws)
-        result = runner.execute('feedback = [r["id"] for r in r0]')
+        result = await runner.execute('feedback = [r["id"] for r in r0]')
         assert result["status"] == "ok"
         assert result["feedback"] == [1, 2, 3]
 
-    def test_execute_with_string_handle(self):
+    async def test_execute_with_string_handle(self):
         ws = Workspace()
         ws.store("sequence_data", "ATGCATGC", "profile")
         runner = SandboxRunner(ws)
-        result = runner.execute('feedback = len(r0)')
+        result = await runner.execute('feedback = len(r0)')
         assert result["status"] == "ok"
         assert result["feedback"] == 8
 
@@ -386,26 +386,26 @@ class TestSandboxRunner:
         # Description still valid, just no workspace entries listed
         assert "feedback" in schema["function"]["description"]
 
-    def test_report_dict_persists_across_calls(self):
+    async def test_report_dict_persists_across_calls(self):
         """Report dict accumulates data across multiple sandbox calls."""
         ws = Workspace()
         ws.store("data", [{"x": 1}, {"x": 2}], "search")
         runner = SandboxRunner(ws)
-        result1 = runner.execute('report["items"] = r0\nfeedback = "stored items"')
+        result1 = await runner.execute('report["items"] = r0\nfeedback = "stored items"')
         assert result1["status"] == "ok"
         assert runner.report == {"items": [{"x": 1}, {"x": 2}]}
 
-        result2 = runner.execute('report["count"] = len(r0)\nfeedback = "stored count"')
+        result2 = await runner.execute('report["count"] = len(r0)\nfeedback = "stored count"')
         assert result2["status"] == "ok"
         assert runner.report == {"items": [{"x": 1}, {"x": 2}], "count": 2}
 
-    def test_report_dict_injected_into_namespace(self):
+    async def test_report_dict_injected_into_namespace(self):
         """Report dict is accessible in sandbox code."""
         ws = Workspace()
         ws.store("data", [1, 2, 3], "tool")
         runner = SandboxRunner(ws)
-        runner.execute('report["step1"] = "done"\nfeedback = "ok"')
-        result = runner.execute('feedback = report.get("step1", "missing")')
+        await runner.execute('report["step1"] = "done"\nfeedback = "ok"')
+        result = await runner.execute('feedback = report.get("step1", "missing")')
         assert result["status"] == "ok"
         assert result["feedback"] == "done"
 
@@ -419,21 +419,21 @@ class TestSandboxRunner:
         runner = SandboxRunner(ws, output_limit=2000)
         assert runner.output_limit == 2000
 
-    def test_user_vars_persist_across_calls(self):
+    async def test_user_vars_persist_across_calls(self):
         """Variables from call 1 are accessible in call 2."""
         ws = Workspace()
         runner = SandboxRunner(ws)
-        r1 = runner.execute("filtered = [1, 2, 3]\nfeedback = 'stored'")
+        r1 = await runner.execute("filtered = [1, 2, 3]\nfeedback = 'stored'")
         assert r1["status"] == "ok"
-        r2 = runner.execute("feedback = len(filtered)")
+        r2 = await runner.execute("feedback = len(filtered)")
         assert r2["status"] == "ok"
         assert r2["feedback"] == 3
 
-    def test_user_vars_shown_in_schema(self):
+    async def test_user_vars_shown_in_schema(self):
         """tool_schema description includes persisted variable names."""
         ws = Workspace()
         runner = SandboxRunner(ws)
-        runner.execute("my_data = [1, 2]\nfeedback = 'ok'")
+        await runner.execute("my_data = [1, 2]\nfeedback = 'ok'")
         schema = runner.tool_schema()
         desc = schema["function"]["description"]
         assert "my_data" in desc
@@ -446,17 +446,173 @@ class TestSandboxRunner:
         schema = runner.tool_schema()
         assert "Persisted variables" not in schema["function"]["description"]
 
-    def test_user_vars_dont_override_workspace(self):
+    async def test_user_vars_dont_override_workspace(self):
         """Workspace handles take precedence over user vars with same name."""
         ws = Workspace()
         ws.store("results", [{"a": 1}], "search")
         runner = SandboxRunner(ws)
         # Create user var named r0
-        runner.execute("r0 = 'overwritten'\nfeedback = 'ok'")
+        await runner.execute("r0 = 'overwritten'\nfeedback = 'ok'")
         # Workspace namespace is applied after _user_vars, so r0 = workspace data
-        result = runner.execute("feedback = len(r0)")
+        result = await runner.execute("feedback = len(r0)")
         assert result["status"] == "ok"
         assert result["feedback"] == 1  # workspace [{"a": 1}], not string
+
+
+class TestToolCallables:
+    """Tests for sandbox-callable tools."""
+
+    async def test_tool_signatures_in_schema(self):
+        """Tool signatures appear in python schema description."""
+        from hive.tools.base import Tool, ToolRegistry
+
+        class GcTool(Tool):
+            name = "gc"
+            description = "Calculate GC content"
+            widget = "text"
+            tags = {"llm", "analysis"}
+            params = {"sequence": {"type": "string", "description": "DNA sequence"}}
+
+            def __init__(self, **_):
+                pass
+
+            async def execute(self, params):
+                return {"gc_percent": 50.0}
+
+        reg = ToolRegistry()
+        reg.register(GcTool())
+
+        ws = Workspace()
+        runner = SandboxRunner(ws, registry=reg)
+        schema = runner.tool_schema()
+        desc = schema["function"]["description"]
+        assert "Callable tools:" in desc
+        assert "gc(sequence: string)" in desc
+        assert "DNA sequence" in desc
+
+    async def test_direct_tools_excluded_from_signatures(self):
+        """Tools tagged 'direct' don't appear in sandbox signatures."""
+        from hive.tools.base import Tool, ToolRegistry
+
+        class SearchTool(Tool):
+            name = "search"
+            description = "Search"
+            widget = "table"
+            tags = {"llm", "direct"}
+            params = {"query": {"type": "string", "description": "Query"}}
+
+            def __init__(self, **_):
+                pass
+
+            async def execute(self, params):
+                return {"results": []}
+
+        class GcTool(Tool):
+            name = "gc"
+            description = "GC content"
+            widget = "text"
+            tags = {"llm", "analysis"}
+            params = {"sequence": {"type": "string", "description": "DNA"}}
+
+            def __init__(self, **_):
+                pass
+
+            async def execute(self, params):
+                return {"gc_percent": 50.0}
+
+        reg = ToolRegistry()
+        reg.register(SearchTool())
+        reg.register(GcTool())
+
+        ws = Workspace()
+        runner = SandboxRunner(ws, registry=reg)
+        desc = runner.tool_schema()["function"]["description"]
+        assert "gc(" in desc
+        assert "search(" not in desc
+
+    async def test_callable_from_sandbox(self):
+        """Tools can be called as functions inside sandbox code."""
+        from hive.tools.base import Tool, ToolRegistry
+
+        class GcTool(Tool):
+            name = "gc"
+            description = "GC content"
+            widget = "text"
+            tags = {"llm", "analysis"}
+            params = {"sequence": {"type": "string", "description": "DNA"}}
+
+            def __init__(self, **_):
+                pass
+
+            async def execute(self, params):
+                seq = params.get("sequence", "")
+                gc = sum(1 for c in seq if c in "GC") / max(len(seq), 1) * 100
+                return {"gc_percent": gc}
+
+        reg = ToolRegistry()
+        reg.register(GcTool())
+
+        ws = Workspace()
+        runner = SandboxRunner(ws, registry=reg)
+        result = await runner.execute('r = gc(sequence="ATGC")\nfeedback = r["gc_percent"]')
+        assert result["status"] == "ok"
+        assert result["feedback"] == 50.0
+        assert len(runner.call_log) == 1
+        assert runner.call_log[0]["tool"] == "gc"
+
+    async def test_tool_call_budget_exceeded(self):
+        """Exceeding tool call budget raises RuntimeError."""
+        from hive.tools.base import Tool, ToolRegistry
+
+        class GcTool(Tool):
+            name = "gc"
+            description = "GC content"
+            widget = "text"
+            tags = {"llm", "analysis"}
+            params = {"sequence": {"type": "string", "description": "DNA"}}
+
+            def __init__(self, **_):
+                pass
+
+            async def execute(self, params):
+                return {"gc_percent": 50.0}
+
+        reg = ToolRegistry()
+        reg.register(GcTool())
+
+        ws = Workspace()
+        runner = SandboxRunner(ws, registry=reg, tool_call_budget=2)
+        result = await runner.execute(
+            'results = [gc(sequence="ATGC") for _ in range(3)]\nfeedback = len(results)'
+        )
+        assert result["status"] == "error"
+        assert "budget exceeded" in result["error"]
+
+    async def test_tool_results_stored_in_workspace(self):
+        """Tool calls from sandbox auto-store results in workspace."""
+        from hive.tools.base import Tool, ToolRegistry
+
+        class GcTool(Tool):
+            name = "gc"
+            description = "GC content"
+            widget = "text"
+            tags = {"llm", "analysis"}
+            params = {"sequence": {"type": "string", "description": "DNA"}}
+
+            def __init__(self, **_):
+                pass
+
+            async def execute(self, params):
+                return {"gc_percent": 50.0, "length": 4}
+
+        reg = ToolRegistry()
+        reg.register(GcTool())
+
+        ws = Workspace()
+        runner = SandboxRunner(ws, registry=reg)
+        await runner.execute('r = gc(sequence="ATGC")\nfeedback = "done"')
+        # Tool result should be in workspace
+        assert len(ws) > 0
 
 
 class TestStoreResult:

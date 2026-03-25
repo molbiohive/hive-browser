@@ -2,11 +2,18 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
-from typing import Any
+import logging
+from typing import TYPE_CHECKING, Any
 
 from hive.sandbox.exec import safe_exec
 from hive.sandbox.workspace import Workspace
+
+if TYPE_CHECKING:
+    from hive.tools.base import ToolRegistry
+
+logger = logging.getLogger(__name__)
 
 
 class SandboxRunner:
@@ -16,11 +23,84 @@ class SandboxRunner:
     by the router alongside regular tool schemas.
     """
 
-    def __init__(self, workspace: Workspace, output_limit: int = 4000):
+    def __init__(
+        self,
+        workspace: Workspace,
+        output_limit: int = 4000,
+        registry: ToolRegistry | None = None,
+        tool_call_budget: int = 40,
+    ):
         self.workspace = workspace
         self.output_limit = output_limit
         self.report: dict[str, Any] = {}  # LLM-populated, persists across calls
         self._user_vars: dict[str, Any] = {}  # variables from previous python calls
+        self._registry = registry
+        self._tool_call_budget = tool_call_budget
+        self._call_log: list[dict] = []  # tracks tool calls made from sandbox
+
+    @property
+    def call_log(self) -> list[dict]:
+        return self._call_log
+
+    def _make_tool_callables(self, loop: asyncio.AbstractEventLoop) -> dict[str, Any]:
+        """Build sync wrapper functions for each sandbox-callable tool.
+
+        Uses registry.sandbox_tools() — excludes tools tagged "direct" (search,
+        blast, profile) which have custom widgets and use function-calling only.
+        """
+        if not self._registry:
+            return {}
+        callables: dict[str, Any] = {}
+        budget = self._tool_call_budget
+        call_count = [0]
+
+        for tool in self._registry.sandbox_tools():
+
+            def wrapper(_tool=tool, **kwargs):
+                call_count[0] += 1
+                if call_count[0] > budget:
+                    raise RuntimeError(f"Tool call budget exceeded ({budget})")
+                future = asyncio.run_coroutine_threadsafe(
+                    _tool.execute(dict(kwargs)), loop,
+                )
+                result = future.result(timeout=30)
+                if "error" not in result:
+                    self.workspace.store_result(result, _tool.name, dict(kwargs))
+                self._call_log.append({
+                    "tool": _tool.name,
+                    "params": dict(kwargs),
+                    "summary": _tool.format_result(result),
+                    "widget": _tool.widget,
+                })
+                return result
+
+            callables[tool.name] = wrapper
+        return callables
+
+    def _tool_signatures(self) -> str:
+        """Compact listing of callable tools for the python schema description.
+
+        Includes param names, types, and descriptions from input_schema().
+        """
+        if not self._registry:
+            return ""
+        tools = self._registry.sandbox_tools()
+        if not tools:
+            return ""
+        lines = ["Callable tools:"]
+        for tool in tools:
+            schema = tool.input_schema()
+            props = schema.get("properties", {})
+            params = ", ".join(
+                f"{name}: {spec.get('type', 'any')}" for name, spec in props.items()
+            )
+            param_descs = []
+            for name, spec in props.items():
+                if d := spec.get("description"):
+                    param_descs.append(f"{name}={d}")
+            extra = f" ({', '.join(param_descs)})" if param_descs else ""
+            lines.append(f"  {tool.name}({params}) -- {tool.description}{extra}")
+        return "\n".join(lines)
 
     def tool_schema(self) -> dict:
         """OpenAI-format function schema with dynamic workspace description."""
@@ -31,6 +111,9 @@ class SandboxRunner:
             "Assign named values: report[\"features\"] = [...].\n"
             "Must assign to `feedback` (caption text for the widget)."
         )
+        sigs = self._tool_signatures()
+        if sigs:
+            desc += f"\n{sigs}"
         if self._user_vars:
             names = ", ".join(sorted(self._user_vars))
             desc += f"\nPersisted variables from previous calls: {names}"
@@ -52,12 +135,15 @@ class SandboxRunner:
             },
         }
 
-    def execute(self, code: str) -> dict[str, Any]:
-        """Run *code* with all workspace handles + report dict + persisted vars."""
+    async def execute(self, code: str) -> dict[str, Any]:
+        """Run *code* with workspace handles + report dict + persisted vars + tool callables."""
+        loop = asyncio.get_running_loop()
         variables = dict(self._user_vars)  # start with persisted user variables
         variables.update(self.workspace.namespace())  # workspace handles win
         variables["report"] = self.report  # mutable dict — changes persist
-        result = safe_exec(code, variables)
+        if self._registry:
+            variables.update(self._make_tool_callables(loop))
+        result = await asyncio.to_thread(safe_exec, code, variables)
         if result["status"] == "ok" and result.get("user_vars"):
             self._user_vars.update(result["user_vars"])
         return result

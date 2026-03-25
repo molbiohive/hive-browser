@@ -39,6 +39,7 @@ class LLMConfig(BaseSettings):
     sandbox_max_retries: int = 3  # max consecutive sandbox errors before dropping python schema
     sandbox_output_limit: int = 4000  # max chars for sandbox/tool output sent to LLM
     python_max_turns: int = 6  # max python sandbox calls per query
+    tool_call_budget: int = 40  # max tool calls from a single sandbox execution
     model_config = {"env_prefix": "LLM_"}
 
 

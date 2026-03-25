@@ -11,7 +11,7 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 # Known system tags — everything else is a group identifier
-SYSTEM_TAGS = {"llm", "hidden", "batch"}
+SYSTEM_TAGS = {"llm", "hidden", "batch", "direct"}
 
 
 class Tool(ABC):
@@ -128,6 +128,14 @@ class ToolRegistry:
     def llm_tools(self) -> list[Tool]:
         """Tools available to the LLM (tagged 'llm')."""
         return [t for t in self._tools.values() if "llm" in t.tags]
+
+    def direct_tools(self) -> list[Tool]:
+        """Tools with custom widgets — use function-calling schemas only."""
+        return [t for t in self._tools.values() if "llm" in t.tags and "direct" in t.tags]
+
+    def sandbox_tools(self) -> list[Tool]:
+        """Tools callable from the python sandbox (llm but not direct)."""
+        return [t for t in self._tools.values() if "llm" in t.tags and "direct" not in t.tags]
 
     def visible_tools(self) -> list[Tool]:
         """Tools visible in command palette (not tagged 'hidden')."""

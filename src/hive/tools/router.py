@@ -44,6 +44,7 @@ async def route_input(
     use_planner: bool = True,
     sandbox_max_retries: int = 3,
     workspace: Workspace | None = None,
+    tool_call_budget: int = 40,
 ) -> dict[str, Any]:
     """
     Route user input → tool execution → response.
@@ -107,6 +108,7 @@ async def route_input(
             use_planner=use_planner,
             sandbox_max_retries=sandbox_max_retries,
             workspace=workspace,
+            tool_call_budget=tool_call_budget,
         )
 
     # ── Mode 3: Natural language — unified agentic loop ──
@@ -127,6 +129,7 @@ async def route_input(
         use_planner=use_planner,
         sandbox_max_retries=sandbox_max_retries,
         workspace=workspace,
+        tool_call_budget=tool_call_budget,
     )
 
 
@@ -147,6 +150,7 @@ async def _unified_loop(
     use_planner: bool = True,
     sandbox_max_retries: int = 3,
     workspace: Workspace | None = None,
+    tool_call_budget: int = 40,
 ) -> dict[str, Any]:
     """Unified agentic loop — LLM converses and chains tools as needed.
 
@@ -170,7 +174,12 @@ async def _unified_loop(
     chain = []  # [{tool, params, summary, widget}]
     if workspace is None:
         workspace = Workspace()
-    sandbox = SandboxRunner(workspace, output_limit=sandbox_output_limit)
+    sandbox = SandboxRunner(
+        workspace,
+        output_limit=sandbox_output_limit,
+        registry=registry,
+        tool_call_budget=tool_call_budget,
+    )
     tokens = {"in": 0, "out": 0}
     exceeded = False
     error_msg = ""  # LLM error message (vs max_turns exhaustion)
@@ -302,6 +311,10 @@ async def _unified_loop(
                 turn + 1, [s["tool"] for s in chain],
             )
 
+            # Append tool calls made from sandbox code to chain
+            if sandbox.call_log:
+                chain.extend(sandbox.call_log)
+
             # Report dict populated by sandbox → becomes the widget data
             if sandbox.report:
                 last_result = sandbox.report
@@ -349,12 +362,12 @@ async def _unified_loop(
             if tool_name == "python" and len(workspace) > 0:
                 python_turns += 1
                 code = params.get("code", "")
-                sb_result = sandbox.execute(code)
+                sb_result = await sandbox.execute(code)
 
                 # Auto-rerun: if NameError on an evicted handle, restore and retry once
                 if sb_result["status"] == "error":
                     if await _try_restore_evicted(sb_result, workspace, registry):
-                        sb_result = sandbox.execute(code)
+                        sb_result = await sandbox.execute(code)
 
                 compact = sandbox.summary_for_llm(sb_result)
                 messages.append({
@@ -466,6 +479,10 @@ async def _unified_loop(
             "Unified loop hit max turns (%d): %s",
             max_turns, [s["tool"] for s in chain],
         )
+
+    # Append tool calls made from sandbox code to chain
+    if sandbox.call_log:
+        chain.extend(sandbox.call_log)
 
     if not chain:
         resp = _error(f"LLM error: {error_msg}") if error_msg else _error("No tools were called during reasoning.")

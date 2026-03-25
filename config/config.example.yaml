@@ -33,6 +33,7 @@ llm:
   tool_rag_threshold: 0.3       # min cosine similarity to include a tool
   tool_rag_top_k: 8             # max tools returned by RAG
   sandbox_max_retries: 3         # max consecutive sandbox errors before LLM gives up
+  tool_call_budget: 40            # max tool calls from a single sandbox execution
 deps:
   blast:
     bin_dir: ""                # empty = use PATH; or set to /usr/local/bin etc.

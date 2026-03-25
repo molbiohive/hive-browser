@@ -433,6 +433,7 @@ async def _handle_message(
             use_planner=use_planner,
             sandbox_max_retries=config.llm.sandbox_max_retries if config else 3,
             workspace=chat["workspace"],
+            tool_call_budget=config.llm.tool_call_budget if config else 40,
         )
 
         # Track user message (skip bare commands that just show a form)

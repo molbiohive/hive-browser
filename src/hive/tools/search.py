@@ -73,7 +73,7 @@ class SearchTool(Tool):
     name = "search"
     description = "Search sequences by name, features, tags (directory context), and metadata."
     widget = "search"
-    tags = {"llm", "search"}
+    tags = {"llm", "search", "direct"}
     guidelines = (
         "BM25 keyword search across sequences AND parts. Returns both matching "
         "sequences (with SIDs) and matching parts (with PIDs and instance counts). "
