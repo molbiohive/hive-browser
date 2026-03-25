@@ -458,11 +458,12 @@ async def _handle_message(
         if result.get("type") == "tool_result" and result.get("data"):
             tool_name = result["tool"]
             response["widget"] = {
-                "type": _widget_type(tool_name, registry),
                 "tool": tool_name,
                 "params": result.get("params", {}),
                 "data": result["data"],
             }
+            if result.get("report"):
+                response["widget"]["report"] = True
             if result.get("chain"):
                 response["widget"]["chain"] = result["chain"]
         elif result.get("type") == "form":
@@ -684,7 +685,6 @@ def _strip_large_widget_data(msg: dict, threshold: int) -> dict:
     if data_size > threshold:
         stripped = {**msg}
         stripped["widget"] = {
-            "type": widget["type"],
             "tool": widget["tool"],
             "params": widget.get("params", {}),
             "stale": True,
@@ -697,15 +697,6 @@ def _strip_large_widget_data(msg: dict, threshold: int) -> dict:
 
 def _now_iso() -> str:
     return datetime.now(UTC).isoformat()
-
-
-def _widget_type(tool_name: str, registry=None) -> str:
-    """Get widget type from the tool's own declaration."""
-    if registry:
-        tool = registry.get(tool_name)
-        if tool:
-            return tool.widget
-    return "text"
 
 
 async def _quick_status(llm_client=None, tool_count: int = 0) -> dict:

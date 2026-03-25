@@ -9,16 +9,16 @@ interface Message {
 	role: 'user' | 'assistant';
 	content: string;
 	widget?: {
-		type: string;
+		type?: string;
 		tool: string;
 		params: Record<string, unknown>;
 		data?: unknown;
 		stale?: boolean;
+		report?: boolean;
 		chain?: Array<{
 			tool: string;
 			params: Record<string, unknown>;
 			summary: string;
-			widget: string;
 		}>;
 	};
 	ts: string;
@@ -48,7 +48,6 @@ interface AppConfig {
 interface ToolMeta {
 	name: string;
 	description: string;
-	widget: string;
 	tags: string[];
 }
 
