@@ -18,7 +18,7 @@ from hive.sandbox import SandboxRunner, Workspace
 from hive.tools.base import ToolRegistry
 
 if TYPE_CHECKING:
-    from hive.llm.tool_rag import ToolRAG
+    from hive.llm.planner import Planner
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ async def route_input(
     sandbox_output_limit: int = 4000,
     python_max_turns: int = 6,
     on_progress: Callable[[dict], Awaitable[None]] | None = None,
-    tool_rag: ToolRAG | None = None,
+    planner: Planner | None = None,
     use_planner: bool = True,
     sandbox_max_retries: int = 3,
     workspace: Workspace | None = None,
@@ -104,7 +104,7 @@ async def route_input(
             sandbox_output_limit=sandbox_output_limit,
             python_max_turns=python_max_turns,
             on_progress=on_progress,
-            tool_rag=tool_rag,
+            planner=planner,
             use_planner=use_planner,
             sandbox_max_retries=sandbox_max_retries,
             workspace=workspace,
@@ -125,7 +125,7 @@ async def route_input(
         sandbox_output_limit=sandbox_output_limit,
         python_max_turns=python_max_turns,
         on_progress=on_progress,
-        tool_rag=tool_rag,
+        planner=planner,
         use_planner=use_planner,
         sandbox_max_retries=sandbox_max_retries,
         workspace=workspace,
@@ -146,7 +146,7 @@ async def _unified_loop(
     sandbox_output_limit: int = 4000,
     python_max_turns: int = 6,
     on_progress: Callable[[dict], Awaitable[None]] | None = None,
-    tool_rag: ToolRAG | None = None,
+    planner: Planner | None = None,
     use_planner: bool = True,
     sandbox_max_retries: int = 3,
     workspace: Workspace | None = None,
@@ -158,10 +158,8 @@ async def _unified_loop(
     and pure conversation. ALL tool results go to workspace — LLM sees
     descriptors and queries data via python sandbox.
 
-    Two-mode RAG pipeline (when tool_rag is provided):
-    - Planner ON:  planning call → RAG on plan → agent sees plan + selected tools
-    - Planner OFF: RAG on user input directly → agent sees user input + selected tools
-    Without tool_rag, all tools are used (backward compatible).
+    When planner is provided and use_planner is True, a cheap planning call
+    produces a task description that augments the user input for context.
     """
 
     # Direct tools get function-calling schemas; all others are sandbox-callable
@@ -197,15 +195,14 @@ async def _unified_loop(
     await _emit("thinking")
 
     # ── Optional planner (produces task description for agent context) ──
-    if tool_rag:
+    if planner and use_planner:
         try:
-            if use_planner:
-                plan_content, plan_usage = await tool_rag.plan(
-                    user_input, llm_client, history,
-                )
-                tokens["in"] += plan_usage.get("in", 0)
-                tokens["out"] += plan_usage.get("out", 0)
-                plan_text = plan_content
+            plan_content, plan_usage = await planner.plan(
+                user_input, llm_client, history,
+            )
+            tokens["in"] += plan_usage.get("in", 0)
+            tokens["out"] += plan_usage.get("out", 0)
+            plan_text = plan_content
         except Exception as e:
             logger.warning("Planner failed, continuing without plan: %s", e)
 

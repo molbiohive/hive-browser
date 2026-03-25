@@ -104,7 +104,7 @@ async def websocket_endpoint(websocket: WebSocket):
     registry = getattr(app.state, "tool_registry", None)
     model_pool = getattr(app.state, "model_pool", None)
     chat_storage = getattr(app.state, "chat_storage", None)
-    tool_rag = getattr(app.state, "tool_rag", None)
+    planner = getattr(app.state, "planner", None)
     max_pairs = config.chat.max_history_pairs if config else 20
 
     # Per-connection model selection — use user preference if valid, else default
@@ -131,7 +131,7 @@ async def websocket_endpoint(websocket: WebSocket):
             "type": "init",
             "config": {
                 "max_history_pairs": max_pairs,
-                "planner_available": tool_rag is not None,
+                "planner_available": planner is not None,
             },
             "tools": registry.metadata() if registry else [],
             "status": init_status,
@@ -386,7 +386,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     user_slug=user_slug,
                     max_pairs=max_pairs,
                     config=config,
-                    tool_rag=tool_rag,
+                    planner=planner,
                     use_planner=use_planner,
                     user_id=user.id,
                 )
@@ -407,7 +407,7 @@ async def _handle_message(
     user_slug: str | None,
     max_pairs: int,
     config,
-    tool_rag=None,
+    planner=None,
     use_planner: bool = True,
     user_id: int | None = None,
 ):
@@ -429,7 +429,7 @@ async def _handle_message(
             sandbox_output_limit=config.llm.sandbox_output_limit if config else 4000,
             python_max_turns=config.llm.python_max_turns if config else 6,
             on_progress=_progress,
-            tool_rag=tool_rag,
+            planner=planner,
             use_planner=use_planner,
             sandbox_max_retries=config.llm.sandbox_max_retries if config else 3,
             workspace=chat["workspace"],

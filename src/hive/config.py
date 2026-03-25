@@ -31,11 +31,7 @@ class LLMConfig(BaseSettings):
     auto_discover: bool = False  # auto-discover Ollama models at runtime
     agent_max_turns: int = 10  # max tool-call turns in agentic loop
     pipe_min_length: int = 200  # auto-pipe strings longer than this between tools
-    tool_rag_enabled: bool = True  # planning call + RAG tool selection
-    tool_rag_model: str = ""  # embedding model ("ollama/nomic-embed-text") or "" for TF-IDF
-    tool_rag_base_url: str = ""  # embedding API base URL (litellm api_base)
-    tool_rag_threshold: float = 0.3  # min cosine similarity to include a tool
-    tool_rag_top_k: int = 8  # max tools returned by RAG
+    use_planner: bool = True  # planning call before agent loop
     sandbox_max_retries: int = 3  # max consecutive sandbox errors before dropping python schema
     sandbox_output_limit: int = 4000  # max chars for sandbox/tool output sent to LLM
     python_max_turns: int = 6  # max python sandbox calls per query

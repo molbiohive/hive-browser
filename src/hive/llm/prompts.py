@@ -135,7 +135,7 @@ def build_tool_schema(tools: list[Tool]) -> list[dict]:
     return schemas
 
 
-# ── Planning prompt (used by ToolRAG) ──
+# ── Planning prompt (used by Planner) ──
 
 _PLAN_SYSTEM = """\
 You are a planning assistant for a lab sequence browser.

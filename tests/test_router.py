@@ -437,15 +437,11 @@ class TestErrorSanitization:
         assert result == "Something broke"
 
 
-# ── Tool RAG Integration ──
+# ── Planner Integration ──
 
 
-class TestToolRAGIntegration:
-    """Tests for two-mode RAG pipeline in the router.
-
-    Mode 1 (planner ON):  plan() → RAG on plan → agent sees plan + selected tools
-    Mode 2 (planner OFF): RAG on user input → agent sees user input + selected tools
-    """
+class TestPlannerIntegration:
+    """Tests for planner integration in the router."""
 
     def _mock_llm(self, responses):
         client = AsyncMock()
@@ -458,30 +454,13 @@ class TestToolRAGIntegration:
             "usage": usage or {"prompt_tokens": 100, "completion_tokens": 20},
         }
 
-    def _tool_call_response(self, tool_name, arguments, call_id="call_1", usage=None):
-        return {
-            "choices": [{
-                "message": {
-                    "content": None,
-                    "tool_calls": [{
-                        "id": call_id,
-                        "function": {
-                            "name": tool_name,
-                            "arguments": json.dumps(arguments),
-                        },
-                    }],
-                },
-            }],
-            "usage": usage or {"prompt_tokens": 100, "completion_tokens": 20},
-        }
-
     # ── Planner ON (default) ──
 
     async def test_planner_always_runs_agent_loop(self, registry):
         """Planner ON always runs agent loop -- no ANSWER shortcut."""
-        from hive.llm.tool_rag import ToolRAG
+        from hive.llm.planner import Planner
 
-        rag = ToolRAG(tools=registry.llm_tools(), threshold=0.2, top_k=5)
+        planner = Planner(tools=registry.llm_tools())
 
         llm = self._mock_llm([
             # Plan call
@@ -491,7 +470,7 @@ class TestToolRAGIntegration:
         ])
         resp = await route_input(
             "hello", registry, llm_client=llm,
-            tool_rag=rag, use_planner=True,
+            planner=planner, use_planner=True,
         )
         assert resp["type"] == "message"
         assert "Hello" in resp["content"]
@@ -500,9 +479,9 @@ class TestToolRAGIntegration:
 
     async def test_planner_on_injects_plan_text(self, registry):
         """Planner produces task description, agent sees plan in user message."""
-        from hive.llm.tool_rag import ToolRAG
+        from hive.llm.planner import Planner
 
-        rag = ToolRAG(tools=registry.llm_tools(), threshold=0.2, top_k=5)
+        planner = Planner(tools=registry.llm_tools())
 
         llm = self._mock_llm([
             self._text_response("Echo the input back."),
@@ -510,7 +489,7 @@ class TestToolRAGIntegration:
         ])
         resp = await route_input(
             "echo test", registry, llm_client=llm,
-            tool_rag=rag, use_planner=True,
+            planner=planner, use_planner=True,
         )
         assert resp["type"] == "message"
         assert llm.chat.call_count == 2
@@ -525,9 +504,9 @@ class TestToolRAGIntegration:
 
     async def test_planner_on_tokens_include_planning(self, registry):
         """Token counts include both planning and agent loop usage."""
-        from hive.llm.tool_rag import ToolRAG
+        from hive.llm.planner import Planner
 
-        rag = ToolRAG(tools=registry.llm_tools(), threshold=0.2, top_k=5)
+        planner = Planner(tools=registry.llm_tools())
 
         llm = self._mock_llm([
             self._text_response("respond conversationally",
@@ -537,16 +516,16 @@ class TestToolRAGIntegration:
         ])
         resp = await route_input(
             "hello", registry, llm_client=llm,
-            tool_rag=rag, use_planner=True,
+            planner=planner, use_planner=True,
         )
         assert resp["tokens"]["in"] == 130  # 50 + 80
         assert resp["tokens"]["out"] == 15  # 10 + 5
 
     async def test_planner_on_failure_falls_through(self, registry):
-        """If planning call fails, all tools are used (graceful degradation)."""
-        from hive.llm.tool_rag import ToolRAG
+        """If planning call fails, agent continues without plan."""
+        from hive.llm.planner import Planner
 
-        rag = ToolRAG(tools=registry.llm_tools(), threshold=0.2, top_k=5)
+        planner = Planner(tools=registry.llm_tools())
 
         llm = self._mock_llm([
             Exception("LLM down"),
@@ -554,7 +533,7 @@ class TestToolRAGIntegration:
         ])
         resp = await route_input(
             "test fallback", registry, llm_client=llm,
-            tool_rag=rag, use_planner=True,
+            planner=planner, use_planner=True,
         )
         assert resp["type"] == "message"
         assert "Recovered" in resp["content"]
@@ -563,32 +542,29 @@ class TestToolRAGIntegration:
 
     async def test_planner_off_no_plan_call(self, registry):
         """Planner OFF: no plan() call, agent runs directly."""
-        from unittest.mock import AsyncMock as AM
+        from hive.llm.planner import Planner
 
-        from hive.llm.tool_rag import ToolRAG
-
-        rag = ToolRAG(tools=registry.llm_tools(), threshold=0.2, top_k=5)
-        rag.plan = AM()  # spy — should NOT be called
+        planner = Planner(tools=registry.llm_tools())
+        planner.plan = AsyncMock()  # spy — should NOT be called
 
         llm = self._mock_llm([self._text_response("Done.")])
         resp = await route_input(
             "echo test", registry, llm_client=llm,
-            tool_rag=rag, use_planner=False,
+            planner=planner, use_planner=False,
         )
         assert resp["type"] == "message"
-        # plan() was never called
-        rag.plan.assert_not_called()
+        planner.plan.assert_not_called()
 
     async def test_planner_off_agent_sees_user_input(self, registry):
         """Planner OFF: agent loop receives raw user input, not plan."""
-        from hive.llm.tool_rag import ToolRAG
+        from hive.llm.planner import Planner
 
-        rag = ToolRAG(tools=registry.llm_tools(), threshold=0.2, top_k=5)
+        planner = Planner(tools=registry.llm_tools())
 
         llm = self._mock_llm([self._text_response("Hello.")])
         await route_input(
             "find GFP sequences", registry, llm_client=llm,
-            tool_rag=rag, use_planner=False,
+            planner=planner, use_planner=False,
         )
         # Only one LLM call (agent loop, no planning)
         assert llm.chat.call_count == 1
@@ -596,27 +572,12 @@ class TestToolRAGIntegration:
         user_msg = [m for m in agent_messages if m.get("role") == "user"][-1]
         assert user_msg["content"] == "find GFP sequences"
 
-    async def test_planner_off_rag_failure_uses_all_tools(self, registry):
-        """Planner OFF: if RAG select() fails, all tools are used."""
-        from hive.llm.tool_rag import ToolRAG
+    # ── No planner ──
 
-        rag = ToolRAG(tools=registry.llm_tools(), threshold=0.2, top_k=5)
-        rag.select = AsyncMock(side_effect=Exception("embedding down"))
-
-        llm = self._mock_llm([self._text_response("Recovered.")])
-        resp = await route_input(
-            "test", registry, llm_client=llm,
-            tool_rag=rag, use_planner=False,
-        )
-        assert resp["type"] == "message"
-        assert "Recovered" in resp["content"]
-
-    # ── Backward compatibility ──
-
-    async def test_tool_rag_none_passes_all_tools(self, registry):
-        """tool_rag=None (default) uses all tools, backward compatible."""
+    async def test_planner_none_works(self, registry):
+        """planner=None (default) works without planning."""
         llm = self._mock_llm([self._text_response("Hello!")])
-        resp = await route_input("hello", registry, llm_client=llm, tool_rag=None)
+        resp = await route_input("hello", registry, llm_client=llm, planner=None)
         assert resp["type"] == "message"
         assert "Hello" in resp["content"]
 
