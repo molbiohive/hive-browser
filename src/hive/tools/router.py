@@ -164,9 +164,9 @@ async def _unified_loop(
     Without tool_rag, all tools are used (backward compatible).
     """
 
-    all_tools = registry.llm_tools()
-    tool_map = {t.name: t for t in all_tools}
-    all_schemas = build_tool_schema(all_tools)
+    # Direct tools get function-calling schemas; all others are sandbox-callable
+    tool_map = {t.name: t for t in registry.llm_tools()}
+    schemas = build_tool_schema(registry.direct_tools())
 
     last_result = None
     last_tool = None
@@ -183,7 +183,6 @@ async def _unified_loop(
     tokens = {"in": 0, "out": 0}
     exceeded = False
     error_msg = ""  # LLM error message (vs max_turns exhaustion)
-    schemas = all_schemas
     plan_text = None  # plan injected into agent context
     sandbox_errors = 0  # consecutive sandbox errors (for retry limit)
     python_turns = 0  # separate python turn counter
@@ -197,32 +196,18 @@ async def _unified_loop(
 
     await _emit("thinking")
 
-    # ── Tool Selection (RAG + optional planner) ──
+    # ── Optional planner (produces task description for agent context) ──
     if tool_rag:
         try:
             if use_planner:
-                # Planner ON — cheap LLM call produces task description, RAG selects tools
                 plan_content, plan_usage = await tool_rag.plan(
                     user_input, llm_client, history,
                 )
                 tokens["in"] += plan_usage.get("in", 0)
                 tokens["out"] += plan_usage.get("out", 0)
-
-                # RAG on plan content (planner's description of steps)
-                selected = await tool_rag.select(plan_content)
                 plan_text = plan_content
-            else:
-                # Mode 2: No planner — RAG on raw user input
-                selected = await tool_rag.select(user_input)
-
-            tool_map = {t.name: t for t in selected}
-            schemas = build_tool_schema(selected)
-            logger.info(
-                "RAG selected %d tools: %s",
-                len(selected), sorted(t.name for t in selected),
-            )
         except Exception as e:
-            logger.warning("Tool selection failed, using all tools: %s", e)
+            logger.warning("Planner failed, continuing without plan: %s", e)
 
     # Build message list — plan augments user input (both visible to agent)
     messages = [{"role": "system", "content": build_system_prompt()}]
@@ -253,14 +238,11 @@ async def _unified_loop(
         messages.append({"role": "user", "content": f"{user_input}{ws_history}"})
 
     for turn in range(max_turns):
-        turn_tools = schemas
-        # Inject python schema when cached data is available (skip after too many errors)
-        if (
-            len(workspace) > 0
-            and sandbox_errors < sandbox_max_retries
-            and python_turns < python_max_turns
-        ):
+        # Python sandbox always available (skip after too many errors or max turns)
+        if sandbox_errors < sandbox_max_retries and python_turns < python_max_turns:
             turn_tools = [*schemas, sandbox.tool_schema()]
+        else:
+            turn_tools = schemas
 
         # Log payload sizes for token debugging
         msg_chars = sum(len(str(m.get("content", ""))) for m in messages)
@@ -359,7 +341,7 @@ async def _unified_loop(
             )
 
             # Built-in sandbox -- not a registered tool
-            if tool_name == "python" and len(workspace) > 0:
+            if tool_name == "python":
                 python_turns += 1
                 code = params.get("code", "")
                 sb_result = await sandbox.execute(code)

@@ -498,8 +498,8 @@ class TestToolRAGIntegration:
         assert resp.get("plan") == "respond conversationally"
         assert llm.chat.call_count == 2  # plan + agent
 
-    async def test_planner_on_action_narrows_tools(self, registry):
-        """Planner produces task description, RAG selects tools, agent sees plan."""
+    async def test_planner_on_injects_plan_text(self, registry):
+        """Planner produces task description, agent sees plan in user message."""
         from hive.llm.tool_rag import ToolRAG
 
         rag = ToolRAG(tools=registry.llm_tools(), threshold=0.2, top_k=5)
@@ -561,22 +561,14 @@ class TestToolRAGIntegration:
 
     # ── Planner OFF ──
 
-    async def test_planner_off_rag_on_user_input(self, registry):
-        """Planner OFF: no plan() call, RAG runs on user input directly."""
-        from unittest.mock import AsyncMock as AM, patch
+    async def test_planner_off_no_plan_call(self, registry):
+        """Planner OFF: no plan() call, agent runs directly."""
+        from unittest.mock import AsyncMock as AM
 
         from hive.llm.tool_rag import ToolRAG
 
         rag = ToolRAG(tools=registry.llm_tools(), threshold=0.2, top_k=5)
         rag.plan = AM()  # spy — should NOT be called
-        original_select = rag.select
-        select_args = []
-
-        async def _spy_select(text):
-            select_args.append(text)
-            return await original_select(text)
-
-        rag.select = _spy_select
 
         llm = self._mock_llm([self._text_response("Done.")])
         resp = await route_input(
@@ -586,9 +578,6 @@ class TestToolRAGIntegration:
         assert resp["type"] == "message"
         # plan() was never called
         rag.plan.assert_not_called()
-        # select() was called with user input (not plan text)
-        assert len(select_args) == 1
-        assert select_args[0] == "echo test"
 
     async def test_planner_off_agent_sees_user_input(self, registry):
         """Planner OFF: agent loop receives raw user input, not plan."""
@@ -782,8 +771,8 @@ class TestSandboxIntegration:
         assert resp["chain"][1]["tool"] == "python"
         assert resp["chain"][1]["summary"] == "1"
 
-    async def test_python_schema_injected_when_cache_nonempty(self):
-        """python schema only appears after first tool caches data."""
+    async def test_python_schema_always_available(self):
+        """python schema is available from turn 0 (always offered)."""
 
         class SearchTool(Tool):
             name = "search"
@@ -806,15 +795,10 @@ class TestSandboxIntegration:
         ])
         await route_input("test", reg, llm_client=llm)
 
-        # First LLM call (turn 0): no python schema (cache empty)
+        # First LLM call (turn 0): python schema present from the start
         first_call_tools = llm.chat.call_args_list[0][1].get("tools", [])
         tool_names_t0 = [t["function"]["name"] for t in first_call_tools]
-        assert "python" not in tool_names_t0
-
-        # Second LLM call (turn 1): python schema present (cache has data)
-        second_call_tools = llm.chat.call_args_list[1][1].get("tools", [])
-        tool_names_t1 = [t["function"]["name"] for t in second_call_tools]
-        assert "python" in tool_names_t1
+        assert "python" in tool_names_t0
 
     async def test_cache_info_in_sandbox_response(self):
         """Sandbox response includes cache descriptions."""
