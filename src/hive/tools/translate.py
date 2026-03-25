@@ -25,12 +25,11 @@ class TranslateTool(Tool):
     name = "translate"
     description = "Translate a DNA or RNA sequence to protein."
     widget = "text"
-    tags = {"llm", "analysis", "batch"}
+    tags = {"llm", "analysis"}
     guidelines = (
         "Translate DNA/RNA to protein. Accepts sequence, sid:N, or pid:N."
         " table=1 standard, table=11 bacterial."
     )
-    batch_param = "sequence"
 
     def __init__(self, **_):
         pass

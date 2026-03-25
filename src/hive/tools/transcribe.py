@@ -24,9 +24,8 @@ class TranscribeTool(Tool):
     name = "transcribe"
     description = "Transcribe a DNA sequence to mRNA (T→U on coding strand)."
     widget = "text"
-    tags = {"llm", "analysis", "batch"}
+    tags = {"llm", "analysis"}
     guidelines = "DNA to mRNA transcription (T to U). Accepts sequence, sid:N, or pid:N."
-    batch_param = "sequence"
 
     def __init__(self, **_):
         pass

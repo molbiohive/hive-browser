@@ -24,36 +24,11 @@
 	const isStale = $derived(widget.stale || (!widget.data && widget.type !== 'form'));
 	const WidgetComponent = $derived(widgetComponents[widget.type]);
 
-	// Batch detection: router wraps fan-out results in {results: [...], count: N}
-	const isBatch = $derived(
-		!!(widget.data?.results && Array.isArray(widget.data.results) && widget.data.count > 0)
-	);
-
-	const batchTabs = $derived.by(() => {
-		if (!isBatch) return [];
-		return widget.data.results.map((r, i) => ({
-			id: String(i),
-			label: r._label || `#${i + 1}`,
-		}));
-	});
-
-	let activeBatchIdx = $state('0');
-
-	// Effective data: selected batch item or raw widget.data
-	const activeData = $derived.by(() => {
-		if (!isBatch) return widget.data;
-		const idx = parseInt(activeBatchIdx) || 0;
-		const item = widget.data.results[idx];
-		if (!item) return widget.data.results[0] || {};
-		const { _label, ...rest } = item;
-		return rest;
-	});
-
 	// Detect all list[dict] values -> tabbed tables
 	const fallbackTables = $derived.by(() => {
-		if (WidgetComponent || !activeData || activeData.error) return [];
+		if (WidgetComponent || !widget.data || widget.data.error) return [];
 		const tables = [];
-		for (const [key, val] of Object.entries(activeData)) {
+		for (const [key, val] of Object.entries(widget.data)) {
 			if (Array.isArray(val) && val.length > 0 && typeof val[0] === 'object') {
 				tables.push({
 					id: key,
@@ -74,17 +49,17 @@
 	const SEQ_RE = /^[A-Za-z*\s]+$/;
 
 	const fallbackSequences = $derived.by(() => {
-		if (WidgetComponent || !activeData || activeData.error) return [];
-		return Object.entries(activeData)
+		if (WidgetComponent || !widget.data || widget.data.error) return [];
+		return Object.entries(widget.data)
 			.filter(([, v]) => typeof v === 'string' && v.length >= SEQ_MIN && SEQ_RE.test(v))
 			.map(([key, val]) => ({ key, sequence: val }));
 	});
 
 	// Scalars -- exclude arrays, objects, and detected sequences
 	const fallbackScalars = $derived.by(() => {
-		if (WidgetComponent || !activeData) return [];
+		if (WidgetComponent || !widget.data) return [];
 		const seqKeys = new Set(fallbackSequences.map(s => s.key));
-		return Object.entries(activeData).filter(
+		return Object.entries(widget.data).filter(
 			([k, v]) => !Array.isArray(v) && typeof v !== 'object' && !seqKeys.has(k)
 		);
 	});
@@ -164,20 +139,12 @@
 			</div>
 		{:else if WidgetComponent}
 			<div class="widget-body">
-				{#if isBatch}
-					<TabBar tabs={batchTabs} active={activeBatchIdx}
-						onchange={(id) => activeBatchIdx = id} />
-				{/if}
-				<WidgetComponent data={activeData} {messageIndex} />
+				<WidgetComponent data={widget.data} {messageIndex} />
 			</div>
 		{:else if widget.data}
 			<div class="widget-body">
-				{#if isBatch}
-					<TabBar tabs={batchTabs} active={activeBatchIdx}
-						onchange={(id) => activeBatchIdx = id} />
-				{/if}
-				{#if activeData.error}
-					<p class="generic-error">{activeData.error}</p>
+				{#if widget.data.error}
+					<p class="generic-error">{widget.data.error}</p>
 				{:else}
 					{#if fallbackScalars.length}
 						<div class="generic-meta">

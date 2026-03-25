@@ -25,7 +25,7 @@ class PrimersTool(Tool):
     name = "primers"
     description = "Show primer binding sites on a sequence."
     widget = "text"
-    tags = {"llm", "analysis", "batch"}
+    tags = {"llm", "analysis"}
     guidelines = "Show primer binding sites on a sequence. Use sid:N or pid:N."
 
     def __init__(self, **_):

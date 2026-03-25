@@ -90,7 +90,7 @@ class DigestTool(Tool):
     name = "digest"
     description = "Find restriction enzyme cut sites and calculate fragment sizes."
     widget = "digest"
-    tags = {"llm", "analysis", "batch"}
+    tags = {"llm", "analysis"}
     guidelines = "Restriction digest. Provide reactions list and sequence (or sid:N / pid:N). Use + for co-digestion (e.g. EcoRI+BamHI)."
 
     def __init__(self, **_):
