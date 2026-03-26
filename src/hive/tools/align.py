@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from hive.db import session as db
 from hive.tools.base import Tool
@@ -20,6 +21,13 @@ class AlignInput(BaseModel):
         default_factory=list,
         description="Part IDs to include in alignment",
     )
+
+    @field_validator("sids", "pids", mode="before")
+    @classmethod
+    def _parse_string_list(cls, v):
+        if isinstance(v, str):
+            return json.loads(v)
+        return v
     algorithm: str = Field(
         default="auto",
         description="MAFFT algorithm: auto, linsi, ginsi, einsi, fftns",

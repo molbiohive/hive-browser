@@ -1,25 +1,31 @@
 """FASTA parser -- native implementation, no Biopython."""
 
+import logging
 from pathlib import Path
 
 from hive.parsers.base import ParseResult
 from hive.utils import detect_molecule
 
+logger = logging.getLogger(__name__)
+
 
 def parse_fasta(filepath: Path, extract: list[str] | None = None) -> ParseResult:
-    """Parse a FASTA file and return structured data (sequence only)."""
+    """Parse a FASTA file and return structured data (first record only)."""
     text = filepath.read_text()
     lines = text.strip().splitlines()
 
-    # First line starting with '>' is the header
     name = filepath.stem
     description = None
     seq_lines = []
+    header_seen = False
 
     for line in lines:
         line = line.strip()
         if line.startswith(">"):
-            # Parse header: >id description
+            if header_seen:
+                logger.warning("Multi-record FASTA %s: only first record parsed", filepath.name)
+                break
+            header_seen = True
             header = line[1:].strip()
             parts = header.split(None, 1)
             name = parts[0] if parts else filepath.stem

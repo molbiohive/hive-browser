@@ -98,8 +98,8 @@ class Tool(ABC):
 
     def group(self) -> str | None:
         """Primary group tag, or None."""
-        for tag in self.tags:
-            return tag
+        if self.tags:
+            return sorted(self.tags)[0]
         return None
 
 
