@@ -241,7 +241,10 @@ async def _unified_loop(
             msgs.append({"role": "user", "content": f"{user_input}{ws_history}"})
 
         if turn_log:
-            status = "\n".join(f"- {name}: {s}" for name, s in turn_log)
+            recent = turn_log[-5:]
+            status = "\n".join(f"- {name}: {s}" for name, s in recent)
+            if len(turn_log) > 5:
+                status = f"({len(turn_log) - 5} earlier steps omitted)\n{status}"
             msgs.append({"role": "assistant", "content": f"Done so far:\n{status}"})
             msgs.append({"role": "user", "content": "Continue."})
 
