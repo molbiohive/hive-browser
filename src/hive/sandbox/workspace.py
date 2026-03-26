@@ -75,14 +75,20 @@ class Workspace:
         return f"{entry.handle}: {entry.field_name} ({entry.type_desc}) from {entry.tool}"
 
     def describe_all(self) -> str:
-        """All handles, one per line."""
+        """All handles, one per line. Skips _result meta-handles."""
         return "\n".join(
-            self.describe(e.handle) for e in self._entries if self.describe(e.handle)
+            self.describe(e.handle)
+            for e in self._entries
+            if e.field_name != "_result" and self.describe(e.handle)
         )
 
     def describe_handles(self, handles: list[str]) -> str:
-        """Describe only the given handles, one per line."""
-        return "\n".join(self.describe(h) for h in handles if self.describe(h))
+        """Describe only the given handles, one per line. Skips _result."""
+        return "\n".join(
+            self.describe(h)
+            for h in handles
+            if self._find_entry(h) and self._find_entry(h).field_name != "_result" and self.describe(h)
+        )
 
     def namespace(self) -> dict[str, Any]:
         """Handles as Python variables for sandbox injection."""

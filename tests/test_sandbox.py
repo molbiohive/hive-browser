@@ -398,9 +398,8 @@ class TestToolCallables:
         runner = SandboxRunner(ws, registry=reg)
         schema = runner.tool_schema()
         desc = schema["function"]["description"]
-        assert "Callable tools:" in desc
-        assert "gc(sequence: string)" in desc
-        assert "Calculate GC content" in desc
+        assert "Callable tools" in desc
+        assert "gc(sequence)" in desc
 
     async def test_callable_from_sandbox(self):
         """Tools can be called as functions inside sandbox code."""

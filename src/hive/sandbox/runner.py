@@ -64,24 +64,19 @@ class SandboxRunner:
         return callables
 
     def _tool_signatures(self) -> str:
-        """Compact listing of callable tools for the python schema description.
-
-        Uses guidelines (or description fallback) + returns hint. No per-param
-        descriptions to save tokens.
-        """
+        """Minimal callable-tools listing: name(params) -> returns."""
         if not self._registry:
             return ""
         tools = self._registry.tools()
         if not tools:
             return ""
-        lines = ["Callable tools:"]
+        lines = ["Callable tools (use keyword args):"]
         for tool in tools:
             schema = tool.input_schema()
             props = schema.get("properties", {})
-            params = ", ".join(f"{name}: {spec.get('type', 'any')}" for name, spec in props.items())
-            doc = tool.guidelines or tool.description
+            params = ", ".join(props.keys())
             ret = f" -> {tool.returns}" if tool.returns else ""
-            lines.append(f"  {tool.name}({params}){ret} -- {doc}")
+            lines.append(f"  {tool.name}({params}){ret}")
         return "\n".join(lines)
 
     def tool_schema(self) -> dict:

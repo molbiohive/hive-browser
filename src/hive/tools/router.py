@@ -257,13 +257,13 @@ async def _unified_loop(
         # Log payload sizes for token debugging
         msg_chars = sum(len(str(m.get("content", ""))) for m in messages)
         schema_chars = sum(len(json.dumps(s)) for s in turn_tools) if turn_tools else 0
-        logger.debug(
-            "PAYLOAD turn %d: %d msgs (%d chars) + %d tool schemas (%d chars)",
+        logger.info(
+            "CONTEXT turn %d: %d msgs (%d chars) + schemas (%d chars) = %d chars",
             turn,
             len(messages),
             msg_chars,
-            len(turn_tools) if turn_tools else 0,
             schema_chars,
+            msg_chars + schema_chars,
         )
         try:
             response = await llm_client.chat(messages, tools=turn_tools)
