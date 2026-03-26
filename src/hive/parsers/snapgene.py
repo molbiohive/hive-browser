@@ -124,10 +124,15 @@ def parse_snapgene(filepath: Path, extract: list[str] | None = None) -> ParseRes
     primers = []
     if extract is None or "primers" in extract:
         seq_len = len(sgff.sequence.value)
+        seen_sites: set[tuple] = set()
         for p in sgff.primers:
             sites = getattr(p, "binding_sites", [])
             if sites:
                 for bs in sites:
+                    key = (p.name, bs.start, bs.end)
+                    if key in seen_sites:
+                        continue
+                    seen_sites.add(key)
                     primers.append(
                         ParsedPrimer(
                             name=p.name,
