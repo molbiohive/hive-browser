@@ -455,8 +455,8 @@ class TestToolCallables:
         assert result["status"] == "error"
         assert "budget exceeded" in result["error"]
 
-    async def test_tool_results_stored_in_workspace(self):
-        """Tool calls from sandbox auto-store results in workspace."""
+    async def test_tool_results_available_in_code(self):
+        """Tool calls from sandbox return results to code, not auto-stored."""
         from hive.tools.base import Tool, ToolRegistry
 
         class GcTool(Tool):
@@ -476,9 +476,11 @@ class TestToolCallables:
 
         ws = Workspace()
         runner = SandboxRunner(ws, registry=reg)
-        await runner.execute('r = gc(sequence="ATGC")\nfeedback = "done"')
-        # Tool result should be in workspace
-        assert len(ws) > 0
+        result = await runner.execute('r = gc(sequence="ATGC")\nfeedback = r["gc_percent"]')
+        assert result["status"] == "ok"
+        assert result["feedback"] == 50.0
+        # Sandbox tool calls no longer auto-store in workspace
+        assert len(ws) == 0
 
 
 class TestStoreResult:

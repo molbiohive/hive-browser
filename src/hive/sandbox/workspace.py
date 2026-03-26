@@ -74,13 +74,16 @@ class Workspace:
             return ""
         return f"{entry.handle}: {entry.field_name} ({entry.type_desc}) from {entry.tool}"
 
-    def describe_all(self) -> str:
-        """All handles, one per line. Skips _result meta-handles."""
-        return "\n".join(
-            self.describe(e.handle)
-            for e in self._entries
-            if e.field_name != "_result" and self.describe(e.handle)
-        )
+    def describe_all(self, max_entries: int = 20) -> str:
+        """All handles, one per line. Skips _result meta-handles. Capped."""
+        visible = [
+            e for e in self._entries
+            if e.field_name != "_result"
+        ]
+        lines = [self.describe(e.handle) for e in visible[:max_entries] if self.describe(e.handle)]
+        if len(visible) > max_entries:
+            lines.append(f"... and {len(visible) - max_entries} more handles")
+        return "\n".join(lines)
 
     def describe_handles(self, handles: list[str]) -> str:
         """Describe only the given handles, one per line. Skips _result."""

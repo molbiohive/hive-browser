@@ -55,10 +55,7 @@ class SandboxRunner:
                     _tool.execute(dict(kwargs)),
                     loop,
                 )
-                result = future.result(timeout=30)
-                if "error" not in result:
-                    self.workspace.store_result(result, _tool.name, dict(kwargs))
-                return result
+                return future.result(timeout=30)
 
             callables[tool.name] = wrapper
         return callables
