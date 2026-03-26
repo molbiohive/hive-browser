@@ -595,13 +595,6 @@ async def _handle_message(
             threshold = config.chat.widget_data_threshold if config else 2048
             messages_to_save = [_strip_large_widget_data(m, threshold) for m in chat["messages"]]
 
-            # Evict oldest workspace entries if over limit
-            ws: Workspace = chat["workspace"]
-            max_ws = config.chat.workspace_max_bytes if config else 500_000
-            evicted = ws.evict(max_ws)
-            if evicted:
-                logger.info("Workspace evicted %d entries (limit %d bytes)", evicted, max_ws)
-
             chat_storage.save(
                 chat["id"],
                 messages_to_save,

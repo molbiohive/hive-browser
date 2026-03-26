@@ -62,7 +62,6 @@ class ChatConfig(BaseSettings):
     max_history_pairs: int = 20
     widget_data_threshold: int = 16384  # bytes — strip widget data above this size
     rerun_stale_widgets: int = 3  # auto-rerun on chat load: 0=none, N=last N, -1=all
-    workspace_max_bytes: int = 500_000  # evict oldest workspace entries above this size
 
 
 class WatcherRule(BaseSettings):

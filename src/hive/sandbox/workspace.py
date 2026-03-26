@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import json
 from typing import Any
 
 
 class WorkspaceEntry:
     """Single stored value with metadata."""
 
-    __slots__ = ("handle", "value", "field_name", "tool", "params", "type_desc", "evicted")
+    __slots__ = ("handle", "value", "field_name", "tool", "params", "type_desc")
 
     def __init__(
         self,
@@ -18,7 +17,6 @@ class WorkspaceEntry:
         field_name: str,
         tool: str,
         params: dict[str, Any],
-        evicted: bool = False,
     ):
         self.handle = handle
         self.value = value
@@ -26,7 +24,6 @@ class WorkspaceEntry:
         self.tool = tool
         self.params = params
         self.type_desc = _type_desc(value)
-        self.evicted = evicted
 
 
 class Workspace:
@@ -63,12 +60,10 @@ class Workspace:
         return entry.value
 
     def describe(self, handle: str) -> str:
-        """One-line description of a handle. Evicted entries look identical to normal ones."""
+        """One-line description of a handle."""
         entry = self._find_entry(handle)
         if entry is None:
             return ""
-        if entry.evicted:
-            return f"{entry.handle}: {entry.field_name} ({entry.type_desc}) from {entry.tool}"
         detail = _detail(entry.value)
         return f"{entry.handle}: {entry.field_name} ({entry.type_desc}{detail}) from {entry.tool}"
 
@@ -90,8 +85,8 @@ class Workspace:
         return "\n".join(self.describe(h) for h in handles if self.describe(h))
 
     def namespace(self) -> dict[str, Any]:
-        """Non-evicted handles as Python variables for sandbox injection."""
-        return {entry.handle: entry.value for entry in self._entries if not entry.evicted}
+        """Handles as Python variables for sandbox injection."""
+        return {entry.handle: entry.value for entry in self._entries}
 
     def store_result(
         self,
@@ -126,13 +121,13 @@ class Workspace:
         return handles
 
     def find_by_field(self, field_name: str, min_length: int = 0) -> str | None:
-        """Find most recent non-evicted string whose field name matches.
+        """Find most recent string whose field name matches.
 
         Only returns string values at least *min_length* chars long.
         Used for auto-fill (piping sequences between tools).
         """
         for entry in reversed(self._entries):
-            if entry.evicted or entry.field_name != field_name:
+            if entry.field_name != field_name:
                 continue
             if not isinstance(entry.value, str):
                 continue
@@ -160,7 +155,7 @@ class Workspace:
     # ── Serialization ──
 
     def to_json(self) -> list[dict]:
-        """Serialize entries for persistence. Evicted entries store value=None."""
+        """Serialize entries for persistence."""
         out = []
         for e in self._entries:
             out.append(
@@ -170,8 +165,7 @@ class Workspace:
                     "tool": e.tool,
                     "params": e.params,
                     "type_desc": e.type_desc,
-                    "evicted": e.evicted,
-                    "value": None if e.evicted else e.value,
+                    "value": e.value,
                 }
             )
         return out
@@ -187,71 +181,16 @@ class Workspace:
                 field_name=item["field_name"],
                 tool=item["tool"],
                 params=item.get("params", {}),
-                evicted=item.get("evicted", False),
             )
             entry.type_desc = item.get("type_desc", _type_desc(entry.value))
             ws._entries.append(entry)
         return ws
-
-    # ── Eviction ──
-
-    def data_size(self) -> int:
-        """Estimate total serialized size of all non-evicted values."""
-        total = 0
-        for e in self._entries:
-            if e.evicted or e.value is None:
-                continue
-            total += len(json.dumps(e.value, default=str))
-        return total
-
-    def evict(self, max_bytes: int) -> int:
-        """Evict oldest values until data_size() <= max_bytes. Return count evicted."""
-        if self.data_size() <= max_bytes:
-            return 0
-
-        # Group entries by (tool, params_key) to evict entire tool calls together
-        groups: list[list[int]] = []
-        seen: dict[str, int] = {}
-        for i, e in enumerate(self._entries):
-            if e.evicted:
-                continue
-            key = f"{e.tool}:{json.dumps(e.params, sort_keys=True, default=str)}"
-            if key in seen:
-                groups[seen[key]].append(i)
-            else:
-                seen[key] = len(groups)
-                groups.append([i])
-
-        count = 0
-        for group in groups:
-            if self.data_size() <= max_bytes:
-                break
-            for idx in group:
-                entry = self._entries[idx]
-                entry.value = None
-                entry.evicted = True
-                count += 1
-        return count
-
-    def restore(self, handle: str, value: Any) -> None:
-        """Re-populate an evicted entry's value."""
-        entry = self._find_entry(handle)
-        if entry is not None:
-            entry.value = value
-            entry.evicted = False
 
     def _find_entry(self, handle: str) -> WorkspaceEntry | None:
         """Find entry by handle name (supports both p<N> and r<N>)."""
         for entry in self._entries:
             if entry.handle == handle:
                 return entry
-        return None
-
-    def _handle_index(self, handle: str) -> int | None:
-        """Find index of entry by handle name. Used by eviction auto-restore."""
-        for i, entry in enumerate(self._entries):
-            if entry.handle == handle:
-                return i
         return None
 
 

@@ -379,11 +379,6 @@ async def _unified_loop(
                 code = params.get("code", "")
                 sb_result = await sandbox.execute(code)
 
-                # Auto-rerun: if NameError on an evicted handle, restore and retry once
-                if sb_result["status"] == "error":
-                    if await _try_restore_evicted(sb_result, workspace, registry):
-                        sb_result = await sandbox.execute(code)
-
                 compact = sandbox.summary_for_llm(sb_result)
                 messages.append(
                     {
@@ -548,62 +543,6 @@ async def _unified_loop(
     if plan_text:
         resp["plan"] = plan_text
     return resp
-
-
-# ── Evicted Handle Auto-Rerun ──
-
-_NAMEERROR_HANDLE_RE = re.compile(r"name '(r\d+)' is not defined")
-
-
-async def _try_restore_evicted(
-    sb_result: dict,
-    workspace: Workspace,
-    registry: ToolRegistry,
-) -> bool:
-    """If sandbox NameError references an evicted handle, re-run the tool and restore.
-
-    Restores only the failed handle's tool call group. Returns True if sandbox
-    should be retried. One retry per sandbox call — if the retry fails on a
-    different evicted handle, the error goes back to the LLM.
-    """
-    error_str = sb_result.get("error", "")
-    if "NameError" not in error_str:
-        return False
-
-    match = _NAMEERROR_HANDLE_RE.search(error_str)
-    if not match:
-        return False
-
-    handle = match.group(1)
-    idx = workspace._handle_index(handle)
-    if idx is None:
-        return False
-
-    entry = workspace._entries[idx]
-    if not entry.evicted:
-        return False
-
-    tool = registry.get(entry.tool)
-    if not tool:
-        return False
-
-    try:
-        result = await tool.execute(entry.params)
-    except Exception as e:
-        logger.warning("Auto-rerun %s failed: %s", entry.tool, e)
-        return False
-
-    # Restore all evicted entries from the same tool call
-    for e in workspace._entries:
-        if not e.evicted or e.tool != entry.tool or e.params != entry.params:
-            continue
-        if e.field_name == "_result":
-            workspace.restore(e.handle, result)
-        elif e.field_name in result:
-            workspace.restore(e.handle, result[e.field_name])
-
-    logger.info("Auto-restored evicted handle %s via %s rerun", handle, entry.tool)
-    return True
 
 
 # ── Tool Message Builder ──
