@@ -612,10 +612,11 @@ async def _handle_message(
             )
 
             # Generate title once (LLM with fallback to first message words)
+            # Skip LLM title gen if rate-limited — use fallback instead
             if not chat["title_generated"]:
                 chat["title_generated"] = True
                 title = None
-                if llm_client:
+                if llm_client and not result.get("llm_error"):
                     title = await _generate_chat_title(llm_client, chat["messages"][:4])
                 if not title:
                     title = _fallback_title(content)

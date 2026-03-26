@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
@@ -267,10 +268,23 @@ async def _unified_loop(
         try:
             response = await llm_client.chat(messages, tools=turn_tools)
         except Exception as e:
-            logger.error("LLM call failed (turn %d): %s", turn, e)
-            error_msg = _sanitize_llm_error(str(e))
-            exceeded = True
-            break
+            sanitized = _sanitize_llm_error(str(e))
+            # Rate limit: wait and retry once (on top of litellm's own retries)
+            if sanitized == "Rate limit reached":
+                logger.warning("Rate limit hit (turn %d), retrying in 15s", turn)
+                await asyncio.sleep(15)
+                try:
+                    response = await llm_client.chat(messages, tools=turn_tools)
+                except Exception as e2:
+                    logger.error("LLM retry failed (turn %d): %s", turn, e2)
+                    error_msg = _sanitize_llm_error(str(e2))
+                    exceeded = True
+                    break
+            else:
+                logger.error("LLM call failed (turn %d): %s", turn, e)
+                error_msg = sanitized
+                exceeded = True
+                break
 
         # Accumulate token usage
         usage = response.get("usage") or {}
