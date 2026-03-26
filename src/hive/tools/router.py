@@ -394,6 +394,10 @@ async def _unified_loop(
                 else:
                     desc = str(sb_result.get("feedback", ""))
                     chain_summary = desc[:100] if len(desc) > 100 else desc
+                    # List user-defined variables so LLM knows what's available
+                    if sb_result.get("user_vars"):
+                        var_names = ", ".join(sorted(sb_result["user_vars"]))
+                        chain_summary += f" | vars: {var_names}"
                 turn_log.append(("python", chain_summary))
 
                 chain.append(
@@ -470,8 +474,11 @@ async def _unified_loop(
                 }
             )
 
-            # Record in turn_log for flat context rebuild
+            # Record in turn_log for flat context rebuild — include handles
             summary = tool.format_result(result)
+            if new_handles:
+                handle_desc = workspace.describe_handles(new_handles)
+                summary += f"\n{handle_desc}"
             turn_log.append((tool_name, summary))
 
             chain.append(
