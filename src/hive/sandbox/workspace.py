@@ -74,7 +74,7 @@ class Workspace:
             return ""
         return f"{entry.handle}: {entry.field_name} ({entry.type_desc}) from {entry.tool}"
 
-    def describe_all(self, max_entries: int = 20) -> str:
+    def describe_all(self, max_entries: int = 50) -> str:
         """All handles, one per line. Skips _result meta-handles. Capped."""
         visible = [
             e for e in self._entries

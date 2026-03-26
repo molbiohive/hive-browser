@@ -30,7 +30,7 @@ class ModelEntry(BaseSettings):
 class LLMConfig(BaseSettings):
     models: list[ModelEntry] = Field(default_factory=lambda: [ModelEntry()])
     auto_discover: bool = False  # auto-discover Ollama models at runtime
-    agent_max_turns: int = 30  # max tool-call turns in agentic loop
+    agent_max_turns: int = 20  # max tool-call turns in agentic loop
     pipe_min_length: int = 200  # auto-pipe strings longer than this between tools
     use_planner: bool = True  # planning call before agent loop
     sandbox_output_limit: int = 4000  # max chars for sandbox/tool output sent to LLM
