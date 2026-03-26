@@ -11,7 +11,7 @@ from sqlalchemy.orm import selectinload
 
 from hive.config import display_file_path
 from hive.db import session as db
-from hive.db.models import Part, PartInstance
+from hive.db.models import Annotation, Part, PartInstance, PartName
 from hive.tools.base import Tool
 from hive.tools.resolve import resolve_part, resolve_sequence
 
@@ -124,6 +124,9 @@ class PartsTool(Tool):
                 if lm.library
             ]
 
+            # Resolve variant annotations into enriched records
+            variants = await _resolve_variants(session, part.annotations)
+
             result: dict[str, Any] = {
                 "part": {
                     "pid": part.id,
@@ -138,6 +141,9 @@ class PartsTool(Tool):
                 "annotations": annotations,
                 "libraries": libraries,
             }
+
+            if variants:
+                result["variants"] = variants
 
             if inp.find_relatives and self._config:
                 relatives = await self._find_relatives(part)
@@ -199,3 +205,63 @@ class PartsTool(Tool):
         except Exception as e:
             logger.warning("find_relatives BLAST failed: %s", e)
             return []
+
+
+async def _resolve_variants(session, annotations: list) -> list[dict]:
+    """Resolve variant_of and blast_similar annotations into enriched records."""
+    import json
+
+    variant_pids: dict[int, dict] = {}
+
+    for a in annotations:
+        if a.key not in ("variant_of", "blast_similar"):
+            continue
+        d = json.loads(a.value)
+        if a.key == "variant_of":
+            for pid in d.get("pids", []):
+                variant_pids.setdefault(pid, {"source": "name_collision"})
+        else:
+            pid = d.get("pid")
+            if pid is not None:
+                variant_pids.setdefault(pid, {})
+                variant_pids[pid]["source"] = "blast"
+                if "identity" in d:
+                    variant_pids[pid]["identity"] = round(float(d["identity"]), 1)
+                if "coverage" in d:
+                    variant_pids[pid]["coverage"] = round(float(d["coverage"]), 1)
+
+    if not variant_pids:
+        return []
+
+    pids = list(variant_pids.keys())
+    stmt = (
+        select(Part)
+        .where(Part.id.in_(pids))
+        .options(
+            selectinload(Part.names),
+            selectinload(Part.instances),
+        )
+    )
+    rows = (await session.execute(stmt)).scalars().all()
+    part_map = {p.id: p for p in rows}
+
+    result = []
+    for pid in pids:
+        part = part_map.get(pid)
+        if not part:
+            continue
+        types = list({pi.annotation_type for pi in part.instances if pi.annotation_type})
+        entry: dict[str, Any] = {
+            "pid": part.id,
+            "names": [n.name for n in part.names],
+            "length": part.length,
+            "types": types,
+            "source": variant_pids[pid].get("source", "unknown"),
+        }
+        if "identity" in variant_pids[pid]:
+            entry["identity"] = variant_pids[pid]["identity"]
+        if "coverage" in variant_pids[pid]:
+            entry["coverage"] = variant_pids[pid]["coverage"]
+        result.append(entry)
+
+    return result

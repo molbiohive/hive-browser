@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -164,9 +165,11 @@ class MatchProcess(Process):
                 if matches:
                     async with db.async_session_factory() as session:
                         for m in matches:
-                            value = (
-                                f"pid:{m['pid']} identity:{m['identity']} coverage:{m['coverage']}"
-                            )
+                            value = json.dumps({
+                                "pid": m["pid"],
+                                "identity": m["identity"],
+                                "coverage": m["coverage"],
+                            })
                             session.add(
                                 Annotation(
                                     part_id=pid,

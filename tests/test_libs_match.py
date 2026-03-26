@@ -97,7 +97,8 @@ class TestFlagVariant:
                 )
             )
         ).scalar_one()
-        assert ann.value == "10,20"
+        import json
+        assert json.loads(ann.value) == {"pids": [10, 20]}
         assert ann.source == "computed"
 
     async def test_empty_list_no_annotation(self, db_session):

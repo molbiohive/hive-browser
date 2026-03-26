@@ -235,8 +235,12 @@ class TestMatchProcessRun:
         assert "1 variants found" in result
         assert len(committed_annotations) == 1
         ann = committed_annotations[0]
+        import json
         assert ann.key == "blast_similar"
-        assert "pid:20" in ann.value
+        d = json.loads(ann.value)
+        assert d["pid"] == 20
+        assert d["identity"] == 97.5
+        assert d["coverage"] == 100.0
         assert ann.source == "blast"
 
 

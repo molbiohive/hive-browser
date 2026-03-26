@@ -1,5 +1,6 @@
 """Variant detection -- flag parts that share a name but have different sequences."""
 
+import json
 import logging
 
 from sqlalchemy import select
@@ -42,5 +43,5 @@ async def flag_variant(
     """Write variant_of annotation linking to colliding part IDs."""
     if not colliding_pids:
         return
-    value = ",".join(str(pid) for pid in sorted(colliding_pids))
+    value = json.dumps({"pids": sorted(colliding_pids)})
     await add_annotation(session, part_id, "variant_of", value, source="computed")
