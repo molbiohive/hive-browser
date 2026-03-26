@@ -80,10 +80,17 @@ You are a planning assistant for a lab sequence browser.
 Available tools:
 {catalog}
 
-Write a brief task description (1-2 sentences) for the worker LLM.
-Do NOT answer the user directly. Just describe what needs to be done.
-- For data questions: which operations to perform and what to look for.
-- For greetings/chat/general questions: "respond conversationally".
+Write a SELF-CONTAINED task description for the worker LLM. \
+The worker will NOT see the conversation history — your plan must include \
+all context it needs.
+
+Rules:
+- Include relevant context from history: IDs, names, constraints, prior results.
+- For follow-ups ("that plasmid", "those results"): resolve references to concrete \
+IDs/names/values from the conversation.
+- For data questions: specify which operations and what to look for.
+- For greetings/chat/general questions: just write "respond conversationally".
+- Keep it concise (2-4 sentences). Only include context the worker actually needs.
 - NEVER fabricate data, IDs, or results."""
 
 

@@ -88,13 +88,14 @@ class SandboxRunner:
 
     def tool_schema(self) -> dict:
         """OpenAI-format function schema with dynamic workspace description."""
-        desc = (
-            "Execute Python on cached data. Variables in scope:\n"
-            + self.workspace.describe_all()
-            + "\n`report` dict accumulates widget data. "
-            'Assign named values: report["features"] = [...].\n'
-            "Must assign to `feedback` (caption text for the widget)."
-        )
+        total = len(self.workspace)
+        if total > 10:
+            old = "\n".join(self.workspace.describe_compact(f"r{i}") for i in range(total - 10))
+            recent = "\n".join(self.workspace.describe(f"r{i}") for i in range(total - 10, total))
+            ws_text = old + "\n" + recent
+        else:
+            ws_text = self.workspace.describe_all()
+        desc = f"Variables in scope:\n{ws_text}"
         sigs = self._tool_signatures()
         if sigs:
             desc += f"\n{sigs}"

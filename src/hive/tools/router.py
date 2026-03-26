@@ -206,10 +206,8 @@ async def _unified_loop(
         except Exception as e:
             logger.warning("Planner failed, continuing without plan: %s", e)
 
-    # Build message list — plan augments user input (both visible to agent)
+    # Build message list — plan absorbs history so agent only needs plan + input
     messages = [{"role": "system", "content": build_system_prompt()}]
-    if history:
-        messages.extend(history)
 
     # Inject current chat tasks as context (if any)
     chat_tasks = current_chat_tasks.get()
@@ -226,6 +224,7 @@ async def _unified_loop(
         ws_history = f"\n\n[Workspace from previous messages]\n{workspace.describe_all()}"
 
     if plan_text:
+        # Planner already consumed history — agent only needs plan + input
         messages.append(
             {
                 "role": "user",
@@ -233,6 +232,9 @@ async def _unified_loop(
             }
         )
     else:
+        # No planner — agent needs history for context
+        if history:
+            messages.extend(history)
         messages.append({"role": "user", "content": f"{user_input}{ws_history}"})
 
     for turn in range(max_turns):

@@ -314,7 +314,7 @@ class TestSandboxRunner:
         schema = runner.tool_schema()
         assert schema["function"]["name"] == "python"
         # Description still valid, just no workspace entries listed
-        assert "feedback" in schema["function"]["description"]
+        assert "Variables in scope" in schema["function"]["description"]
 
     async def test_report_dict_persists_across_calls(self):
         """Report dict accumulates data across multiple sandbox calls."""

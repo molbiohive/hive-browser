@@ -63,6 +63,14 @@ class Workspace:
         detail = _detail(entry.value)
         return f"{handle}: {entry.field_name} ({entry.type_desc}{detail}) from {entry.tool}"
 
+    def describe_compact(self, handle: str) -> str:
+        """Ultra-compact: 'r0: field (type) from tool' — no column names or details."""
+        idx = self._handle_index(handle)
+        if idx is None:
+            return ""
+        entry = self._entries[idx]
+        return f"{handle}: {entry.field_name} ({entry.type_desc}) from {entry.tool}"
+
     def describe_all(self) -> str:
         """All handles, one per line."""
         lines = []
