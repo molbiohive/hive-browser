@@ -74,7 +74,6 @@ class LLMClient:
 
         kwargs["timeout"] = 120  # seconds — prevent indefinite hangs
         kwargs["num_retries"] = 3  # litellm auto-retry on transient errors
-        kwargs["retry_after"] = 10  # seconds between retries
 
         # vLLM + thinking models (Qwen3): optionally disable thinking per call
         if disable_thinking and self._config.base_url:

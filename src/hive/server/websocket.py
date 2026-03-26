@@ -601,7 +601,7 @@ async def _handle_message(
                 user_slug=user_slug,
                 model=chat.get("model"),
                 tasks=chat.get("tasks"),
-                workspace=ws.to_json(),
+                workspace=chat["workspace"].to_json(),
             )
 
             # Generate title once (LLM with fallback to first message words)
