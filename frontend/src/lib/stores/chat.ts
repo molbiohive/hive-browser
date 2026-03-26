@@ -215,6 +215,7 @@ export function connect() {
 				model: data.model,
 				tokens: data.tokens,
 				thinking: data.thinking,
+				plan: data.plan,
 			};
 			const isForm = data.widget?.type === 'form';
 			chatStore.update(s => ({
