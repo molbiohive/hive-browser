@@ -125,7 +125,7 @@ class PartsTool(Tool):
             ]
 
             # Resolve variant annotations into enriched records
-            variants = await _resolve_variants(session, part.annotations)
+            collision, blast = await _resolve_variants(session, part.annotations)
 
             result: dict[str, Any] = {
                 "part": {
@@ -142,8 +142,10 @@ class PartsTool(Tool):
                 "libraries": libraries,
             }
 
-            if variants:
-                result["variants"] = variants
+            if collision:
+                result["variants_collision"] = collision
+            if blast:
+                result["variants_blast"] = blast
 
             if inp.find_relatives and self._config:
                 relatives = await self._find_relatives(part)
@@ -207,36 +209,44 @@ class PartsTool(Tool):
             return []
 
 
-async def _resolve_variants(session, annotations: list) -> list[dict]:
-    """Resolve variant_of and blast_similar annotations into enriched records."""
+async def _resolve_variants(
+    session, annotations: list,
+) -> tuple[list[dict], list[dict]]:
+    """Resolve variant_of and blast_similar annotations.
+
+    Returns (collision_variants, blast_variants) as two separate lists.
+    """
     import json
 
-    variant_pids: dict[int, dict] = {}
+    collision_pids: list[int] = []
+    blast_pids: dict[int, dict] = {}
 
     for a in annotations:
         if a.key not in ("variant_of", "blast_similar"):
             continue
-        d = json.loads(a.value)
+        try:
+            d = json.loads(a.value)
+        except (json.JSONDecodeError, TypeError):
+            continue
         if a.key == "variant_of":
             for pid in d.get("pids", []):
-                variant_pids.setdefault(pid, {"source": "name_collision"})
+                if pid not in collision_pids:
+                    collision_pids.append(pid)
         else:
             pid = d.get("pid")
             if pid is not None:
-                variant_pids.setdefault(pid, {})
-                variant_pids[pid]["source"] = "blast"
-                if "identity" in d:
-                    variant_pids[pid]["identity"] = round(float(d["identity"]), 1)
-                if "coverage" in d:
-                    variant_pids[pid]["coverage"] = round(float(d["coverage"]), 1)
+                blast_pids[pid] = {
+                    "identity": round(float(d.get("identity", 0)), 1),
+                    "coverage": round(float(d.get("coverage", 0)), 1),
+                }
 
-    if not variant_pids:
-        return []
+    all_pids = list(set(collision_pids) | set(blast_pids.keys()))
+    if not all_pids:
+        return [], []
 
-    pids = list(variant_pids.keys())
     stmt = (
         select(Part)
-        .where(Part.id.in_(pids))
+        .where(Part.id.in_(all_pids))
         .options(
             selectinload(Part.names),
             selectinload(Part.instances),
@@ -245,23 +255,25 @@ async def _resolve_variants(session, annotations: list) -> list[dict]:
     rows = (await session.execute(stmt)).scalars().all()
     part_map = {p.id: p for p in rows}
 
-    result = []
-    for pid in pids:
+    def _base(pid: int) -> dict[str, Any] | None:
         part = part_map.get(pid)
         if not part:
-            continue
+            return None
         types = list({pi.annotation_type for pi in part.instances if pi.annotation_type})
-        entry: dict[str, Any] = {
+        return {
             "pid": part.id,
             "names": [n.name for n in part.names],
             "length": part.length,
             "types": types,
-            "source": variant_pids[pid].get("source", "unknown"),
         }
-        if "identity" in variant_pids[pid]:
-            entry["identity"] = variant_pids[pid]["identity"]
-        if "coverage" in variant_pids[pid]:
-            entry["coverage"] = variant_pids[pid]["coverage"]
-        result.append(entry)
 
-    return result
+    collision = [e for pid in collision_pids if (e := _base(pid))]
+    blast = []
+    for pid, stats in blast_pids.items():
+        entry = _base(pid)
+        if entry:
+            entry["identity"] = stats["identity"]
+            entry["coverage"] = stats["coverage"]
+            blast.append(entry)
+
+    return collision, blast

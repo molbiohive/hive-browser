@@ -1,7 +1,7 @@
 <script>
 	import { toolList } from '$lib/stores/chat.ts';
 
-	let { visible, filter = '', maxVisible = 5, onSelect } = $props();
+	let { visible, filter = '', onSelect } = $props();
 
 	const builtins = [
 		{ name: 'help', description: 'Show available commands' },
@@ -40,8 +40,7 @@
 		const q = filter.toLowerCase();
 		return allCommands
 			.filter(cmd => fuzzyMatch(cmd.name, q))
-			.sort((a, b) => matchScore(b.name, q) - matchScore(a.name, q))
-			.slice(0, maxVisible);
+			.sort((a, b) => matchScore(b.name, q) - matchScore(a.name, q));
 	});
 
 	function select(cmd) {
