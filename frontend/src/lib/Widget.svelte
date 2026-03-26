@@ -77,9 +77,11 @@
 	});
 
 	let activeTab = $state('');
+	let tabInitialized = false;
 	$effect(() => {
-		if (isReport && reportTabs.length > 0) activeTab = reportTabs[0].id;
-		else if (fallbackTables.length > 0) activeTab = fallbackTables[0].id;
+		if (tabInitialized) return;
+		if (isReport && reportTabs.length > 0) { activeTab = reportTabs[0].id; tabInitialized = true; }
+		else if (fallbackTables.length > 0) { activeTab = fallbackTables[0].id; tabInitialized = true; }
 	});
 
 	const isForm = $derived(widget.type === 'form');

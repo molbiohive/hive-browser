@@ -149,6 +149,9 @@
 
 	$effect(() => {
 		debounceSearch(searchQuery);
+		return () => {
+			clearTimeout(_debounceTimer);
+		};
 	});
 </script>
 

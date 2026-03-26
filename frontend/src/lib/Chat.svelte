@@ -81,6 +81,9 @@
 		} else {
 			if (_timerRef) { clearInterval(_timerRef); _timerRef = null; }
 		}
+		return () => {
+			if (_timerRef) { clearInterval(_timerRef); _timerRef = null; }
+		};
 	});
 
 	onMount(() => {

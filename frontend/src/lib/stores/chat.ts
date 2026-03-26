@@ -25,6 +25,7 @@ interface Message {
 	model?: string;
 	tokens?: { in: number; out: number };
 	thinking?: string;
+	plan?: string;
 }
 
 export interface ModelInfo {
@@ -243,8 +244,8 @@ export function connect() {
 		} else if (data.type === 'tasks_updated') {
 			tasks.set(data.tasks || []);
 		} else if (data.type === 'feedback_saved') {
-		console.log('[ws] feedback saved');
-	} else if (data.type === 'widget_data') {
+			console.log('[ws] feedback saved');
+		} else if (data.type === 'widget_data') {
 			chatStore.update(s => {
 				const messages = [...s.messages];
 				const idx = data.messageIndex;
