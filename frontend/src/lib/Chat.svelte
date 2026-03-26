@@ -259,6 +259,7 @@
 	}
 
 	let paletteFilter = $state('');
+	let palettePrefix = $state('/');
 
 	function handleInput(e) {
 		const val = e.target.value;
@@ -266,9 +267,11 @@
 		if (pasteSlots.length > 0) pruneSlots(val);
 		if (val.startsWith('//')) {
 			showPalette = true;
+			palettePrefix = '//';
 			paletteFilter = val.slice(2).split(' ')[0];
 		} else if (val.startsWith('/')) {
 			showPalette = true;
+			palettePrefix = '/';
 			paletteFilter = val.slice(1).split(' ')[0];
 		} else {
 			showPalette = false;
@@ -277,7 +280,7 @@
 	}
 
 	function handlePaletteSelect(cmdName) {
-		inputText = `/${cmdName} `;
+		inputText = `${palettePrefix}${cmdName} `;
 		showPalette = false;
 	}
 
