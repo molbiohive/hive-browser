@@ -85,7 +85,7 @@ async def lifespan(app: FastAPI):
     app.state.tool_registry = ToolFactory.discover(
         config, approved_files=approved_files
     )
-    logger.info("Tool registry: %d tools", len(app.state.tool_registry.all()))
+    logger.info("Tool registry: %d tools", len(app.state.tool_registry.tools()))
 
     # --- Planner (cheap LLM call for task description) ---
     app.state.planner = None

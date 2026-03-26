@@ -125,7 +125,7 @@ async def websocket_endpoint(websocket: WebSocket):
             _resolve_model(model_pool, current_model_id, config)
             if model_pool and current_model_id else None
         )
-        tool_count = len(registry.all()) if registry else 0
+        tool_count = len(registry.tools()) if registry else 0
         init_status = await _quick_status(current_client, tool_count=tool_count)
         await manager.send_json(conn_id, {
             "type": "init",
@@ -509,7 +509,7 @@ async def _handle_message(
         # Send status update after tool results (counts may have changed)
         if result.get("type") == "tool_result":
             updated_status = await _quick_status(
-                llm_client, tool_count=len(registry.all()) if registry else 0,
+                llm_client, tool_count=len(registry.tools()) if registry else 0,
             )
             await manager.send_json(conn_id, {"type": "status_update", "status": updated_status})
 

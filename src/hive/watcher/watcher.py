@@ -57,44 +57,32 @@ async def scan_and_ingest(
 
     indexed = 0
     errors = 0
-    batch_count = 0
-    session = None
 
-    try:
-        for i, (path, match) in enumerate(files, 1):
-            if session is None:
-                session = async_session_factory()
-                session = await session.__aenter__()
+    for batch_start in range(0, total, batch_size):
+        batch = files[batch_start : batch_start + batch_size]
+        async with async_session_factory() as session:
+            for path, match in batch:
+                try:
+                    result = await ingest_file(
+                        session, path, match, commit=False, watcher_root=watcher_root,
+                        force=force,
+                    )
+                    if result is not None:
+                        indexed += 1
+                except Exception as e:
+                    logger.error("Failed to ingest %s: %s", path.name, e)
+                    errors += 1
+            await session.commit()
 
-            try:
-                result = await ingest_file(
-                    session, path, match, commit=False, watcher_root=watcher_root,
-                    force=force,
-                )
-                if result is not None:
-                    indexed += 1
-            except Exception as e:
-                logger.error("Failed to ingest %s: %s", path.name, e)
-                errors += 1
-
-            batch_count += 1
-
-            if batch_count >= batch_size or i == total:
-                await session.commit()
-                await session.__aexit__(None, None, None)
-                session = None
-                batch_count = 0
-                logger.info(
-                    "Scan progress: %d/%d files (%d%%), %d indexed, %d errors",
-                    i, total, i * 100 // total, indexed, errors,
-                )
-                if ctx:
-                    await ctx.check()
-                else:
-                    await asyncio.sleep(0)  # yield to event loop
-    finally:
-        if session is not None:
-            await session.__aexit__(None, None, None)
+        done = min(batch_start + len(batch), total)
+        logger.info(
+            "Scan progress: %d/%d files (%d%%), %d indexed, %d errors",
+            done, total, done * 100 // total, indexed, errors,
+        )
+        if ctx:
+            await ctx.check()
+        else:
+            await asyncio.sleep(0)  # yield to event loop
 
     logger.info("Scan complete: %d indexed, %d errors out of %d files", indexed, errors, total)
 

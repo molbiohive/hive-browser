@@ -119,10 +119,6 @@ class ToolRegistry:
         """All registered tools."""
         return list(self._tools.values())
 
-    # Keep all() as alias for backward compatibility during transition
-    def all(self) -> list[Tool]:
-        return list(self._tools.values())
-
     def metadata(self) -> list[dict]:
         """All tool metadata for frontend init."""
         return [t.metadata() for t in self._tools.values()]
