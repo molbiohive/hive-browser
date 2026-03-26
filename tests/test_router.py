@@ -678,13 +678,16 @@ class TestSandboxIntegration:
         resp = await route_input("find test", reg, llm_client=llm)
         assert resp["type"] == "tool_result"
         assert resp["tool"] == "search"
-        # Verify cache info appears in the tool message sent to LLM
-        tool_msg = [
+        # Verify search summary appears in status (flat context rebuild)
+        last_msgs = llm.chat.call_args_list[-1][0][0]
+        status_msg = [
             m
-            for m in llm.chat.call_args_list[-1][0][0]
-            if isinstance(m, dict) and m.get("role") == "tool"
+            for m in last_msgs
+            if isinstance(m, dict) and m.get("role") == "assistant"
+            and "Done so far:" in m.get("content", "")
         ]
-        assert any("Stored:" in m.get("content", "") for m in tool_msg)
+        assert status_msg, "Status summary should appear in rebuilt messages"
+        assert "search:" in status_msg[0]["content"]
 
     async def test_python_dispatched_to_sandbox(self):
         """python tool calls go to sandbox, not ToolRegistry."""

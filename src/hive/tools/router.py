@@ -143,9 +143,8 @@ async def _unified_loop(
 ) -> dict[str, Any]:
     """Unified agentic loop — LLM converses and chains tools as needed.
 
-    Single loop handles everything: simple queries, multi-step chains,
-    and pure conversation. ALL tool results go to workspace — LLM sees
-    descriptors and queries data via python sandbox.
+    Flat context: messages are rebuilt from scratch each turn. A compact
+    turn_log replaces accumulated assistant+tool message pairs.
 
     LLM sees exactly 2 tools: search (function-calling) + python (sandbox).
     All other tools are callable from python code.
@@ -170,6 +169,7 @@ async def _unified_loop(
     last_tool = None
     last_params = {}
     chain = []  # [{tool, params, summary}]
+    turn_log: list[tuple[str, str]] = []  # (tool_name, summary) — flat status
     if workspace is None:
         workspace = Workspace()
     sandbox = SandboxRunner(
@@ -206,38 +206,50 @@ async def _unified_loop(
         except Exception as e:
             logger.warning("Planner failed, continuing without plan: %s", e)
 
-    # Build message list — plan absorbs history so agent only needs plan + input
-    messages = [{"role": "system", "content": build_system_prompt()}]
-
-    # Inject current chat tasks as context (if any)
+    # Capture static context once (tasks, workspace history)
+    task_ctx = ""
     chat_tasks = current_chat_tasks.get()
     if chat_tasks:
         task_lines = []
         for t in chat_tasks:
             mark = "x" if t.get("done") else " "
             task_lines.append(f"- [{mark}] {t.get('text', '')}")
-        messages.append({"role": "system", "content": ("Current tasks:\n" + "\n".join(task_lines))})
+        task_ctx = "Current tasks:\n" + "\n".join(task_lines)
 
-    # Inject historical workspace summary so LLM knows what data is available
     ws_history = ""
     if len(workspace) > 0:
         ws_history = f"\n\n[Workspace from previous messages]\n{workspace.describe_all()}"
 
-    if plan_text:
-        # Planner already consumed history — agent only needs plan + input
-        messages.append(
-            {
-                "role": "user",
-                "content": (f"[Plan]\n{plan_text}\n\n[User request]\n{user_input}{ws_history}"),
-            }
-        )
-    else:
-        # No planner — agent needs history for context
-        if history:
-            messages.extend(history)
-        messages.append({"role": "user", "content": f"{user_input}{ws_history}"})
+    def _build_messages() -> list[dict]:
+        """Rebuild messages from scratch each turn — flat context."""
+        msgs: list[dict] = [{"role": "system", "content": build_system_prompt()}]
+
+        if task_ctx:
+            msgs.append({"role": "system", "content": task_ctx})
+
+        if plan_text:
+            msgs.append(
+                {
+                    "role": "user",
+                    "content": f"[Plan]\n{plan_text}\n\n[User request]\n{user_input}{ws_history}",
+                }
+            )
+        else:
+            if history:
+                msgs.extend(history)
+            msgs.append({"role": "user", "content": f"{user_input}{ws_history}"})
+
+        if turn_log:
+            status = "\n".join(f"- {name}: {s}" for name, s in turn_log)
+            msgs.append({"role": "assistant", "content": f"Done so far:\n{status}"})
+            msgs.append({"role": "user", "content": "Continue."})
+
+        return msgs
 
     for turn in range(max_turns):
+        # Rebuild messages from scratch — no accumulated pairs
+        messages = _build_messages()
+
         # search + python always available
         turn_tools = [search_schema, sandbox.tool_schema()]
 
@@ -322,7 +334,8 @@ async def _unified_loop(
                 resp["plan"] = plan_text
             return resp
 
-        # Append assistant message with tool_calls
+        # Append assistant message with tool_calls for API compliance
+        # (required: tool response must follow assistant with tool_calls)
         messages.append(msg)
 
         for tc in msg["tool_calls"]:
@@ -365,12 +378,13 @@ async def _unified_loop(
                     }
                 )
 
-                # Human-readable chain summary (shown in UI, not sent to LLM)
+                # Record in turn_log for flat context rebuild
                 if sb_result["status"] != "ok":
                     chain_summary = f"Error: {sb_result.get('error', 'unknown')}"
                 else:
                     desc = str(sb_result.get("feedback", ""))
-                    chain_summary = desc[:80] if len(desc) > 80 else desc
+                    chain_summary = desc[:100] if len(desc) > 100 else desc
+                turn_log.append(("python", chain_summary))
 
                 chain.append(
                     {
@@ -394,6 +408,7 @@ async def _unified_loop(
                         "content": f"Error: unknown tool '{tool_name}'",
                     }
                 )
+                turn_log.append((tool_name, f"Error: unknown tool '{tool_name}'"))
                 continue
 
             # Auto-fill from workspace: inject stored values into matching params
@@ -435,11 +450,15 @@ async def _unified_loop(
                 }
             )
 
+            # Record in turn_log for flat context rebuild
+            summary = tool.format_result(result)
+            turn_log.append((tool_name, summary))
+
             chain.append(
                 {
                     "tool": tool_name,
                     "params": params,
-                    "summary": tool.format_result(result),
+                    "summary": summary,
                 }
             )
             logger.info("Unified turn %d: %s(%s)", turn + 1, tool_name, json.dumps(params))
