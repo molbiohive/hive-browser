@@ -17,11 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class SandboxRunner:
-    """Execution orchestrator for the built-in python sandbox.
-
-    Not a Tool -- this is a server-side runtime capability injected
-    by the router alongside regular tool schemas.
-    """
+    """Execution orchestrator for the built-in python sandbox."""
 
     def __init__(
         self,
@@ -32,8 +28,7 @@ class SandboxRunner:
     ):
         self.workspace = workspace
         self.output_limit = output_limit
-        self.report: dict[str, Any] = {}  # LLM-populated, persists across calls
-        self._user_vars: dict[str, Any] = {}  # variables from previous python calls
+        self.report: dict[str, Any] = {}
         self._registry = registry
         self._tool_call_budget = tool_call_budget
 
@@ -61,7 +56,7 @@ class SandboxRunner:
         return callables
 
     def _tool_signatures(self) -> str:
-        """Minimal callable-tools listing: name(params) -> returns."""
+        """Callable tools listing: name(params)."""
         if not self._registry:
             return ""
         tools = self._registry.tools()
@@ -72,20 +67,15 @@ class SandboxRunner:
             schema = tool.input_schema()
             props = schema.get("properties", {})
             params = ", ".join(props.keys())
-            ret = f" -> {tool.returns}" if tool.returns else ""
-            lines.append(f"  {tool.name}({params}){ret}")
+            lines.append(f"  {tool.name}({params})")
         return "\n".join(lines)
 
     def tool_schema(self) -> dict:
         """OpenAI-format function schema with dynamic workspace description."""
-        ws_text = self.workspace.describe_all()
-        desc = f"Variables in scope:\n{ws_text}" if ws_text else "Workspace empty."
+        desc = self.workspace.describe(report=self.report)
         sigs = self._tool_signatures()
         if sigs:
             desc += f"\n{sigs}"
-        if self._user_vars:
-            names = ", ".join(sorted(self._user_vars))
-            desc += f"\nPersisted variables from previous calls: {names}"
         return {
             "type": "function",
             "function": {
@@ -107,23 +97,18 @@ class SandboxRunner:
     async def execute(self, code: str) -> dict[str, Any]:
         """Run *code* with workspace handles + report dict + persisted vars + tool callables."""
         loop = asyncio.get_running_loop()
-        variables = dict(self._user_vars)  # start with persisted user variables
-        variables.update(self.workspace.namespace())  # workspace handles win
-        variables["report"] = self.report  # mutable dict — changes persist
+        variables = dict(self.workspace.user_vars)
+        variables.update(self.workspace.namespace())
+        variables["report"] = self.report
         if self._registry:
             variables.update(self._make_tool_callables(loop))
         result = await asyncio.to_thread(safe_exec, code, variables)
         if result["status"] == "ok" and result.get("user_vars"):
-            self._user_vars.update(result["user_vars"])
+            self.workspace.update_vars(result["user_vars"])
         return result
 
     def flush_report(self) -> None:
-        """Move report entries to r<N> workspace handles.
-
-        Called once when a message completes successfully. NOT called on
-        LLM errors — leaving workspace intact so the next message can
-        continue where the LLM stopped.
-        """
+        """Move report entries to r<N> workspace handles."""
         for key, val in self.report.items():
             self.workspace.store(key, val, "report", prefix="r")
 
@@ -139,7 +124,6 @@ class SandboxRunner:
         stdout = result.get("stdout", "")
         max_chars = self.output_limit
 
-        # Format the feedback value
         if isinstance(value, (list, dict)):
             text = json.dumps(value, default=str)
             if len(text) > max_chars:

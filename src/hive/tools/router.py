@@ -169,10 +169,11 @@ async def _unified_loop(
     last_result = None
     last_tool = None
     last_params = {}
+    last_feedback = ""  # last successful sandbox feedback (for widget header)
     chain = []  # [{tool, params, summary}]
-    turn_log: list[tuple[str, str]] = []  # (tool_name, summary) — flat status
     if workspace is None:
         workspace = Workspace()
+    workspace.reset_loop()
     sandbox = SandboxRunner(
         workspace,
         output_limit=sandbox_output_limit,
@@ -217,10 +218,6 @@ async def _unified_loop(
             task_lines.append(f"- [{mark}] {t.get('text', '')}")
         task_ctx = "Current tasks:\n" + "\n".join(task_lines)
 
-    ws_history = ""
-    if len(workspace) > 0:
-        ws_history = f"\n\n[Workspace from previous messages]\n{workspace.describe_all()}"
-
     def _build_messages() -> list[dict]:
         """Rebuild messages from scratch each turn — flat context."""
         msgs: list[dict] = [{"role": "system", "content": build_system_prompt()}]
@@ -228,24 +225,26 @@ async def _unified_loop(
         if task_ctx:
             msgs.append({"role": "system", "content": task_ctx})
 
+        # Workspace context from previous messages (r<N> handles only on first turn)
+        ws_ctx = ""
+        if len(workspace) > 0 and not workspace.steps:
+            ws_ctx = f"\n\n[Workspace]\n{workspace.describe()}"
+
         if plan_text:
             msgs.append(
                 {
                     "role": "user",
-                    "content": f"[Plan]\n{plan_text}\n\n[User request]\n{user_input}{ws_history}",
+                    "content": f"[Plan]\n{plan_text}\n\n[User request]\n{user_input}{ws_ctx}",
                 }
             )
         else:
             if history:
                 msgs.extend(history)
-            msgs.append({"role": "user", "content": f"{user_input}{ws_history}"})
+            msgs.append({"role": "user", "content": f"{user_input}{ws_ctx}"})
 
-        if turn_log:
-            recent = turn_log[-5:]
-            status = "\n".join(f"- {name}: {s}" for name, s in recent)
-            if len(turn_log) > 5:
-                status = f"({len(turn_log) - 5} earlier steps omitted)\n{status}"
-            msgs.append({"role": "assistant", "content": f"Done so far:\n{status}"})
+        progress = workspace.history()
+        if progress:
+            msgs.append({"role": "assistant", "content": f"Done so far:\n{progress}"})
             msgs.append({"role": "user", "content": "Continue."})
 
         return msgs
@@ -332,7 +331,7 @@ async def _unified_loop(
                 sandbox.flush_report()
                 last_result = sandbox.report
                 last_tool = "python"
-                last_params = {}
+                last_params = {"feedback": last_feedback} if last_feedback else {}
 
             if last_result and last_tool:
                 resp = _tool_response(last_tool, last_result, last_params, content)
@@ -391,24 +390,22 @@ async def _unified_loop(
                     }
                 )
 
-                # Record in turn_log: concise code + result
-                code_brief = _truncate_code(code, 200)
+                # Record step + chain
                 if sb_result["status"] != "ok":
-                    chain_summary = f"```\n{code_brief}\n```\n→ {sb_result.get('error', 'unknown')}"
+                    err_text = sb_result.get("error", "unknown")
+                    workspace.add_step("python", err_text, code=code, error=err_text)
+                    display_summary = f"Error: {err_text}"
                 else:
-                    desc = str(sb_result.get("feedback", ""))
-                    desc = desc[:100] if len(desc) > 100 else desc
-                    chain_summary = f"```\n{code_brief}\n```\n→ {desc}"
-                    if sb_result.get("user_vars"):
-                        var_names = ", ".join(sorted(sb_result["user_vars"]))
-                        chain_summary += f" | vars: {var_names}"
-                turn_log.append(("python", chain_summary))
+                    desc = str(sb_result.get("feedback", ""))[:100]
+                    last_feedback = desc
+                    workspace.add_step("python", desc, code=code)
+                    display_summary = desc
 
                 chain.append(
                     {
                         "tool": "python",
                         "params": {"code": code},
-                        "summary": chain_summary,
+                        "summary": display_summary,
                     }
                 )
 
@@ -426,7 +423,7 @@ async def _unified_loop(
                         "content": f"Error: unknown tool '{tool_name}'",
                     }
                 )
-                turn_log.append((tool_name, f"Error: unknown tool '{tool_name}'"))
+                workspace.add_step(tool_name, f"unknown tool '{tool_name}'", error=f"unknown tool '{tool_name}'")
                 continue
 
             # Only search is exposed as a function-calling tool.
@@ -436,7 +433,7 @@ async def _unified_loop(
                 messages.append(
                     {"role": "tool", "tool_call_id": tc["id"], "content": err}
                 )
-                turn_log.append((tool_name, f"Error: use python: {tool_name}(...)"))
+                workspace.add_step(tool_name, err, error=err)
                 continue
 
             # Auto-fill from workspace: inject stored values into matching params
@@ -456,20 +453,11 @@ async def _unified_loop(
 
             # Store full result in workspace (error results bypass)
             if "error" not in result:
-                new_handles = workspace.store_result(result, tool_name, params)
-                compact = _build_tool_message(tool_name, workspace, new_handles)
+                workspace.store_result(result, tool_name, params)
+                compact = f"{tool_name}: done."
             else:
                 compact = f"Error: {result['error']}"
 
-            logger.debug(
-                "TOOL_MSG %s: %d chars | result keys: %s",
-                tool_name,
-                len(compact),
-                {
-                    k: type(v).__name__ + f"({len(v) if isinstance(v, (str, list)) else v})"
-                    for k, v in result.items()
-                },
-            )
             messages.append(
                 {
                     "role": "tool",
@@ -478,12 +466,8 @@ async def _unified_loop(
                 }
             )
 
-            # Record in turn_log for flat context rebuild — include handles
             summary = tool.format_result(result)
-            if new_handles:
-                handle_desc = workspace.describe_handles(new_handles)
-                summary += f"\n{handle_desc}"
-            turn_log.append((tool_name, summary))
+            workspace.add_step(tool_name, summary)
 
             chain.append(
                 {
@@ -520,13 +504,20 @@ async def _unified_loop(
             resp["plan"] = plan_text
         return resp
 
-    # Max turns exceeded — use last step's summary as fallback
-    fallback = chain[-1]["summary"] if chain else ""
-    if exceeded:
+    # ── Final summary round: ask LLM to review results (no tools) ──
+    fallback = ""
+    if chain and not error_msg:
+        fallback = await _final_summary(
+            user_input, workspace, sandbox, llm_client, tokens,
+        )
+
+    if not fallback:
         if error_msg:
-            fallback += f" (LLM error: {error_msg})"
+            fallback = f"Analysis stopped due to an error: {error_msg}"
+        elif last_feedback:
+            fallback = last_feedback
         else:
-            fallback += " (reached maximum reasoning steps)"
+            fallback = chain[-1]["summary"] if chain else ""
 
     # Flush report only when no LLM error — preserve workspace for retry
     if sandbox.report:
@@ -534,7 +525,7 @@ async def _unified_loop(
             sandbox.flush_report()
         last_result = sandbox.report
         last_tool = "python"
-        last_params = {}
+        last_params = {"feedback": last_feedback} if last_feedback else {}
 
     if last_result and last_tool:
         resp = _tool_response(last_tool, last_result, last_params, fallback)
@@ -556,31 +547,54 @@ async def _unified_loop(
     return resp
 
 
-# ── Tool Message Builder ──
+# ── Final Summary ──
 
 
-def _build_tool_message(tool_name: str, workspace: Workspace, new_handles: list[str]) -> str:
-    """Build concise tool message for LLM: confirmation + new handles only.
+async def _final_summary(
+    user_input: str,
+    workspace: Workspace,
+    sandbox: SandboxRunner,
+    llm_client: LLMClient,
+    tokens: dict[str, int],
+) -> str:
+    """One last LLM call (no tools) to produce a user-facing summary.
 
-    Only shows handles created by this tool call to reduce token waste.
-    Full workspace is visible via the python sandbox schema.
+    Called when the agentic loop finishes without a natural text response
+    (max turns exceeded or break without content).
     """
-    parts = [f"{tool_name}: done."]
-    desc = workspace.describe_handles(new_handles)
-    if desc:
-        parts.append(f"\nStored:\n{desc}")
-    return "\n".join(parts)
+    report_keys = list(sandbox.report.keys()) if sandbox.report else []
+    steps = workspace.history()
+
+    prompt = (
+        f"The user asked: {user_input}\n\n"
+        f"You completed these steps:\n{steps}\n\n"
+    )
+    if report_keys:
+        prompt += f"Report sections ready: {', '.join(report_keys)}\n\n"
+    prompt += (
+        "Write a 1-3 sentence summary of what you found for the user. "
+        "Do NOT repeat table data — the user can see it in the widget. "
+        "Be concise and direct."
+    )
+
+    try:
+        response = await llm_client.chat(
+            [
+                {"role": "system", "content": build_system_prompt()},
+                {"role": "user", "content": prompt},
+            ],
+            tools=None,
+        )
+        usage = response.get("usage") or {}
+        tokens["in"] += usage.get("prompt_tokens", 0)
+        tokens["out"] += usage.get("completion_tokens", 0)
+        return response["choices"][0]["message"].get("content", "")
+    except Exception as e:
+        logger.warning("Final summary call failed: %s", e)
+        return ""
 
 
 # ── Helpers ──
-
-
-def _truncate_code(code: str, max_chars: int = 200) -> str:
-    """Truncate code to first N chars, preserving whole lines."""
-    if len(code) <= max_chars:
-        return code.strip()
-    truncated = code[:max_chars].rsplit("\n", 1)[0]
-    return truncated.strip() + "\n# ..."
 
 
 def _sanitize_llm_error(raw: str) -> str:

@@ -332,16 +332,18 @@ class TestAgenticLoop:
         assert "Sorry" in resp["content"]
 
     async def test_max_turns_exceeded(self, registry):
-        """Loop hits max turns → returns last result with warning."""
+        """Loop hits max turns → returns last result with summary attempt."""
         llm = self._mock_llm(
             [
                 self._tool_call_response("search", {"query": "t1"}, call_id="c1"),
                 self._tool_call_response("search", {"query": "t2"}, call_id="c2"),
+                # 3rd call: _final_summary (no tools) → text response
+                self._text_response("Here is a summary of results."),
             ]
         )
         resp = await route_input("loop forever", registry, llm_client=llm, max_turns=2)
         assert "chain" in resp
-        assert "maximum reasoning steps" in resp["content"]
+        assert "summary of results" in resp["content"]
 
     async def test_progress_callback(self, registry):
         """on_progress is called with thinking and tool phases."""

@@ -31,7 +31,7 @@ class TestWorkspace:
     def test_describe_list_dict(self):
         ws = Workspace()
         ws.store("results", [{"sid": 1, "name": "GFP", "size": 720}], "search", {"query": "GFP"})
-        desc = ws.describe("p0")
+        desc = ws.describe()
         assert "p0:" in desc
         assert "results" in desc
         assert "list[dict]" in desc
@@ -42,7 +42,7 @@ class TestWorkspace:
     def test_describe_string(self):
         ws = Workspace()
         ws.store("sequence_data", "ATGC" * 100, "profile")
-        desc = ws.describe("p0")
+        desc = ws.describe()
         assert "str" in desc
         assert "400 chars" in desc
         assert "profile" in desc
@@ -50,22 +50,22 @@ class TestWorkspace:
     def test_describe_list_int(self):
         ws = Workspace()
         ws.store("fragments", [4521, 2100, 800], "digest")
-        desc = ws.describe("p0")
+        desc = ws.describe()
         assert "list[int]" in desc
         assert "3 items" in desc
 
     def test_describe_dict(self):
         ws = Workspace()
         ws.store("gel_data", {"lanes": [], "gelType": "agarose", "stain": "ethidium"}, "digest")
-        desc = ws.describe("p0")
+        desc = ws.describe()
         assert "dict" in desc
-        assert "gelType=agarose" in desc
+        assert "gelType" in desc
 
-    def test_describe_all(self):
+    def test_describe_scope(self):
         ws = Workspace()
         ws.store("results", [{"a": 1}], "search")
         ws.store("sequence_data", "ATGC" * 100, "profile")
-        text = ws.describe_all()
+        text = ws.describe()
         assert "p0:" in text
         assert "p1:" in text
         assert text.count("\n") == 1  # two lines, one newline
@@ -118,11 +118,11 @@ class TestWorkspace:
         assert ws.find_by_field("sequence_data") is None
 
     def test_column_names_capped(self):
-        """Columns beyond max_cols show '...'."""
+        """Columns beyond max_cols show '...' in describe."""
         ws = Workspace()
         row = {f"col{i}": i for i in range(12)}
         ws.store("results", [row], "wide_tool")
-        desc = ws.describe("p0")
+        desc = ws.describe()
         assert "..." in desc
 
 
@@ -314,7 +314,7 @@ class TestSandboxRunner:
         schema = runner.tool_schema()
         assert schema["function"]["name"] == "python"
         # Description still valid, just no workspace entries listed
-        assert "Workspace empty." in schema["function"]["description"]
+        assert "Empty." in schema["function"]["description"]
 
     async def test_report_dict_persists_across_calls(self):
         """Report dict accumulates data across multiple sandbox calls."""
@@ -357,7 +357,6 @@ class TestSandboxRunner:
         schema = runner.tool_schema()
         desc = schema["function"]["description"]
         assert "my_data" in desc
-        assert "Persisted variables" in desc
 
     async def test_user_vars_dont_override_workspace(self):
         """Workspace handles take precedence over user vars with same name."""
@@ -538,12 +537,12 @@ class TestStoreResult:
         ws.store_result(data, "tool")
         assert len(ws) == 1
 
-    def test_describe_handles(self):
-        """describe_handles shows only specified handles."""
+    def test_describe_shows_all_handles(self):
+        """describe() shows all pipeline handles."""
         ws = Workspace()
         ws.store("results", [{"a": 1}], "search")
         ws.store("sequence", "ATGC" * 100, "profile")
-        desc = ws.describe_handles(["p1"])
+        desc = ws.describe()
+        assert "p0:" in desc
         assert "p1:" in desc
-        assert "p0:" not in desc
 

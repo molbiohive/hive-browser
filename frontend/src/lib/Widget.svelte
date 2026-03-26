@@ -90,8 +90,7 @@
 	const commandText = $derived.by(() => {
 		if (isForm) return `//${widget.tool}`;
 		if (isSandbox) {
-			const code = widget.params?.code || '';
-			return `python(code="${code}")`;
+			return widget.params?.feedback || 'python sandbox';
 		}
 		const params = widget.params || {};
 		const hasParams = Object.keys(params).length > 0;

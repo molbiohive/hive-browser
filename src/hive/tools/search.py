@@ -74,10 +74,6 @@ class SearchTool(Tool):
     name = "search"
     description = "Search sequences by name, features, tags (directory context), and metadata."
     tags = {"search"}
-    returns = (
-        "{results: [{sid, name, size_bp, topology, features, tags, score}], "
-        "parts: [{pid, names, molecule, length, instance_count, types}]}"
-    )
     guidelines = (
         "Search sequences and parts by keyword. Returns matching sequences (SIDs) "
         "and parts (PIDs with instance counts). "
