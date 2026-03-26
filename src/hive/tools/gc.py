@@ -6,9 +6,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from hive.db import session as db
 from hive.tools.base import Tool
-from hive.tools.resolve import resolve_input
+from hive.tools.resolve import resolve_and_clean
 
 
 class GCInput(BaseModel):
@@ -41,17 +40,10 @@ class GCTool(Tool):
 
     async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         inp = GCInput(**params)
-        seq = inp.sequence
-        if seq.strip().lower().startswith(("sid:", "pid:")) and db.async_session_factory:
-            async with db.async_session_factory() as session:
-                try:
-                    seq, _meta = await resolve_input(session, seq)
-                except ValueError as exc:
-                    return {"error": str(exc)}
-        cleaned = seq.upper().replace(" ", "").replace("\n", "")
-
-        if len(cleaned) < 1:
-            return {"error": "Empty sequence"}
+        result = await resolve_and_clean(inp.sequence)
+        if isinstance(result, dict):
+            return result
+        cleaned, _meta = result
 
         g = cleaned.count("G")
         c = cleaned.count("C")

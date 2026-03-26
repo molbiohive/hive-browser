@@ -1,6 +1,5 @@
 """Database audit and cleanup operations — audit, dedupe, prune."""
 
-import hashlib
 import json
 import logging
 import os
@@ -17,6 +16,7 @@ from hive.db.models import (
     PartInstance,
     Sequence,
 )
+from hive.utils import hash_sequence
 
 logger = logging.getLogger(__name__)
 
@@ -182,9 +182,6 @@ async def dedupe(session: AsyncSession, dry_run: bool = True) -> dict:
     }
 
 
-def _sequence_hash(seq_text: str) -> str:
-    """SHA256 of sequence string (lightweight fingerprint)."""
-    return hashlib.sha256(seq_text.encode()).hexdigest()
 
 
 async def prune(
@@ -237,7 +234,7 @@ async def prune(
                         "name": seq.name,
                         "length": seq.length,
                         "sequence_hash": (
-                            seq.sequence_hash or _sequence_hash(seq.sequence)
+                            seq.sequence_hash or hash_sequence(seq.sequence)
                             if seq.sequence else None
                         ),
                         "topology": seq.topology,

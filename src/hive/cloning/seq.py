@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 
-from hive.cloning.enzymes import _COMPLEMENT
+_COMPLEMENT = str.maketrans("ACGTRYWSMKBDHVN", "TGCAYRWSKMVHDBN")
 
 _EXTRAS_DIR = Path(__file__).resolve().parent.parent / "extras"
 

@@ -2,11 +2,7 @@
 
 from __future__ import annotations
 
-from hive.cloning.enzymes import _COMPLEMENT
-
-
-def _reverse_complement(seq: str) -> str:
-    return seq.upper().translate(_COMPLEMENT)[::-1]
+from hive.cloning.seq import reverse_complement
 
 
 def find_primer_sites(
@@ -47,7 +43,7 @@ def find_primer_sites(
             continue
 
         anchor = primer_seq[-anchor_len:]
-        rc_anchor = _reverse_complement(anchor)
+        rc_anchor = reverse_complement(anchor)
         primer_len = len(primer_seq)
         primer_id = primer.get("id")
         primer_name = primer.get("name", "")

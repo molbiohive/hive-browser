@@ -8,6 +8,7 @@ from pathlib import Path
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from hive.cloning.seq import reverse_complement
 from hive.db.models import Collection, Enzyme
 
 logger = logging.getLogger(__name__)
@@ -20,8 +21,6 @@ IUPAC_MAP = {
     "M": "[AC]", "K": "[GT]", "B": "[CGT]", "D": "[AGT]",
     "H": "[ACT]", "V": "[ACG]", "N": "[ACGT]",
 }
-
-_COMPLEMENT = str.maketrans("ACGTRYWSMKBDHVN", "TGCAYRWSKMVHDBN")
 
 # Module-level cache: {UPPER_NAME: Enzyme}
 _enzyme_cache: dict[str, Enzyme] | None = None
@@ -38,11 +37,6 @@ def _site_to_regex(site: str) -> re.Pattern:
         else:
             raise ValueError(f"Invalid IUPAC character: {ch}")
     return re.compile("".join(parts))
-
-
-def _reverse_complement(seq: str) -> str:
-    """Reverse complement of a DNA sequence (IUPAC-aware)."""
-    return seq.upper().translate(_COMPLEMENT)[::-1]
 
 
 async def load_enzymes(session: AsyncSession) -> dict[str, Enzyme]:
@@ -101,7 +95,7 @@ def find_cut_sites(
 
         # Non-palindromic: also search reverse complement
         if not enz.is_palindrome:
-            rc_site = _reverse_complement(enz.site)
+            rc_site = reverse_complement(enz.site)
             rc_pattern = _site_to_regex(rc_site)
             for m in rc_pattern.finditer(search_seq):
                 # Sense strand cut position for antisense recognition
@@ -179,7 +173,7 @@ def find_all_cutters(
                 positions.append(pos % seq_len)
 
         if not enz.is_palindrome:
-            rc_site = _reverse_complement(enz.site)
+            rc_site = reverse_complement(enz.site)
             rc_pattern = _site_to_regex(rc_site)
             for m in rc_pattern.finditer(search_seq):
                 pos = m.start()

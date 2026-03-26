@@ -87,6 +87,24 @@ async def resolve_part(
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
+async def resolve_and_clean(raw: str) -> tuple[str, dict] | dict:
+    """Resolve sid:/pid: or raw sequence, return (cleaned_seq, meta) or error dict."""
+    from hive.db import session as db
+
+    seq = raw
+    meta: dict = {}
+    if seq.strip().lower().startswith(("sid:", "pid:")) and db.async_session_factory:
+        async with db.async_session_factory() as session:
+            try:
+                seq, meta = await resolve_input(session, seq)
+            except ValueError as exc:
+                return {"error": str(exc)}
+    cleaned = seq.upper().replace(" ", "").replace("\n", "")
+    if len(cleaned) < 1:
+        return {"error": "Empty sequence"}
+    return cleaned, meta
+
+
 async def resolve_input(session: AsyncSession, raw: str) -> tuple[str, dict]:
     """Resolve raw sequence, sid:N, or pid:N to (sequence, metadata).
 

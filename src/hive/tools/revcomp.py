@@ -8,9 +8,8 @@ from pydantic import BaseModel, Field
 
 from hive.cloning.seq import reverse_complement
 
-from hive.db import session as db
 from hive.tools.base import Tool
-from hive.tools.resolve import resolve_input
+from hive.tools.resolve import resolve_and_clean
 
 
 class RevCompInput(BaseModel):
@@ -41,17 +40,10 @@ class RevCompTool(Tool):
 
     async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         inp = RevCompInput(**params)
-        seq = inp.sequence
-        if seq.strip().lower().startswith(("sid:", "pid:")) and db.async_session_factory:
-            async with db.async_session_factory() as session:
-                try:
-                    seq, _meta = await resolve_input(session, seq)
-                except ValueError as exc:
-                    return {"error": str(exc)}
-        cleaned = seq.upper().replace(" ", "").replace("\n", "")
-
-        if len(cleaned) < 1:
-            return {"error": "Empty sequence"}
+        result = await resolve_and_clean(inp.sequence)
+        if isinstance(result, dict):
+            return result
+        cleaned, _meta = result
 
         rc = reverse_complement(cleaned)
 
