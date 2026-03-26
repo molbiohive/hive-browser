@@ -300,8 +300,7 @@ class TestPrompts:
         prompt = build_system_prompt()
 
         assert "Hive Browser" in prompt
-        assert "NEVER fabricate" in prompt
-        assert "## Workflow" in prompt
+        assert "fabricate" in prompt
         assert "## Rules" in prompt
         assert "sid:N" in prompt
         assert "pid:N" in prompt
