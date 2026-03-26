@@ -35,48 +35,65 @@
 		return String(val ?? '');
 	}
 
-	function isNumericCol(colKey) {
-		if (!rows?.length) return false;
+	function colType(colKey) {
+		if (!rows?.length) return null;
 		for (let i = 0; i < Math.min(rows.length, 20); i++) {
 			const v = rawValue(rows[i], colKey);
 			if (v == null) continue;
-			if (typeof v === 'number') return true;
-			if (typeof v === 'boolean') return true;
-			return false;
+			if (typeof v === 'boolean') return 'bool';
+			if (typeof v === 'number') return 'num';
+			return null;
 		}
-		return false;
+		return null;
 	}
 
-	// Per-column gradient rank maps: colKey -> Map<rowIndex, normalizedRank 0..1>
+	function isNumericCol(colKey) {
+		return colType(colKey) != null;
+	}
+
+	// Per-column gradient rank maps: colKey -> { map: Map<rowIndex, normalizedRank 0..1>, bool: boolean }
 	const gradientRanks = $derived.by(() => {
 		if (gradientMode === 0 || !rows?.length) return {};
 		const ranks = {};
 		for (const col of columns) {
-			if (!isNumericCol(col.key)) continue;
+			const ct = colType(col.key);
+			if (!ct) continue;
+			const isBool = ct === 'bool';
 			const vals = rows.map((r, i) => {
 				const v = rawValue(r, col.key);
 				const n = typeof v === 'boolean' ? (v ? 1 : 0) : (typeof v === 'number' ? v : null);
 				return { idx: i, val: n };
 			}).filter(x => x.val != null);
 			if (vals.length < 2) continue;
+			// Skip if all values identical
+			const first = vals[0].val;
+			if (vals.every(x => x.val === first)) continue;
 			vals.sort((a, b) => a.val - b.val);
 			const map = new Map();
 			for (let i = 0; i < vals.length; i++) {
 				map.set(vals[i].idx, i / (vals.length - 1));
 			}
-			ranks[col.key] = map;
+			ranks[col.key] = { map, bool: isBool };
 		}
 		return ranks;
 	});
 
 	function cellBg(row, colKey) {
 		if (gradientMode === 0) return '';
-		const rankMap = gradientRanks[colKey];
-		if (!rankMap) return '';
+		const info = gradientRanks[colKey];
+		if (!info) return '';
 		const rowIdx = rows.indexOf(row);
-		const rank = rankMap.get(rowIdx);
+		const rank = info.map.get(rowIdx);
 		if (rank == null) return '';
-		// rank 0 = lowest value, 1 = highest value
+
+		if (info.bool) {
+			// Binary: true=green, false=red (mode 2 swaps)
+			const isTrue = rank > 0.5;
+			const green = gradientMode === 1 ? isTrue : !isTrue;
+			return green ? 'rgba(80, 225, 80, 0.3)' : 'rgba(220, 80, 80, 0.3)';
+		}
+
+		// Numeric gradient: rank 0=lowest, 1=highest
 		// mode 1: low=red, mid=white, high=green
 		// mode 2: low=green, mid=white, high=red
 		let r, g, b;
