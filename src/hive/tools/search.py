@@ -9,7 +9,7 @@ import re
 from typing import Any
 
 from pydantic import BaseModel, Field
-from sqlalchemy import Text, bindparam, cast, desc, func, literal_column, select, text
+from sqlalchemy import Text, bindparam, cast, desc, func, select, text
 from sqlalchemy.orm import selectinload
 
 from hive.config import display_file_path
@@ -130,14 +130,13 @@ class SearchTool(Tool):
 
         terms, op = _parse_bool_query(inp.query)
         bm25_q = _bm25_query(terms, op)
-        safe_q = bm25_q.replace("'", "''")
 
         # Choose BM25 operator: &&& (conjunction) for AND, ||| (disjunction) for OR/single
         bm25_op = "&&&" if op == "and" else "|||"
 
         async with db.async_session_factory() as session:
             # BM25 search on sequences via search_text + name
-            score_expr = literal_column("pdb.score(sequences.id)")
+            score_expr = text("pdb.score(sequences.id)")
 
             stmt = (
                 select(Sequence, score_expr.label("score"), IndexedFile.file_path)
@@ -148,10 +147,10 @@ class SearchTool(Tool):
                     .selectinload(Part.names)
                 )
                 .where(IndexedFile.status == "active")
-                .where(literal_column(
-                    f"(sequences.search_text {bm25_op} '{safe_q}'"
-                    f" OR sequences.name {bm25_op} '{safe_q}')"
-                ))
+                .where(text(
+                    f"(sequences.search_text {bm25_op} :bm25_q"
+                    f" OR sequences.name {bm25_op} :bm25_q)"
+                ).bindparams(bindparam("bm25_q", value=bm25_q)))
                 .order_by(score_expr.desc())
             )
 
@@ -262,8 +261,7 @@ class SearchTool(Tool):
 
 async def _search_parts(session: Any, bm25_q: str) -> list[dict]:
     """Search parts by name using ParadeDB BM25 on part_names."""
-    safe_q = bm25_q.replace("'", "''")
-    score_expr = literal_column("pdb.score(part_names.id)")
+    score_expr = text("pdb.score(part_names.id)")
 
     # BM25 search on part_names (disjunction -- any term matches)
     pn_stmt = (
@@ -271,7 +269,7 @@ async def _search_parts(session: Any, bm25_q: str) -> list[dict]:
             PartName.part_id,
             func.max(score_expr).label("score"),
         )
-        .where(literal_column(f"part_names.name ||| '{safe_q}'"))
+        .where(text("part_names.name ||| :bm25_q").bindparams(bindparam("bm25_q", value=bm25_q)))
         .group_by(PartName.part_id)
         .order_by(desc("score"))
     )
