@@ -21,6 +21,7 @@ class ParsedPrimer:
     start: int | None = None
     end: int | None = None
     strand: int | None = None
+    length: int | None = None
 
 
 @dataclass

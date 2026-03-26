@@ -599,7 +599,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.0" },
     { name = "pydantic-settings", specifier = ">=2.0" },
     { name = "pyyaml", specifier = ">=6.0" },
-    { name = "sgffp", specifier = ">=0.15.1" },
+    { name = "sgffp", specifier = ">=0.15.3" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.34" },
     { name = "watchfiles", specifier = ">=1.0" },
@@ -1599,14 +1599,14 @@ wheels = [
 
 [[package]]
 name = "sgffp"
-version = "0.15.1"
+version = "0.15.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "xmltodict" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7a/e2/9a37b72d7e277c49ef6b18be7ecb66e7bbe025b7864b24b0e7a9a0e86b0d/sgffp-0.15.1.tar.gz", hash = "sha256:d8bc98da038983688c07df2fbb359d61d4a5d62a0c8989c805ef1481bb268966", size = 153527, upload-time = "2026-03-19T13:45:19.013Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/20/08/1ca4cfc6ac5f6b95491c24ac17b212a1c4fa5881f6b533b45a5f0df98358/sgffp-0.15.3.tar.gz", hash = "sha256:04d31264f680c1ef0955a8edbea966b023522b4efee65330238a99bcada447d3", size = 208629, upload-time = "2026-03-26T15:31:06.222Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/23/6a/63345e58e8dd700b4c90cb97640f82586c0c140cf2a7e99d745f1fca376a/sgffp-0.15.1-py3-none-any.whl", hash = "sha256:841089cdc2fb6602b17c31265e64033456cef4f390672438fa6d0c2d1077fe9b", size = 44474, upload-time = "2026-03-19T13:45:17.747Z" },
+    { url = "https://files.pythonhosted.org/packages/a8/91/b0aa21acdfb58b7b6a88437947bf047ab0c134871dfa7e299feaf866f5ae/sgffp-0.15.3-py3-none-any.whl", hash = "sha256:4b738a80bdb487013ba5f9d1a9853a65b970901930b051e5dea460d812c5cd05", size = 44594, upload-time = "2026-03-26T15:31:04.815Z" },
 ]
 
 [[package]]

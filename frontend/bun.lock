@@ -4,7 +4,7 @@
   "workspaces": {
     "": {
       "dependencies": {
-        "@molbiohive/hatchlings": "0.6.1",
+        "@molbiohive/hatchlings": "0.8.1",
         "dompurify": "^3.3.1",
         "marked": "^17.0.2",
       },
@@ -80,7 +80,7 @@
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
 
-    "@molbiohive/hatchlings": ["@molbiohive/hatchlings@0.6.1", "", { "peerDependencies": { "3dmol": "^2.4.2", "svelte": "^5.0.0" }, "optionalPeers": ["3dmol"] }, "sha512-FOx9OOW+L1ZtRVGfPRq+6dJjBU76EYE/TEI5739ejQSunuqgBdAvV/mkcXgIn/RrazcWOLkua5jfQB0tajPTSA=="],
+    "@molbiohive/hatchlings": ["@molbiohive/hatchlings@0.8.1", "", { "peerDependencies": { "3dmol": "^2.4.2", "svelte": "^5.0.0" }, "optionalPeers": ["3dmol"] }, "sha512-eXF7B2M37OdHwoAVjU7OIHAgKi7vDvJ1V76rrAT4+xSLaAn4mRaRcEiIuznIpeaK7Q90znTievPxV7xpNt82fQ=="],
 
     "@polka/url": ["@polka/url@1.0.0-next.29", "", {}, "sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww=="],
 

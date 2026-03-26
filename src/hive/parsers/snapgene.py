@@ -123,21 +123,24 @@ def parse_snapgene(filepath: Path, extract: list[str] | None = None) -> ParseRes
 
     primers = []
     if extract is None or "primers" in extract:
+        seq_len = len(sgff.sequence.value)
         for p in sgff.primers:
-            primers.append(
-                ParsedPrimer(
-                    name=p.name,
-                    sequence=p.sequence,
-                    tm=getattr(p, "tm", None),
-                    start=getattr(p, "start", None),
-                    end=getattr(p, "end", None),
-                    strand=(
-                        _parse_strand(getattr(p, "bind_strand", None))
-                        if getattr(p, "bind_strand", None) is not None
-                        else None
-                    ),
-                )
-            )
+            sites = getattr(p, "binding_sites", [])
+            if sites:
+                for bs in sites:
+                    primers.append(
+                        ParsedPrimer(
+                            name=p.name,
+                            sequence=p.sequence,
+                            tm=getattr(bs, "melting_temperature", None),
+                            start=bs.start,
+                            end=bs.end,
+                            strand=_parse_strand(getattr(bs, "bound_strand", ".")),
+                            length=bs.length(seq_len),
+                        )
+                    )
+            else:
+                primers.append(ParsedPrimer(name=p.name, sequence=p.sequence))
 
         # Map primers with null locations via 3' anchor scanning
         unmapped = [
