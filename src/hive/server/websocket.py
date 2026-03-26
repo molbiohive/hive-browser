@@ -497,6 +497,12 @@ async def _handle_message(
             tool_call_budget=config.llm.tool_call_budget if config else 100,
         )
 
+        # Trim workspace between messages — only on success.
+        # On LLM error, preserve p<N> handles so next message can continue.
+        if not result.get("llm_error"):
+            ws: Workspace = chat["workspace"]
+            ws.trim_between_messages(max_report=10)
+
         # Track user message (skip bare commands that just show a form)
         manager.append_history(conn_id, "user", content, max_pairs)
         if result.get("type") != "form":

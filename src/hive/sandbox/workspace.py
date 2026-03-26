@@ -32,51 +32,58 @@ class WorkspaceEntry:
 class Workspace:
     """Per-loop data store. All tool results cached as named handles.
 
-    Handles are named r0, r1, r2, ... (sequential, LLM-friendly).
+    Two namespaces:
+      - ``p0, p1, ...`` — pipeline handles (ephemeral, erased between messages)
+      - ``r0, r1, ...`` — report handles (persist across messages, capped)
+
     Stores any value type: str, list[dict], dict, list[int], etc.
     """
 
     def __init__(self):
         self._entries: list[WorkspaceEntry] = []
 
-    def store(self, key: str, value: Any, tool: str, params: dict[str, Any] | None = None) -> str:
-        """Store *value* under field name *key*, return handle (r0, r1, ...)."""
-        handle = f"r{len(self._entries)}"
+    def store(
+        self, key: str, value: Any, tool: str, params: dict[str, Any] | None = None,
+        prefix: str = "p",
+    ) -> str:
+        """Store *value* under field name *key*, return handle.
+
+        prefix='p' for pipeline (ephemeral), 'r' for report (persists).
+        """
+        count = sum(1 for e in self._entries if e.handle.startswith(prefix))
+        handle = f"{prefix}{count}"
         self._entries.append(WorkspaceEntry(handle, value, key, tool, params or {}))
         return handle
 
     def get(self, handle: str) -> Any | None:
         """Retrieve value by handle, or None."""
-        idx = self._handle_index(handle)
-        if idx is None:
+        entry = self._find_entry(handle)
+        if entry is None:
             return None
-        return self._entries[idx].value
+        return entry.value
 
     def describe(self, handle: str) -> str:
         """One-line description of a handle. Evicted entries look identical to normal ones."""
-        idx = self._handle_index(handle)
-        if idx is None:
+        entry = self._find_entry(handle)
+        if entry is None:
             return ""
-        entry = self._entries[idx]
         if entry.evicted:
-            return f"{handle}: {entry.field_name} ({entry.type_desc}) from {entry.tool}"
+            return f"{entry.handle}: {entry.field_name} ({entry.type_desc}) from {entry.tool}"
         detail = _detail(entry.value)
-        return f"{handle}: {entry.field_name} ({entry.type_desc}{detail}) from {entry.tool}"
+        return f"{entry.handle}: {entry.field_name} ({entry.type_desc}{detail}) from {entry.tool}"
 
     def describe_compact(self, handle: str) -> str:
         """Ultra-compact: 'r0: field (type) from tool' — no column names or details."""
-        idx = self._handle_index(handle)
-        if idx is None:
+        entry = self._find_entry(handle)
+        if entry is None:
             return ""
-        entry = self._entries[idx]
-        return f"{handle}: {entry.field_name} ({entry.type_desc}) from {entry.tool}"
+        return f"{entry.handle}: {entry.field_name} ({entry.type_desc}) from {entry.tool}"
 
     def describe_all(self) -> str:
         """All handles, one per line."""
-        lines = []
-        for i in range(len(self._entries)):
-            lines.append(self.describe(f"r{i}"))
-        return "\n".join(lines)
+        return "\n".join(
+            self.describe(e.handle) for e in self._entries if self.describe(e.handle)
+        )
 
     def describe_handles(self, handles: list[str]) -> str:
         """Describe only the given handles, one per line."""
@@ -138,8 +145,17 @@ class Workspace:
         return len(self._entries)
 
     def __contains__(self, handle: str) -> bool:
-        idx = self._handle_index(handle)
-        return idx is not None and idx < len(self._entries)
+        return self._find_entry(handle) is not None
+
+    # ── Trimming ──
+
+    def trim_between_messages(self, max_report: int = 10) -> None:
+        """Erase all p<N> handles. Keep last *max_report* r<N> handles, re-index."""
+        report_entries = [e for e in self._entries if e.handle.startswith("r")]
+        kept = report_entries[-max_report:]
+        for i, entry in enumerate(kept):
+            entry.handle = f"r{i}"
+        self._entries = kept
 
     # ── Serialization ──
 
@@ -219,20 +235,23 @@ class Workspace:
 
     def restore(self, handle: str, value: Any) -> None:
         """Re-populate an evicted entry's value."""
-        idx = self._handle_index(handle)
-        if idx is not None:
-            self._entries[idx].value = value
-            self._entries[idx].evicted = False
+        entry = self._find_entry(handle)
+        if entry is not None:
+            entry.value = value
+            entry.evicted = False
+
+    def _find_entry(self, handle: str) -> WorkspaceEntry | None:
+        """Find entry by handle name (supports both p<N> and r<N>)."""
+        for entry in self._entries:
+            if entry.handle == handle:
+                return entry
+        return None
 
     def _handle_index(self, handle: str) -> int | None:
-        if not handle.startswith("r"):
-            return None
-        try:
-            idx = int(handle[1:])
-        except ValueError:
-            return None
-        if 0 <= idx < len(self._entries):
-            return idx
+        """Find index of entry by handle name. Used by eviction auto-restore."""
+        for i, entry in enumerate(self._entries):
+            if entry.handle == handle:
+                return i
         return None
 
 

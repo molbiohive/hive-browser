@@ -12,27 +12,27 @@ class TestWorkspace:
         ws = Workspace()
         rows = [{"id": 1, "name": "GFP"}]
         handle = ws.store("results", rows, "search", {"query": "GFP"})
-        assert handle == "r0"
-        assert ws.get("r0") == rows
+        assert handle == "p0"
+        assert ws.get("p0") == rows
 
     def test_sequential_handles(self):
         ws = Workspace()
         h0 = ws.store("results", [{"a": 1}], "search")
         h1 = ws.store("hits", [{"b": 2}], "blast")
         h2 = ws.store("parts", [{"c": 3}], "parts")
-        assert (h0, h1, h2) == ("r0", "r1", "r2")
+        assert (h0, h1, h2) == ("p0", "p1", "p2")
 
     def test_get_missing(self):
         ws = Workspace()
-        assert ws.get("r0") is None
+        assert ws.get("p0") is None
         assert ws.get("r99") is None
         assert ws.get("invalid") is None
 
     def test_describe_list_dict(self):
         ws = Workspace()
         ws.store("results", [{"sid": 1, "name": "GFP", "size": 720}], "search", {"query": "GFP"})
-        desc = ws.describe("r0")
-        assert "r0:" in desc
+        desc = ws.describe("p0")
+        assert "p0:" in desc
         assert "results" in desc
         assert "list[dict]" in desc
         assert "1 rows" in desc
@@ -42,7 +42,7 @@ class TestWorkspace:
     def test_describe_string(self):
         ws = Workspace()
         ws.store("sequence_data", "ATGC" * 100, "profile")
-        desc = ws.describe("r0")
+        desc = ws.describe("p0")
         assert "str" in desc
         assert "400 chars" in desc
         assert "profile" in desc
@@ -50,14 +50,14 @@ class TestWorkspace:
     def test_describe_list_int(self):
         ws = Workspace()
         ws.store("fragments", [4521, 2100, 800], "digest")
-        desc = ws.describe("r0")
+        desc = ws.describe("p0")
         assert "list[int]" in desc
         assert "3 items" in desc
 
     def test_describe_dict(self):
         ws = Workspace()
         ws.store("gel_data", {"lanes": [], "gelType": "agarose", "stain": "ethidium"}, "digest")
-        desc = ws.describe("r0")
+        desc = ws.describe("p0")
         assert "dict" in desc
         assert "gelType=agarose" in desc
 
@@ -66,8 +66,8 @@ class TestWorkspace:
         ws.store("results", [{"a": 1}], "search")
         ws.store("sequence_data", "ATGC" * 100, "profile")
         text = ws.describe_all()
-        assert "r0:" in text
-        assert "r1:" in text
+        assert "p0:" in text
+        assert "p1:" in text
         assert text.count("\n") == 1  # two lines, one newline
 
     def test_namespace(self):
@@ -77,8 +77,8 @@ class TestWorkspace:
         ws.store("results", rows0, "search")
         ws.store("sequence_data", seq, "profile")
         ns = ws.namespace()
-        assert ns["r0"] is rows0
-        assert ns["r1"] is seq
+        assert ns["p0"] is rows0
+        assert ns["p1"] is seq
         assert len(ns) == 2
 
     def test_find_by_field(self):
@@ -122,7 +122,7 @@ class TestWorkspace:
         ws = Workspace()
         row = {f"col{i}": i for i in range(12)}
         ws.store("results", [row], "wide_tool")
-        desc = ws.describe("r0")
+        desc = ws.describe("p0")
         assert "..." in desc
 
 
@@ -256,7 +256,7 @@ class TestSandboxRunner:
         schema = runner.tool_schema()
         assert schema["type"] == "function"
         assert schema["function"]["name"] == "python"
-        assert "r0:" in schema["function"]["description"]
+        assert "p0:" in schema["function"]["description"]
         assert "search" in schema["function"]["description"]
 
     async def test_execute_dispatches(self):
@@ -264,7 +264,7 @@ class TestSandboxRunner:
         data = [{"id": 1}, {"id": 2}, {"id": 3}]
         ws.store("results", data, "search")
         runner = SandboxRunner(ws)
-        result = await runner.execute('feedback = [r["id"] for r in r0]')
+        result = await runner.execute('feedback = [r["id"] for r in p0]')
         assert result["status"] == "ok"
         assert result["feedback"] == [1, 2, 3]
 
@@ -272,7 +272,7 @@ class TestSandboxRunner:
         ws = Workspace()
         ws.store("sequence_data", "ATGCATGC", "profile")
         runner = SandboxRunner(ws)
-        result = await runner.execute("feedback = len(r0)")
+        result = await runner.execute("feedback = len(p0)")
         assert result["status"] == "ok"
         assert result["feedback"] == 8
 
@@ -314,18 +314,18 @@ class TestSandboxRunner:
         schema = runner.tool_schema()
         assert schema["function"]["name"] == "python"
         # Description still valid, just no workspace entries listed
-        assert "Variables in scope" in schema["function"]["description"]
+        assert "Workspace empty." in schema["function"]["description"]
 
     async def test_report_dict_persists_across_calls(self):
         """Report dict accumulates data across multiple sandbox calls."""
         ws = Workspace()
         ws.store("data", [{"x": 1}, {"x": 2}], "search")
         runner = SandboxRunner(ws)
-        result1 = await runner.execute('report["items"] = r0\nfeedback = "stored items"')
+        result1 = await runner.execute('report["items"] = p0\nfeedback = "stored items"')
         assert result1["status"] == "ok"
         assert runner.report == {"items": [{"x": 1}, {"x": 2}]}
 
-        result2 = await runner.execute('report["count"] = len(r0)\nfeedback = "stored count"')
+        result2 = await runner.execute('report["count"] = len(p0)\nfeedback = "stored count"')
         assert result2["status"] == "ok"
         assert runner.report == {"items": [{"x": 1}, {"x": 2}], "count": 2}
 
@@ -364,10 +364,10 @@ class TestSandboxRunner:
         ws = Workspace()
         ws.store("results", [{"a": 1}], "search")
         runner = SandboxRunner(ws)
-        # Create user var named r0
-        await runner.execute("r0 = 'overwritten'\nfeedback = 'ok'")
-        # Workspace namespace is applied after _user_vars, so r0 = workspace data
-        result = await runner.execute("feedback = len(r0)")
+        # Create user var named p0
+        await runner.execute("p0 = 'overwritten'\nfeedback = 'ok'")
+        # Workspace namespace is applied after _user_vars, so p0 = workspace data
+        result = await runner.execute("feedback = len(p0)")
         assert result["status"] == "ok"
         assert result["feedback"] == 1  # workspace [{"a": 1}], not string
 
@@ -491,8 +491,8 @@ class TestStoreResult:
         data = {"a": 1, "b": 2.0, "c": True}
         handles = ws.store_result(data, "tool")
         assert len(ws) == 1
-        assert ws.get("r0") is data
-        assert handles == ["r0"]
+        assert ws.get("p0") is data
+        assert handles == ["p0"]
 
     def test_list_broken_out(self):
         """Non-empty lists are stored as separate entries."""
@@ -501,8 +501,8 @@ class TestStoreResult:
         data = {"items": items, "count": 1}
         handles = ws.store_result(data, "tool")
         assert len(ws) == 2  # _result + items
-        assert ws.get("r1") is items
-        assert handles == ["r0", "r1"]
+        assert ws.get("p1") is items
+        assert handles == ["p0", "p1"]
 
     def test_long_string_broken_out(self):
         """Strings >= 200 chars are stored as separate entries."""
@@ -511,7 +511,7 @@ class TestStoreResult:
         data = {"sequence": seq, "length": 200}
         ws.store_result(data, "tool")
         assert len(ws) == 2  # _result + sequence
-        assert ws.get("r1") is seq
+        assert ws.get("p1") is seq
 
     def test_dict_gt2_keys_broken_out(self):
         """Dicts with >2 keys are stored as separate entries."""
@@ -520,7 +520,7 @@ class TestStoreResult:
         data = {"info": info, "x": 1}
         ws.store_result(data, "tool")
         assert len(ws) == 2
-        assert ws.get("r1") is info
+        assert ws.get("p1") is info
 
     def test_error_key_skipped(self):
         """Error key is not stored as sub-entry."""
@@ -542,7 +542,7 @@ class TestStoreResult:
         ws = Workspace()
         ws.store("results", [{"a": 1}], "search")
         ws.store("sequence", "ATGC" * 100, "profile")
-        desc = ws.describe_handles(["r1"])
-        assert "r1:" in desc
-        assert "r0:" not in desc
+        desc = ws.describe_handles(["p1"])
+        assert "p1:" in desc
+        assert "p0:" not in desc
 

@@ -310,8 +310,9 @@ async def _unified_loop(
                 [s["tool"] for s in chain],
             )
 
-            # Report dict populated by sandbox → becomes the widget data
+            # Successful completion — flush report to r<N> handles
             if sandbox.report:
+                sandbox.flush_report()
                 last_result = sandbox.report
                 last_tool = "python"
                 last_params = {}
@@ -483,6 +484,8 @@ async def _unified_loop(
             if error_msg
             else _error("No tools were called during reasoning.")
         )
+        if error_msg:
+            resp["llm_error"] = True
         if plan_text:
             resp["plan"] = plan_text
         return resp
@@ -495,8 +498,10 @@ async def _unified_loop(
         else:
             fallback += " (reached maximum reasoning steps)"
 
-    # Report dict populated by sandbox → becomes the widget data
+    # Flush report only when no LLM error — preserve workspace for retry
     if sandbox.report:
+        if not error_msg:
+            sandbox.flush_report()
         last_result = sandbox.report
         last_tool = "python"
         last_params = {}
@@ -507,11 +512,15 @@ async def _unified_loop(
         resp["chain"] = chain
         if sandbox.report:
             resp["report"] = True
+        if error_msg:
+            resp["llm_error"] = True
         if plan_text:
             resp["plan"] = plan_text
         return resp
 
     resp = {"type": "message", "content": fallback, "tokens": tokens, "chain": chain}
+    if error_msg:
+        resp["llm_error"] = True
     if plan_text:
         resp["plan"] = plan_text
     return resp

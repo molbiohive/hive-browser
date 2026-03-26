@@ -88,14 +88,8 @@ class SandboxRunner:
 
     def tool_schema(self) -> dict:
         """OpenAI-format function schema with dynamic workspace description."""
-        total = len(self.workspace)
-        if total > 10:
-            old = "\n".join(self.workspace.describe_compact(f"r{i}") for i in range(total - 10))
-            recent = "\n".join(self.workspace.describe(f"r{i}") for i in range(total - 10, total))
-            ws_text = old + "\n" + recent
-        else:
-            ws_text = self.workspace.describe_all()
-        desc = f"Variables in scope:\n{ws_text}"
+        ws_text = self.workspace.describe_all()
+        desc = f"Variables in scope:\n{ws_text}" if ws_text else "Workspace empty."
         sigs = self._tool_signatures()
         if sigs:
             desc += f"\n{sigs}"
@@ -132,6 +126,16 @@ class SandboxRunner:
         if result["status"] == "ok" and result.get("user_vars"):
             self._user_vars.update(result["user_vars"])
         return result
+
+    def flush_report(self) -> None:
+        """Move report entries to r<N> workspace handles.
+
+        Called once when a message completes successfully. NOT called on
+        LLM errors — leaving workspace intact so the next message can
+        continue where the LLM stopped.
+        """
+        for key, val in self.report.items():
+            self.workspace.store(key, val, "report", prefix="r")
 
     def summary_for_llm(self, result: dict[str, Any]) -> str:
         """Compact result summary for LLM context."""

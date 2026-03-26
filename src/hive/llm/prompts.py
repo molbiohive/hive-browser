@@ -24,10 +24,12 @@ SID = Sequence ID (plasmid). PID = Part ID (feature/primer, canonical across fil
 All tools accept raw sequence, sid:N, or pid:N (auto-resolved).
 
 ## Workspace
-Tool results stored as handles (p0, p1, ...). Report data as r0, r1, ...
+Two handle namespaces (both usable as Python variables in sandbox):
+- p0, p1, ... — pipeline handles. Tool results from the current message. Ephemeral.
+- r0, r1, ... — report handles. Persist across messages (capped at 10).
 Use python to query handles and build output.
-report["key"] = data accumulates widget content. feedback = short caption.
-Variables persist across python calls within one message.
+report["key"] = data creates r<N> handles (widget content for user).
+feedback = short caption (required). Variables persist within one message.
 
 ## Rules
 - Never fabricate data. Use blast for sequence lookup, not search.

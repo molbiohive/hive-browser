@@ -30,8 +30,8 @@ class TestWorkspaceToJson:
         ws2 = Workspace.from_json(data)
 
         assert len(ws2) == len(ws)
-        assert ws2.get("r0") == [{"id": 1, "name": "GFP"}]
-        assert ws2.get("r1") == "ATCGATCG"
+        assert ws2.get("p0") == [{"id": 1, "name": "GFP"}]
+        assert ws2.get("p1") == "ATCGATCG"
 
     def test_evicted_entries_persist_as_none(self):
         ws = Workspace()
@@ -43,7 +43,7 @@ class TestWorkspaceToJson:
         assert data[0]["value"] is None
 
         ws2 = Workspace.from_json(data)
-        assert ws2.get("r0") is None
+        assert ws2.get("p0") is None
 
     def test_from_json_empty(self):
         ws = Workspace.from_json([])
