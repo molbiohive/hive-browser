@@ -388,13 +388,14 @@ async def _unified_loop(
                     }
                 )
 
-                # Record in turn_log for flat context rebuild
+                # Record in turn_log: concise code + result
+                code_brief = _truncate_code(code, 200)
                 if sb_result["status"] != "ok":
-                    chain_summary = f"Error: {sb_result.get('error', 'unknown')}"
+                    chain_summary = f"```\n{code_brief}\n```\n→ {sb_result.get('error', 'unknown')}"
                 else:
                     desc = str(sb_result.get("feedback", ""))
-                    chain_summary = desc[:100] if len(desc) > 100 else desc
-                    # List user-defined variables so LLM knows what's available
+                    desc = desc[:100] if len(desc) > 100 else desc
+                    chain_summary = f"```\n{code_brief}\n```\n→ {desc}"
                     if sb_result.get("user_vars"):
                         var_names = ", ".join(sorted(sb_result["user_vars"]))
                         chain_summary += f" | vars: {var_names}"
@@ -569,6 +570,14 @@ def _build_tool_message(tool_name: str, workspace: Workspace, new_handles: list[
 
 
 # ── Helpers ──
+
+
+def _truncate_code(code: str, max_chars: int = 200) -> str:
+    """Truncate code to first N chars, preserving whole lines."""
+    if len(code) <= max_chars:
+        return code.strip()
+    truncated = code[:max_chars].rsplit("\n", 1)[0]
+    return truncated.strip() + "\n# ..."
 
 
 def _sanitize_llm_error(raw: str) -> str:

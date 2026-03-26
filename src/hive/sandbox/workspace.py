@@ -215,12 +215,47 @@ def _detail(value: Any) -> str:
         return f", {len(value)} chars"
     if isinstance(value, list):
         if value and isinstance(value[0], dict):
-            cols = _column_names(value)
-            return f", {len(value)} rows [{', '.join(cols)}]"
+            sample = _sample_row(value[0])
+            return f", {len(value)} rows — sample: {sample}"
         return f", {len(value)} items"
     if isinstance(value, dict):
         return _dict_detail(value)
     return ""
+
+
+def _sample_row(row: dict, max_keys: int = 8) -> str:
+    """Show first row with value types and previews."""
+    parts: list[str] = []
+    for key, val in list(row.items())[:max_keys]:
+        parts.append(f"{key}: {_val_preview(val)}")
+    if len(row) > max_keys:
+        parts.append("...")
+    return "{" + ", ".join(parts) + "}"
+
+
+def _val_preview(val: Any) -> str:
+    """Short preview of a value showing type + content."""
+    if val is None:
+        return "None"
+    if isinstance(val, bool):
+        return str(val)
+    if isinstance(val, (int, float)):
+        return str(val)
+    if isinstance(val, str):
+        if len(val) <= 40:
+            return repr(val)
+        return f"str({len(val)})"
+    if isinstance(val, list):
+        if not val:
+            return "[]"
+        if isinstance(val[0], str):
+            preview = ", ".join(repr(v) for v in val[:3])
+            suffix = ", ..." if len(val) > 3 else ""
+            return f"[{preview}{suffix}]"
+        return f"list({len(val)})"
+    if isinstance(val, dict):
+        return f"dict({len(val)})"
+    return type(val).__name__
 
 
 def _dict_detail(d: dict) -> str:
@@ -243,13 +278,3 @@ def _dict_detail(d: dict) -> str:
     if len(d) > 8:
         parts.append("...")
     return f" -- {', '.join(parts)}" if parts else ""
-
-
-def _column_names(rows: list[dict], max_cols: int = 8) -> list[str]:
-    """Extract column names from the first row, capped at *max_cols*."""
-    if not rows:
-        return []
-    keys = list(rows[0].keys())[:max_cols]
-    if len(rows[0]) > max_cols:
-        keys.append("...")
-    return keys
