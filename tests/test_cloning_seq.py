@@ -2,22 +2,7 @@
 
 import pytest
 
-from hive.cloning.seq import back_transcribe, reverse_complement, transcribe, translate
-
-
-class TestReverseComplement:
-    def test_basic(self):
-        assert reverse_complement("ATGC") == "GCAT"
-
-    def test_palindrome(self):
-        assert reverse_complement("GAATTC") == "GAATTC"
-
-    def test_roundtrip(self):
-        seq = "ATGCGATCGTAGC"
-        assert reverse_complement(reverse_complement(seq)) == seq
-
-    def test_lowercase(self):
-        assert reverse_complement("atgc") == "GCAT"
+from hive.cloning.seq import back_transcribe, transcribe, translate
 
 
 class TestTranscribe:

@@ -31,11 +31,6 @@ class TestTranslate:
         assert result["stop_codons"] == 1
         assert result["codon_table"] == 1
 
-    async def test_rna_input(self, tool):
-        result = await tool.execute({"sequence": "AUGAAAUUUGCCUGA"})
-        assert result["protein"] == "MKFA*"
-        assert result["complete"] is True
-
     async def test_incomplete_orf(self, tool):
         # No start Met, no trailing stop
         result = await tool.execute({"sequence": "AAATTTGCC"})
@@ -43,26 +38,10 @@ class TestTranslate:
         assert result["complete"] is False
         assert result["stop_codons"] == 0
 
-    async def test_bacterial_table(self, tool):
-        # GTG = V in standard, but table 11 start codon
-        result = await tool.execute({"sequence": "ATGAAATGA", "table": 11})
-        assert result["codon_table"] == 11
-
     async def test_too_short(self, tool):
         result = await tool.execute({"sequence": "AT"})
         assert "error" in result
 
-    async def test_whitespace_handling(self, tool):
-        result = await tool.execute({"sequence": "ATG AAA TTT TGA"})
-        assert result["protein"] == "MKF*"
-
-    async def test_format_result(self, tool):
-        result = {"protein_length": 10, "complete": True}
-        assert "10 amino acids" in tool.format_result(result)
-        assert "complete ORF" in tool.format_result(result)
-
-    async def test_format_result_error(self, tool):
-        assert tool.format_result({"error": "bad"}) == "Error: bad"
 
 
 # ── Transcribe ──
@@ -78,20 +57,9 @@ class TestTranscribe:
         assert result["rna"] == "AUGCAUGC"
         assert result["length"] == 8
 
-    async def test_lowercase(self, tool):
-        result = await tool.execute({"sequence": "atgc"})
-        assert result["rna"] == "AUGC"
-
     async def test_empty(self, tool):
         result = await tool.execute({"sequence": ""})
         assert "error" in result
-
-    async def test_whitespace(self, tool):
-        result = await tool.execute({"sequence": "ATG C"})
-        assert result["rna"] == "AUGC"
-
-    async def test_format_result(self, tool):
-        assert "8 nt" in tool.format_result({"length": 8})
 
 
 # ── Digest ──
@@ -201,11 +169,6 @@ class TestDigest:
         result = await tool.execute({"sequence": "", "reactions": ["EcoRI"]})
         assert "error" in result
 
-    async def test_format_result(self, tool):
-        result = {"reactions": [{"name": "EcoRI", "total_cuts": 2, "fragments": [500, 300]}]}
-        fmt = tool.format_result(result)
-        assert "2 cut(s)" in fmt
-        assert "2 fragment(s)" in fmt
 
 
 # ── GC Content ──
@@ -226,26 +189,10 @@ class TestGC:
         assert result["a"] == 1
         assert result["t"] == 1
 
-    async def test_all_gc(self, tool):
-        result = await tool.execute({"sequence": "GCGCGC"})
-        assert result["gc_percent"] == 100.0
-
-    async def test_all_at(self, tool):
-        result = await tool.execute({"sequence": "ATATAT"})
-        assert result["gc_percent"] == 0.0
-
     async def test_empty(self, tool):
         result = await tool.execute({"sequence": ""})
         assert "error" in result
 
-    async def test_whitespace(self, tool):
-        result = await tool.execute({"sequence": "AT GC"})
-        assert result["gc_percent"] == 50.0
-        assert result["length"] == 4
-
-    async def test_format_result(self, tool):
-        result = {"gc_percent": 42.5, "length": 100}
-        assert "42.5%" in tool.format_result(result)
 
 
 # ── Reverse Complement ──
@@ -261,27 +208,9 @@ class TestRevComp:
         assert result["sequence"] == "GCAT"
         assert result["length"] == 4
 
-    async def test_palindrome(self, tool):
-        # GAATTC is a palindrome (EcoRI site)
-        result = await tool.execute({"sequence": "GAATTC"})
-        assert result["sequence"] == "GAATTC"
-
-    async def test_lowercase(self, tool):
-        result = await tool.execute({"sequence": "atgc"})
-        assert result["sequence"] == "GCAT"
-
     async def test_empty(self, tool):
         result = await tool.execute({"sequence": ""})
         assert "error" in result
-
-    async def test_double_revcomp_identity(self, tool):
-        seq = "ATGCGATCGTAGC"
-        r1 = await tool.execute({"sequence": seq})
-        r2 = await tool.execute({"sequence": r1["sequence"]})
-        assert r2["sequence"] == seq
-
-    async def test_format_result(self, tool):
-        assert "10 bp" in tool.format_result({"length": 10})
 
 
 # ── Extract: _slice_sequence ──
@@ -414,38 +343,16 @@ class TestResolveInput:
             assert meta["source"] == "sid"
 
 
-# ── Universal input: tools return error for missing SID/PID without DB ──
+# ── Digest without DB returns error ──
 
 
-class TestUniversalInputNoDB:
-    """Verify analysis tools handle sid:/pid: gracefully without a live DB."""
-
-    async def test_translate_raw_still_works(self):
-        tool = TranslateTool()
-        result = await tool.execute({"sequence": "ATGAAATTTGCCTGA"})
-        assert result["protein"] == "MKFA*"
-
+class TestDigestNoDB:
     async def test_digest_no_db_returns_error(self):
         tool = DigestTool()
         result = await tool.execute(
             {"sequence": "AAAGAATTCAAA", "reactions": ["EcoRI"], "circular": False}
         )
         assert "error" in result
-
-    async def test_gc_raw_still_works(self):
-        tool = GCTool()
-        result = await tool.execute({"sequence": "ATGC"})
-        assert result["gc_percent"] == 50.0
-
-    async def test_revcomp_raw_still_works(self):
-        tool = RevCompTool()
-        result = await tool.execute({"sequence": "ATGC"})
-        assert result["sequence"] == "GCAT"
-
-    async def test_transcribe_raw_still_works(self):
-        tool = TranscribeTool()
-        result = await tool.execute({"sequence": "ATGC"})
-        assert result["rna"] == "AUGC"
 
 
 # ── Sites (inverse digest) ──

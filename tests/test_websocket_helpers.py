@@ -1,7 +1,5 @@
 """Tests for websocket helper functions."""
 
-import json
-
 from hive.server.websocket import _extract_thinking, _fallback_title, _strip_large_widget_data
 
 

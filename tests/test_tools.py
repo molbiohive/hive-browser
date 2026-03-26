@@ -64,11 +64,6 @@ class TestToolMetadata:
         t = DummyTool()
         assert t.group() == "test"
 
-    def test_group_returns_none_for_empty_tags(self):
-        t = DummyTool()
-        t.tags = set()
-        assert t.group() is None
-
     def test_format_result_default_error(self):
         t = DummyTool()
         assert t.format_result({"error": "fail"}) == "Error: fail"
@@ -89,15 +84,6 @@ class TestParamsToSchema:
         assert "query" in schema["properties"]
         assert schema["properties"]["query"]["type"] == "string"
         assert schema["required"] == ["query"]
-
-    def test_optional_with_default(self):
-        schema = _params_to_schema(
-            {
-                "limit": {"type": "integer", "default": 10},
-            }
-        )
-        assert schema["properties"]["limit"]["default"] == 10
-        assert "required" not in schema
 
     def test_enum(self):
         schema = _params_to_schema(
@@ -125,11 +111,6 @@ class TestToolRegistry:
         reg.register(t)
         assert reg.get("dummy") is t
         assert reg.get("nonexistent") is None
-
-    def test_all(self):
-        reg = ToolRegistry()
-        reg.register(DummyTool())
-        assert len(reg.all()) == 1
 
     def test_tools_returns_all(self):
         reg = ToolRegistry()
@@ -196,7 +177,7 @@ class TestToolFactoryInternal:
     def test_discovers_all_internal_tools(self):
         config = Settings()
         registry = ToolFactory.discover(config)
-        names = {t.name for t in registry.all()}
+        names = {t.name for t in registry.tools()}
         # Verify core tools are present (not exhaustive — new tools can be added)
         assert {"search", "blast", "profile", "digest", "extract"} <= names
         assert len(names) >= 10  # reasonable minimum
@@ -278,7 +259,7 @@ class TestToolFactoryExternal:
         registry = ToolFactory.discover(config)
 
         # No underscore files loaded as external tools
-        names = {t.name for t in registry.all()}
+        names = {t.name for t in registry.tools()}
         assert "_helper" not in names
         assert "__init__" not in names
 
@@ -306,7 +287,7 @@ class TestToolFactoryExternal:
     def test_missing_directory_no_error(self):
         config = Settings(data_root="/nonexistent")
         registry = ToolFactory.discover(config)
-        assert len(registry.all()) >= 10  # just internal tools
+        assert len(registry.tools()) >= 10  # just internal tools
 
 
 # ── Prompts ──

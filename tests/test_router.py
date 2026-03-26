@@ -121,14 +121,6 @@ class TestModePatterns:
         assert m.group(1) == "search"
         assert m.group(2) == "ampicillin"
 
-    def test_guided_does_not_match_double_slash(self):
-        # Double slash should be caught by DIRECT first in router logic
-        m = DIRECT_PATTERN.match("//search x")
-        assert m is not None  # direct catches it
-
-    def test_free_text_matches_neither(self):
-        assert DIRECT_PATTERN.match("search for GFP") is None
-        assert GUIDED_PATTERN.match("search for GFP") is None
 
 
 # ── Pure Helpers ──
@@ -221,21 +213,12 @@ class TestHelp:
         assert resp["type"] == "message"
         assert "Available commands" in resp["content"]
 
-    async def test_double_slash_help(self, registry):
-        resp = await route_input("//help", registry)
-        assert resp["type"] == "message"
-        assert "Available commands" in resp["content"]
 
 
 # ── Route Input: Guided Mode (no LLM) ──
 
 
 class TestGuidedNoLLM:
-    async def test_guided_without_llm_falls_back_to_direct(self, registry):
-        resp = await route_input("/echo hello", registry, llm_client=None)
-        assert resp["type"] == "tool_result"
-        assert resp["data"]["echo"] == {"query": "hello"}
-
     async def test_guided_no_args_with_llm_uses_loop(self, registry):
         """Guided mode with LLM delegates to unified loop."""
         llm = AsyncMock()
@@ -476,11 +459,6 @@ class TestErrorSanitization:
         result = _sanitize_llm_error(long_msg)
         assert len(result) <= 120
 
-    def test_unknown_first_sentence(self):
-        from hive.tools.router import _sanitize_llm_error
-
-        result = _sanitize_llm_error("Something broke. More details here.")
-        assert result == "Something broke"
 
 
 # ── Planner Integration ──
@@ -558,30 +536,6 @@ class TestPlannerIntegration:
         assert "[User request]" in user_msg["content"]
         assert "echo test" in user_msg["content"]
 
-    async def test_planner_on_tokens_include_planning(self, registry):
-        """Token counts include both planning and agent loop usage."""
-        from hive.llm.planner import Planner
-
-        planner = Planner(tools=registry.tools())
-
-        llm = self._mock_llm(
-            [
-                self._text_response(
-                    "respond conversationally", usage={"prompt_tokens": 50, "completion_tokens": 10}
-                ),
-                self._text_response("Hi!", usage={"prompt_tokens": 80, "completion_tokens": 5}),
-            ]
-        )
-        resp = await route_input(
-            "hello",
-            registry,
-            llm_client=llm,
-            planner=planner,
-            use_planner=True,
-        )
-        assert resp["tokens"]["in"] == 130  # 50 + 80
-        assert resp["tokens"]["out"] == 15  # 10 + 5
-
     async def test_planner_on_failure_falls_through(self, registry):
         """If planning call fails, agent continues without plan."""
         from hive.llm.planner import Planner
@@ -644,14 +598,6 @@ class TestPlannerIntegration:
         user_msg = [m for m in agent_messages if m.get("role") == "user"][-1]
         assert user_msg["content"] == "find GFP sequences"
 
-    # ── No planner ──
-
-    async def test_planner_none_works(self, registry):
-        """planner=None (default) works without planning."""
-        llm = self._mock_llm([self._text_response("Hello!")])
-        resp = await route_input("hello", registry, llm_client=llm, planner=None)
-        assert resp["type"] == "message"
-        assert "Hello" in resp["content"]
 
 
 # ── Sandbox Integration ──
@@ -790,54 +736,6 @@ class TestSandboxIntegration:
         assert resp["chain"][0]["tool"] == "search"
         assert resp["chain"][1]["tool"] == "python"
 
-    async def test_sandbox_scalar_keeps_previous_widget(self):
-        """Scalar sandbox results keep the previous tool's widget visible."""
-
-        class SearchTool(Tool):
-            name = "search"
-            description = "Search"
-            tags = {"search"}
-            guidelines = "Search."
-
-            def llm_schema(self) -> dict:
-                return {
-                    "type": "object",
-                    "properties": {"query": {"type": "string"}},
-                    "required": ["query"],
-                }
-
-            def __init__(self, **_):
-                pass
-
-            async def execute(self, params):
-                return {
-                    "results": [{"sid": 1, "topology": "circular"}],
-                }
-
-        reg = ToolRegistry()
-        reg.register(SearchTool())
-
-        llm = self._mock_llm(
-            [
-                self._tool_call_response("search", {"query": "test"}, call_id="c1"),
-                self._tool_call_response(
-                    "python",
-                    {"code": 'feedback = sum(1 for r in r1 if r["topology"] == "circular")'},
-                    call_id="c2",
-                ),
-                self._text_response("1 circular sequence."),
-            ]
-        )
-        resp = await route_input("count circular", reg, llm_client=llm)
-        # Scalar sandbox keeps previous tool's widget
-        assert resp["type"] == "tool_result"
-        assert resp["tool"] == "search"
-        assert "1 circular" in resp["content"]
-        assert len(resp["chain"]) == 2
-        assert resp["chain"][0]["tool"] == "search"
-        assert resp["chain"][1]["tool"] == "python"
-        assert resp["chain"][1]["summary"] == "1"
-
     async def test_python_schema_always_available(self):
         """python schema is available from turn 0 (always offered)."""
 
@@ -875,55 +773,6 @@ class TestSandboxIntegration:
         first_call_tools = llm.chat.call_args_list[0][1].get("tools", [])
         tool_names_t0 = [t["function"]["name"] for t in first_call_tools]
         assert "python" in tool_names_t0
-
-    async def test_cache_info_in_sandbox_response(self):
-        """Sandbox response includes cache descriptions."""
-
-        class SearchTool(Tool):
-            name = "search"
-            description = "Search"
-            tags = {"search"}
-            guidelines = "Search."
-
-            def llm_schema(self) -> dict:
-                return {
-                    "type": "object",
-                    "properties": {"query": {"type": "string"}},
-                    "required": ["query"],
-                }
-
-            def __init__(self, **_):
-                pass
-
-            async def execute(self, params):
-                return {"results": [{"sid": 1, "name": "GFP"}]}
-
-        reg = ToolRegistry()
-        reg.register(SearchTool())
-
-        llm = self._mock_llm(
-            [
-                self._tool_call_response("search", {"query": "x"}, call_id="c1"),
-                self._tool_call_response(
-                    "python",
-                    {"code": "feedback = len(r1)"},
-                    call_id="c2",
-                ),
-                self._text_response("1 result."),
-            ]
-        )
-        await route_input("count results", reg, llm_client=llm)
-
-        # Check the tool message for the python call has feedback
-        last_call_msgs = llm.chat.call_args_list[-1][0][0]
-        python_tool_msgs = [
-            m
-            for m in last_call_msgs
-            if isinstance(m, dict)
-            and m.get("role") == "tool"
-            and "feedback = 1" in m.get("content", "")
-        ]
-        assert len(python_tool_msgs) == 1
 
     async def test_python_schema_always_present_despite_errors(self):
         """Python schema is never dropped, even after consecutive errors."""

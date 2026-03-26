@@ -60,7 +60,11 @@ class TestChatStorage:
         store.save("abc123", [{"role": "user", "content": "hi"}], title="Original")
 
         # Save again with new messages but no title
-        store.save("abc123", [{"role": "user", "content": "hi"}, {"role": "assistant", "content": "hey"}])
+        new_msgs = [
+            {"role": "user", "content": "hi"},
+            {"role": "assistant", "content": "hey"},
+        ]
+        store.save("abc123", new_msgs)
 
         loaded = store.load("abc123")
         assert loaded["title"] == "Original"
@@ -68,9 +72,8 @@ class TestChatStorage:
 
     def test_new_chat_id(self, tmp_path):
         store = ChatStorage(str(tmp_path))
-        id1 = store.new_chat_id()
-        id2 = store.new_chat_id()
-        assert isinstance(id1, str)
-        assert len(id1) == 8
+        chat_id = store.new_chat_id()
+        assert isinstance(chat_id, str)
+        assert len(chat_id) == 8
         # IDs should be hex strings
-        int(id1, 16)
+        int(chat_id, 16)

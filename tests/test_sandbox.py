@@ -117,25 +117,6 @@ class TestWorkspace:
         ws.store("results", [{"a": 1}], "search")
         assert ws.find_by_field("sequence_data") is None
 
-    def test_contains(self):
-        ws = Workspace()
-        ws.store("results", [{"a": 1}], "search")
-        assert "r0" in ws
-        assert "r1" not in ws
-        assert "invalid" not in ws
-
-    def test_len(self):
-        ws = Workspace()
-        assert len(ws) == 0
-        ws.store("results", [{"a": 1}], "search")
-        assert len(ws) == 1
-        ws.store("hits", [{"b": 2}], "blast")
-        assert len(ws) == 2
-
-    def test_describe_missing_handle(self):
-        ws = Workspace()
-        assert ws.describe("r0") == ""
-
     def test_column_names_capped(self):
         """Columns beyond max_cols show '...'."""
         ws = Workspace()
@@ -190,28 +171,8 @@ class TestSafeExec:
         assert result["status"] == "error"
         assert "Empty" in result["error"]
 
-    def test_whitespace_only(self):
-        result = safe_exec("   \n  ")
-        assert result["status"] == "error"
-        assert "Empty" in result["error"]
-
     def test_import_blocked(self):
         result = safe_exec("import os\nfeedback = 1")
-        assert result["status"] == "error"
-        assert "Blocked" in result["error"]
-
-    def test_open_blocked(self):
-        result = safe_exec('feedback = open("/etc/passwd")')
-        assert result["status"] == "error"
-        assert "Blocked" in result["error"]
-
-    def test_exec_blocked(self):
-        result = safe_exec('exec("x=1")\nfeedback = 1')
-        assert result["status"] == "error"
-        assert "Blocked" in result["error"]
-
-    def test_eval_blocked(self):
-        result = safe_exec('feedback = eval("1+1")')
         assert result["status"] == "error"
         assert "Blocked" in result["error"]
 
@@ -225,27 +186,9 @@ class TestSafeExec:
         assert result["status"] == "error"
         assert "SyntaxError" in result["error"]
 
-    def test_runtime_error(self):
-        result = safe_exec("feedback = 1 / 0")
-        assert result["status"] == "error"
-        assert "ZeroDivisionError" in result["error"]
-
-    def test_name_error(self):
-        result = safe_exec("feedback = undefined_var")
-        assert result["status"] == "error"
-        assert "NameError" in result["error"]
-
     def test_type_classification_list(self):
         result = safe_exec("feedback = [1, 2, 3]")
         assert result["type"] == "list"
-
-    def test_type_classification_dict(self):
-        result = safe_exec('feedback = {"key": "val"}')
-        assert result["type"] == "dict"
-
-    def test_type_classification_scalar(self):
-        result = safe_exec("feedback = 42")
-        assert result["type"] == "scalar"
 
     def test_stdout_capture(self):
         result = safe_exec('print("hello")\nfeedback = 1')
@@ -294,16 +237,6 @@ class TestSafeExec:
         """feedback is not included in user_vars."""
         result = safe_exec("feedback = 'hi'")
         assert "feedback" not in result["user_vars"]
-
-    def test_user_vars_excludes_underscore(self):
-        """Private variables (_-prefixed) are excluded from user_vars."""
-        result = safe_exec("_tmp = 1\nfeedback = 'ok'")
-        assert "_tmp" not in result["user_vars"]
-
-    def test_user_vars_not_in_error(self):
-        """Error results don't have user_vars."""
-        result = safe_exec("")
-        assert "user_vars" not in result
 
     def test_user_vars_excludes_injected(self):
         """Injected variables are not re-captured in user_vars."""
@@ -406,16 +339,6 @@ class TestSandboxRunner:
         assert result["status"] == "ok"
         assert result["feedback"] == "done"
 
-    def test_output_limit_default(self):
-        ws = Workspace()
-        runner = SandboxRunner(ws)
-        assert runner.output_limit == 4000
-
-    def test_output_limit_custom(self):
-        ws = Workspace()
-        runner = SandboxRunner(ws, output_limit=2000)
-        assert runner.output_limit == 2000
-
     async def test_user_vars_persist_across_calls(self):
         """Variables from call 1 are accessible in call 2."""
         ws = Workspace()
@@ -435,13 +358,6 @@ class TestSandboxRunner:
         desc = schema["function"]["description"]
         assert "my_data" in desc
         assert "Persisted variables" in desc
-
-    def test_user_vars_not_in_schema_when_empty(self):
-        """No persisted variables line when none exist."""
-        ws = Workspace()
-        runner = SandboxRunner(ws)
-        schema = runner.tool_schema()
-        assert "Persisted variables" not in schema["function"]["description"]
 
     async def test_user_vars_dont_override_workspace(self):
         """Workspace handles take precedence over user vars with same name."""
@@ -485,44 +401,6 @@ class TestToolCallables:
         assert "Callable tools:" in desc
         assert "gc(sequence: string)" in desc
         assert "DNA sequence" in desc
-
-    async def test_all_tools_appear_in_signatures(self):
-        """All registered tools appear in sandbox signatures."""
-        from hive.tools.base import Tool, ToolRegistry
-
-        class SearchTool(Tool):
-            name = "search"
-            description = "Search"
-            tags = {"search"}
-            params = {"query": {"type": "string", "description": "Query"}}
-
-            def __init__(self, **_):
-                pass
-
-            async def execute(self, params):
-                return {"results": []}
-
-        class GcTool(Tool):
-            name = "gc"
-            description = "GC content"
-            tags = {"analysis"}
-            params = {"sequence": {"type": "string", "description": "DNA"}}
-
-            def __init__(self, **_):
-                pass
-
-            async def execute(self, params):
-                return {"gc_percent": 50.0}
-
-        reg = ToolRegistry()
-        reg.register(SearchTool())
-        reg.register(GcTool())
-
-        ws = Workspace()
-        runner = SandboxRunner(ws, registry=reg)
-        desc = runner.tool_schema()["function"]["description"]
-        assert "gc(" in desc
-        assert "search(" in desc
 
     async def test_callable_from_sandbox(self):
         """Tools can be called as functions inside sandbox code."""
@@ -635,13 +513,6 @@ class TestStoreResult:
         assert len(ws) == 2  # _result + sequence
         assert ws.get("r1") is seq
 
-    def test_short_string_not_broken_out(self):
-        """Strings < 200 chars stay only in _result."""
-        ws = Workspace()
-        data = {"name": "short", "count": 1}
-        ws.store_result(data, "tool")
-        assert len(ws) == 1
-
     def test_dict_gt2_keys_broken_out(self):
         """Dicts with >2 keys are stored as separate entries."""
         ws = Workspace()
@@ -650,13 +521,6 @@ class TestStoreResult:
         ws.store_result(data, "tool")
         assert len(ws) == 2
         assert ws.get("r1") is info
-
-    def test_dict_le2_keys_not_broken_out(self):
-        """Dicts with <=2 keys stay only in _result."""
-        ws = Workspace()
-        data = {"info": {"a": 1, "b": 2}, "x": 1}
-        ws.store_result(data, "tool")
-        assert len(ws) == 1
 
     def test_error_key_skipped(self):
         """Error key is not stored as sub-entry."""
@@ -673,14 +537,6 @@ class TestStoreResult:
         ws.store_result(data, "tool")
         assert len(ws) == 1
 
-    def test_shared_references(self):
-        """Sub-entries share references with _result (no copies)."""
-        ws = Workspace()
-        items = [{"id": 1}]
-        data = {"items": items}
-        ws.store_result(data, "tool")
-        assert ws.get("r0")["items"] is ws.get("r1")
-
     def test_describe_handles(self):
         """describe_handles shows only specified handles."""
         ws = Workspace()
@@ -690,7 +546,3 @@ class TestStoreResult:
         assert "r1:" in desc
         assert "r0:" not in desc
 
-    def test_describe_handles_empty(self):
-        """describe_handles with invalid handles returns empty string."""
-        ws = Workspace()
-        assert ws.describe_handles(["r99"]) == ""

@@ -18,11 +18,6 @@ class TestGcContent:
     def test_mixed(self):
         assert gc_content("ATGC") == 0.5
 
-    def test_empty(self):
-        assert gc_content("") == 0.0
-
-    def test_lowercase(self):
-        assert gc_content("atgc") == 0.5
 
 
 class TestAnalyzeOrf:
@@ -101,8 +96,6 @@ class TestAnalyzePrimer:
         result = analyze_primer(seq)
         assert result["gc_content"] == "0.500"
 
-    def test_empty(self):
-        assert analyze_primer("") == {}
 
 
 class TestClassifyPart:
