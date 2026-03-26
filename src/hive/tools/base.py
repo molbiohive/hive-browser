@@ -47,7 +47,7 @@ class Tool(ABC):
                 return await original(self, params, **filtered)
             except Exception as e:
                 logger.error("Tool %s failed: %s", self.name, e, exc_info=True)
-                return {"error": f"Tool '{self.name}' failed. Check server logs."}
+                return {"error": f"{type(e).__name__}: {str(e)[:200]}"}
 
         cls.execute = _safe_execute
 

@@ -9,7 +9,8 @@ import re
 from typing import Any
 
 from pydantic import BaseModel, Field
-from sqlalchemy import Text, bindparam, cast, desc, func, select, text
+from sqlalchemy import Text, bindparam, cast, desc, func, literal_column, select, text
+from sqlalchemy.exc import DatabaseError
 from sqlalchemy.orm import selectinload
 
 from hive.config import display_file_path
@@ -74,14 +75,11 @@ class SearchTool(Tool):
     description = "Search sequences by name, features, tags (directory context), and metadata."
     tags = {"search"}
     guidelines = (
-        "BM25 keyword search across sequences AND parts. Returns both matching "
-        "sequences (with SIDs) and matching parts (with PIDs and instance counts). "
-        "IMPORTANT: When user says 'X and Y' or 'X with Y' or 'X that have Y', "
-        "ALWAYS use && in query: 'X && Y'. Without && terms are single-term search. "
-        "Use query='*' to list ALL sequences (useful for 'show everything', 'list all'). "
-        "If the user mentions a project, folder, or directory context, "
-        "put it in the tags parameter. "
-        "Use PIDs from the parts section for follow-up tools (align, blast, extract)."
+        "Search sequences and parts by keyword. Returns matching sequences (SIDs) "
+        "and parts (PIDs with instance counts). "
+        "Use && for AND: 'KanR && circular'. Use || for OR: 'GFP || RFP'. "
+        "Use * to list all. Put directory/project context in tags parameter. "
+        "Use PIDs from parts section for follow-up tools."
     )
 
     def __init__(self, **_):
@@ -136,65 +134,74 @@ class SearchTool(Tool):
         # Choose BM25 operator: &&& (conjunction) for AND, ||| (disjunction) for OR/single
         bm25_op = "&&&" if op == "and" else "|||"
 
-        async with db.async_session_factory() as session:
-            # BM25 search on sequences via search_text + name
-            score_expr = text("pdb.score(sequences.id)")
+        try:
+            async with db.async_session_factory() as session:
+                # BM25 search on sequences via search_text + name
+                score_expr = literal_column("pdb.score(sequences.id)")
 
-            stmt = (
-                select(Sequence, score_expr.label("score"), IndexedFile.file_path)
-                .join(IndexedFile, Sequence.file_id == IndexedFile.id)
-                .options(
-                    selectinload(Sequence.part_instances)
-                    .selectinload(PartInstance.part)
-                    .selectinload(Part.names)
-                )
-                .where(IndexedFile.status == "active")
-                .where(
-                    text(
-                        f"(sequences.search_text {bm25_op} :bm25_q"
-                        f" OR sequences.name {bm25_op} :bm25_q)"
-                    ).bindparams(bindparam("bm25_q", value=bm25_q))
-                )
-                .order_by(score_expr.desc())
-            )
-
-            # Tags filter
-            if inp.tags:
-                stmt = stmt.where(cast(Sequence.meta["tags"], Text).contains(inp.tags))
-
-            # Apply filters
-            if topo := inp.filters.get("topology"):
-                stmt = stmt.where(Sequence.topology == topo)
-            if size_min := inp.filters.get("size_min"):
-                stmt = stmt.where(Sequence.length >= int(size_min))
-            if size_max := inp.filters.get("size_max"):
-                stmt = stmt.where(Sequence.length <= int(size_max))
-
-            rows = (await session.execute(stmt)).all()
-
-            results = []
-            for seq, score, file_path in rows:
-                # Collect part names (first name per part) as "features" for display
-                part_names = []
-                for pi in seq.part_instances:
-                    if pi.part and pi.part.names:
-                        part_names.append(pi.part.names[0].name)
-                meta = seq.meta or {}
-                results.append(
-                    SearchResultItem(
-                        sid=seq.id,
-                        name=seq.name,
-                        size_bp=seq.length,
-                        topology=seq.topology,
-                        features=part_names,
-                        tags=meta.get("tags", []),
-                        file_path=display_file_path(file_path),
-                        score=round(float(score), 3),
-                    ).model_dump()
+                stmt = (
+                    select(Sequence, score_expr.label("score"), IndexedFile.file_path)
+                    .join(IndexedFile, Sequence.file_id == IndexedFile.id)
+                    .options(
+                        selectinload(Sequence.part_instances)
+                        .selectinload(PartInstance.part)
+                        .selectinload(Part.names)
+                    )
+                    .where(IndexedFile.status == "active")
+                    .where(
+                        text(
+                            f"(sequences.search_text {bm25_op} :bm25_q"
+                            f" OR sequences.name {bm25_op} :bm25_q)"
+                        ).bindparams(bindparam("bm25_q", value=bm25_q))
+                    )
+                    .order_by(score_expr.desc())
                 )
 
-            # --- Part-level search ---
-            parts = await _search_parts(session, bm25_q)
+                # Tags filter
+                if inp.tags:
+                    stmt = stmt.where(cast(Sequence.meta["tags"], Text).contains(inp.tags))
+
+                # Apply filters
+                if topo := inp.filters.get("topology"):
+                    stmt = stmt.where(Sequence.topology == topo)
+                if size_min := inp.filters.get("size_min"):
+                    stmt = stmt.where(Sequence.length >= int(size_min))
+                if size_max := inp.filters.get("size_max"):
+                    stmt = stmt.where(Sequence.length <= int(size_max))
+
+                rows = (await session.execute(stmt)).all()
+
+                results = []
+                for seq, score, file_path in rows:
+                    # Collect part names (first name per part) as "features" for display
+                    part_names = []
+                    for pi in seq.part_instances:
+                        if pi.part and pi.part.names:
+                            part_names.append(pi.part.names[0].name)
+                    meta = seq.meta or {}
+                    results.append(
+                        SearchResultItem(
+                            sid=seq.id,
+                            name=seq.name,
+                            size_bp=seq.length,
+                            topology=seq.topology,
+                            features=part_names,
+                            tags=meta.get("tags", []),
+                            file_path=display_file_path(file_path),
+                            score=round(float(score), 3),
+                        ).model_dump()
+                    )
+
+                # --- Part-level search ---
+                parts = await _search_parts(session, bm25_q)
+        except DatabaseError as e:
+            logger.warning("BM25 search failed for query %r: %s", inp.query, e)
+            return {
+                "error": f"Search failed: {e}",
+                "results": [],
+                "total": 0,
+                "query": inp.query,
+            }
 
         return {
             "results": results,
@@ -261,19 +268,23 @@ class SearchTool(Tool):
 
 async def _search_parts(session: Any, bm25_q: str) -> list[dict]:
     """Search parts by name using ParadeDB BM25 on part_names."""
-    score_expr = text("pdb.score(part_names.id)")
+    try:
+        score_expr = literal_column("pdb.score(part_names.id)")
 
-    # BM25 search on part_names (disjunction -- any term matches)
-    pn_stmt = (
-        select(
-            PartName.part_id,
-            func.max(score_expr).label("score"),
+        # BM25 search on part_names (disjunction -- any term matches)
+        pn_stmt = (
+            select(
+                PartName.part_id,
+                func.max(score_expr).label("score"),
+            )
+            .where(text("part_names.name ||| :bm25_q").bindparams(bindparam("bm25_q", value=bm25_q)))
+            .group_by(PartName.part_id)
+            .order_by(desc("score"))
         )
-        .where(text("part_names.name ||| :bm25_q").bindparams(bindparam("bm25_q", value=bm25_q)))
-        .group_by(PartName.part_id)
-        .order_by(desc("score"))
-    )
-    rows = (await session.execute(pn_stmt)).all()
+        rows = (await session.execute(pn_stmt)).all()
+    except DatabaseError as e:
+        logger.warning("Part search failed: %s", e)
+        return []
 
     if not rows:
         return []
