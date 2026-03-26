@@ -66,7 +66,8 @@ class SandboxRunner:
     def _tool_signatures(self) -> str:
         """Compact listing of callable tools for the python schema description.
 
-        Includes param names, types, and descriptions from input_schema().
+        Uses guidelines (or description fallback) + returns hint. No per-param
+        descriptions to save tokens.
         """
         if not self._registry:
             return ""
@@ -78,12 +79,9 @@ class SandboxRunner:
             schema = tool.input_schema()
             props = schema.get("properties", {})
             params = ", ".join(f"{name}: {spec.get('type', 'any')}" for name, spec in props.items())
-            param_descs = []
-            for name, spec in props.items():
-                if d := spec.get("description"):
-                    param_descs.append(f"{name}={d}")
-            extra = f" ({', '.join(param_descs)})" if param_descs else ""
-            lines.append(f"  {tool.name}({params}) -- {tool.description}{extra}")
+            doc = tool.guidelines or tool.description
+            ret = f" -> {tool.returns}" if tool.returns else ""
+            lines.append(f"  {tool.name}({params}){ret} -- {doc}")
         return "\n".join(lines)
 
     def tool_schema(self) -> dict:

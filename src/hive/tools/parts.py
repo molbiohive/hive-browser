@@ -35,6 +35,10 @@ class PartsTool(Tool):
     name = "parts"
     description = "Look up a part by PID, or list all parts on a sequence by SID."
     tags = {"info"}
+    returns = (
+        "{names: [str], instances: [{sid, seq_name, type}], "
+        "annotations: {}, sequence}"
+    )
     guidelines = (
         "Look up a part by PID (canonical data: names, instances across sequences, "
         "annotations, libraries, sequence) or list all parts on a sequence by SID "

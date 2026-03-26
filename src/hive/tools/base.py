@@ -26,6 +26,7 @@ class Tool(ABC):
     description: str
     tags: set[str] = set()
     guidelines: str = ""
+    returns: str = ""
     params: dict | None = None
 
     # Injected by factory for external tools

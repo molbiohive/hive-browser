@@ -46,6 +46,16 @@ _SAFE_BUILTINS: dict[str, Any] = {
     "set": set,
     "frozenset": frozenset,
     "type": type,
+    # Iteration (extended)
+    "next": next,
+    "iter": iter,
+    # Introspection
+    "repr": repr,
+    "format": format,
+    "chr": chr,
+    "ord": ord,
+    "hasattr": hasattr,
+    "getattr": getattr,
     # Misc
     "None": None,
     "True": True,

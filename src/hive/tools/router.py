@@ -412,6 +412,16 @@ async def _unified_loop(
                 turn_log.append((tool_name, f"Error: unknown tool '{tool_name}'"))
                 continue
 
+            # Only search is exposed as a function-calling tool.
+            # Other tools are callable from python — reject hallucinated direct calls.
+            if tool_name != "search":
+                err = f"'{tool_name}' is callable from python: {tool_name}(param=value)"
+                messages.append(
+                    {"role": "tool", "tool_call_id": tc["id"], "content": err}
+                )
+                turn_log.append((tool_name, f"Error: use python: {tool_name}(...)"))
+                continue
+
             # Auto-fill from workspace: inject stored values into matching params
             # Override if param is missing, empty, or shorter than the stored value
             schema_props = tool.input_schema().get("properties", {})

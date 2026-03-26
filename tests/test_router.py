@@ -292,33 +292,32 @@ class TestAgenticLoop:
         assert "Hello" in resp["content"]
 
     async def test_single_tool_call(self, registry):
-        """LLM calls echo tool, then summarizes."""
+        """LLM calls search tool, then summarizes."""
         llm = self._mock_llm(
             [
-                self._tool_call_response("echo", {"query": "test"}),
-                self._text_response("Here are your echo results."),
+                self._tool_call_response("search", {"query": "test"}),
+                self._text_response("Here are your search results."),
             ]
         )
-        resp = await route_input("echo test", registry, llm_client=llm)
+        resp = await route_input("find test", registry, llm_client=llm)
         assert resp["type"] == "tool_result"
-        assert resp["tool"] == "echo"
-        assert resp["data"]["echo"] == {"query": "test"}
-        assert "echo results" in resp["content"]
+        assert resp["tool"] == "search"
+        assert "search results" in resp["content"]
 
     async def test_multi_tool_chain(self, registry):
-        """LLM chains two tool calls before summarizing."""
+        """LLM chains two search calls before summarizing."""
         llm = self._mock_llm(
             [
-                self._tool_call_response("echo", {"query": "step1"}, call_id="c1"),
-                self._tool_call_response("echo", {"query": "step2"}, call_id="c2"),
+                self._tool_call_response("search", {"query": "step1"}, call_id="c1"),
+                self._tool_call_response("search", {"query": "step2"}, call_id="c2"),
                 self._text_response("Done with both steps."),
             ]
         )
         resp = await route_input("do two things", registry, llm_client=llm)
         assert resp["type"] == "tool_result"
         assert len(resp["chain"]) == 2
-        assert resp["chain"][0]["tool"] == "echo"
-        assert resp["chain"][1]["tool"] == "echo"
+        assert resp["chain"][0]["tool"] == "search"
+        assert resp["chain"][1]["tool"] == "search"
 
     async def test_unknown_tool_from_llm(self, registry):
         """LLM hallucinates a tool name → error message sent back, then text."""
@@ -336,8 +335,8 @@ class TestAgenticLoop:
         """Loop hits max turns → returns last result with warning."""
         llm = self._mock_llm(
             [
-                self._tool_call_response("echo", {"query": "t1"}, call_id="c1"),
-                self._tool_call_response("echo", {"query": "t2"}, call_id="c2"),
+                self._tool_call_response("search", {"query": "t1"}, call_id="c1"),
+                self._tool_call_response("search", {"query": "t2"}, call_id="c2"),
             ]
         )
         resp = await route_input("loop forever", registry, llm_client=llm, max_turns=2)
@@ -353,7 +352,7 @@ class TestAgenticLoop:
 
         llm = self._mock_llm(
             [
-                self._tool_call_response("echo", {"query": "x"}),
+                self._tool_call_response("search", {"query": "x"}),
                 self._text_response("Done."),
             ]
         )
@@ -363,61 +362,29 @@ class TestAgenticLoop:
         assert "tool" in phases  # before execute
         assert phases[-1] == "thinking"  # after execute
 
-    async def test_auto_pipe_cache(self, registry):
-        """Large string results are cached and auto-injected into subsequent tools."""
-
-        class LargeOutputTool(Tool):
-            name = "producer"
-            description = "Produces large output"
-            tags = {"test"}
-            params = {"name": {"type": "string", "description": "Name"}}
-
-            def __init__(self, **_):
-                pass
-
-            async def execute(self, params):
-                return {"sequence": "A" * 300}  # > pipe_min_length
-
-        class ConsumerTool(Tool):
-            name = "consumer"
-            description = "Consumes sequence"
-            tags = {"test"}
-            params = {"sequence": {"type": "string", "description": "Sequence"}}
-
-            def __init__(self, **_):
-                pass
-
-            async def execute(self, params):
-                return {"length": len(params.get("sequence", ""))}
-
-        reg = ToolRegistry()
-        reg.register(SearchStubTool())
-        reg.register(LargeOutputTool())
-        reg.register(ConsumerTool())
-
+    async def test_non_search_tool_rejected(self, registry):
+        """Non-search tool called via function calling → error pointing to sandbox."""
         llm = self._mock_llm(
             [
-                self._tool_call_response("producer", {"name": "test"}, call_id="c1"),
-                # LLM sends consumer with short placeholder -- cache should inject
-                self._tool_call_response("consumer", {"sequence": "injected"}, call_id="c2"),
-                self._text_response("Length is 300."),
+                self._tool_call_response("echo", {"query": "test"}),
+                self._text_response("Let me use python instead."),
             ]
         )
-        resp = await route_input("pipe test", reg, llm_client=llm, pipe_min_length=200)
-        assert resp["type"] == "tool_result"
-        assert resp["data"]["length"] == 300  # got cached value, not "injected"
+        resp = await route_input("echo test", registry, llm_client=llm)
+        assert resp["type"] == "message"
+        assert "python" in resp["content"].lower() or "Let me" in resp["content"]
 
     async def test_guided_with_llm(self, registry):
         """Guided mode with LLM delegates to unified loop."""
         llm = self._mock_llm(
             [
-                self._tool_call_response("echo", {"query": "guided"}),
-                self._text_response("Guided echo result."),
+                self._tool_call_response("search", {"query": "guided"}),
+                self._text_response("Guided search result."),
             ]
         )
-        resp = await route_input("/echo test guided", registry, llm_client=llm)
+        resp = await route_input("/search test guided", registry, llm_client=llm)
         assert resp["type"] == "tool_result"
-        assert resp["tool"] == "echo"
+        assert resp["tool"] == "search"
 
     async def test_llm_error_graceful(self, registry):
         """LLM raises exception -> loop breaks gracefully with sanitized error."""

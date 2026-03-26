@@ -29,6 +29,7 @@ class ProfileTool(Tool):
         "plasmid map, annotated viewer, metadata, features, primers, cut sites."
     )
     tags = {"info"}
+    returns = "{name, length, topology, features: [{name, type, location}], sequence}"
     guidelines = (
         "Full sequence details and close-up visual inspection. "
         "Use sid (from search results) or name."
