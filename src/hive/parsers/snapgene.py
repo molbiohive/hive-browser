@@ -34,35 +34,39 @@ def _serialize_history_tree(node, history) -> list[dict]:
         content = history.get_node(n.id)
         if content:
             for f in content.features:
-                features.append({
-                    "name": getattr(f, "name", ""),
-                    "type": getattr(f, "type", "misc_feature"),
-                    "start": getattr(f, "start", 0),
-                    "end": getattr(f, "end", 0),
-                    "strand": _parse_strand(getattr(f, "strand", ".")),
-                    "qualifiers": dict(f.qualifiers) if hasattr(f, "qualifiers") else {},
-                })
+                features.append(
+                    {
+                        "name": getattr(f, "name", ""),
+                        "type": getattr(f, "type", "misc_feature"),
+                        "start": getattr(f, "start", 0),
+                        "end": getattr(f, "end", 0),
+                        "strand": _parse_strand(getattr(f, "strand", ".")),
+                        "qualifiers": dict(f.qualifiers) if hasattr(f, "qualifiers") else {},
+                    }
+                )
 
-        result.append({
-            "node_id": n.id,
-            "parent_node_id": parent_id,
-            "name": getattr(n, "name", ""),
-            "operation": getattr(n, "operation", "invalid"),
-            "seq_len": getattr(n, "seq_len", 0),
-            "circular": getattr(n, "circular", False),
-            "molecule_type": getattr(n, "type", "DNA"),
-            "oligos": [
-                {
-                    "name": o.name,
-                    "sequence": o.sequence,
-                    "phosphorylated": getattr(o, "phosphorylated", False),
-                }
-                for o in getattr(n, "oligos", [])
-            ],
-            "enzymes": enzymes,
-            "features": features,
-            "parameters": getattr(n, "parameters", {}),
-        })
+        result.append(
+            {
+                "node_id": n.id,
+                "parent_node_id": parent_id,
+                "name": getattr(n, "name", ""),
+                "operation": getattr(n, "operation", "invalid"),
+                "seq_len": getattr(n, "seq_len", 0),
+                "circular": getattr(n, "circular", False),
+                "molecule_type": getattr(n, "type", "DNA"),
+                "oligos": [
+                    {
+                        "name": o.name,
+                        "sequence": o.sequence,
+                        "phosphorylated": getattr(o, "phosphorylated", False),
+                    }
+                    for o in getattr(n, "oligos", [])
+                ],
+                "enzymes": enzymes,
+                "features": features,
+                "parameters": getattr(n, "parameters", {}),
+            }
+        )
         for child in getattr(n, "children", []):
             _walk(child, n.id)
 
@@ -106,30 +110,34 @@ def parse_snapgene(filepath: Path, extract: list[str] | None = None) -> ParseRes
             rf = getattr(f, "reading_frame", None)
             if rf is not None:
                 quals["reading_frame"] = rf
-            features.append(ParsedFeature(
-                name=f.name,
-                type=f.type,
-                start=f.start,
-                end=f.end,
-                strand=_parse_strand(f.strand),
-                qualifiers=quals,
-            ))
+            features.append(
+                ParsedFeature(
+                    name=f.name,
+                    type=f.type,
+                    start=f.start,
+                    end=f.end,
+                    strand=_parse_strand(f.strand),
+                    qualifiers=quals,
+                )
+            )
 
     primers = []
     if extract is None or "primers" in extract:
         for p in sgff.primers:
-            primers.append(ParsedPrimer(
-                name=p.name,
-                sequence=p.sequence,
-                tm=getattr(p, "tm", None),
-                start=getattr(p, "start", None),
-                end=getattr(p, "end", None),
-                strand=(
-                    _parse_strand(getattr(p, "bind_strand", None))
-                    if getattr(p, "bind_strand", None) is not None
-                    else None
-                ),
-            ))
+            primers.append(
+                ParsedPrimer(
+                    name=p.name,
+                    sequence=p.sequence,
+                    tm=getattr(p, "tm", None),
+                    start=getattr(p, "start", None),
+                    end=getattr(p, "end", None),
+                    strand=(
+                        _parse_strand(getattr(p, "bind_strand", None))
+                        if getattr(p, "bind_strand", None) is not None
+                        else None
+                    ),
+                )
+            )
 
         # Map primers with null locations via 3' anchor scanning
         unmapped = [

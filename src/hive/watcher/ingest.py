@@ -81,7 +81,11 @@ def _resolve_parser(match: MatchResult, file_path: Path):
 
 
 def _extract_subseq(
-    parent_seq: str, start: int, end: int, strand: int, topology: str,
+    parent_seq: str,
+    start: int,
+    end: int,
+    strand: int,
+    topology: str,
 ) -> str:
     """Extract subsequence from parent, handling circular wrap and reverse complement."""
     if start <= end:
@@ -97,13 +101,13 @@ def _extract_subseq(
 
 
 async def get_or_create_part(
-    session: AsyncSession, sequence: str, molecule: str,
+    session: AsyncSession,
+    sequence: str,
+    molecule: str,
 ) -> Part:
     """Find Part by sequence_hash or create new one."""
     seq_hash = hash_sequence(sequence)
-    existing = await session.execute(
-        select(Part).where(Part.sequence_hash == seq_hash)
-    )
+    existing = await session.execute(select(Part).where(Part.sequence_hash == seq_hash))
     part = existing.scalar_one_or_none()
     if part:
         return part
@@ -134,12 +138,14 @@ async def add_part_name(
         )
     )
     if not existing.scalar_one_or_none():
-        session.add(PartName(
-            part_id=part_id,
-            name=name,
-            source=source,
-            source_detail=source_detail,
-        ))
+        session.add(
+            PartName(
+                part_id=part_id,
+                name=name,
+                source=source,
+                source_detail=source_detail,
+            )
+        )
 
 
 async def ingest_file(
@@ -230,9 +236,7 @@ async def ingest_file(
             meta["tags"] = tags
 
     # Upsert Sequence — update in-place to keep SID stable
-    existing_seq = await session.execute(
-        select(Sequence).where(Sequence.file_id == indexed.id)
-    )
+    existing_seq = await session.execute(select(Sequence).where(Sequence.file_id == indexed.id))
     seq = existing_seq.scalar_one_or_none()
 
     search_text = build_search_text(result, meta.get("tags"))
@@ -249,12 +253,8 @@ async def ingest_file(
         seq.search_text = search_text
         seq.meta = meta or None
         # Delete child rows that will be recreated below
-        await session.execute(
-            delete(PartInstance).where(PartInstance.seq_id == seq.id)
-        )
-        await session.execute(
-            delete(CloningStep).where(CloningStep.sequence_id == seq.id)
-        )
+        await session.execute(delete(PartInstance).where(PartInstance.seq_id == seq.id))
+        await session.execute(delete(CloningStep).where(CloningStep.sequence_id == seq.id))
         await session.flush()
     else:
         seq = Sequence(
@@ -275,23 +275,33 @@ async def ingest_file(
     # For each ParsedFeature: extract subsequence, hash, get_or_create Part
     for f in result.features:
         subseq = _extract_subseq(
-            result.sequence, f.start, f.end, f.strand, result.topology,
+            result.sequence,
+            f.start,
+            f.end,
+            f.strand,
+            result.topology,
         )
         if not subseq:
             continue
         part = await get_or_create_part(session, subseq, result.molecule)
         await add_part_name(
-            session, part.id, f.name, source="file", source_detail=file_path.name,
+            session,
+            part.id,
+            f.name,
+            source="file",
+            source_detail=file_path.name,
         )
-        session.add(PartInstance(
-            part_id=part.id,
-            seq_id=seq.id,
-            annotation_type=f.type,
-            start=f.start,
-            end=f.end,
-            strand=f.strand,
-            qualifiers=f.qualifiers or None,
-        ))
+        session.add(
+            PartInstance(
+                part_id=part.id,
+                seq_id=seq.id,
+                annotation_type=f.type,
+                start=f.start,
+                end=f.end,
+                strand=f.strand,
+                qualifiers=f.qualifiers or None,
+            )
+        )
         await annotate_part(session, part.id, f.type, subseq, result.molecule, name=f.name)
 
     # For each ParsedPrimer: create Part from oligo sequence
@@ -300,17 +310,23 @@ async def ingest_file(
             continue
         part = await get_or_create_part(session, p.sequence, "DNA")
         await add_part_name(
-            session, part.id, p.name, source="file", source_detail=file_path.name,
+            session,
+            part.id,
+            p.name,
+            source="file",
+            source_detail=file_path.name,
         )
         if p.start is not None and p.end is not None:
-            session.add(PartInstance(
-                part_id=part.id,
-                seq_id=seq.id,
-                annotation_type="primer_bind",
-                start=p.start,
-                end=p.end,
-                strand=p.strand,
-            ))
+            session.add(
+                PartInstance(
+                    part_id=part.id,
+                    seq_id=seq.id,
+                    annotation_type="primer_bind",
+                    start=p.start,
+                    end=p.end,
+                    strand=p.strand,
+                )
+            )
         await annotate_part(session, part.id, "primer_bind", p.sequence, "DNA", name=p.name)
 
     # Ingest cloning history steps
@@ -346,15 +362,20 @@ async def ingest_file(
                     continue
                 part = await get_or_create_part(session, oligo_seq, "DNA")
                 await add_part_name(
-                    session, part.id, oligo.get("name", ""),
+                    session,
+                    part.id,
+                    oligo.get("name", ""),
                     source="history",
                     source_detail=f"step:{step.id}",
                 )
                 await annotate_part(
-                    session, part.id, "primer_bind", oligo_seq, "DNA",
+                    session,
+                    part.id,
+                    "primer_bind",
+                    oligo_seq,
+                    "DNA",
                     name=oligo.get("name"),
                 )
-
 
     if commit:
         await session.commit()
@@ -362,7 +383,11 @@ async def ingest_file(
     n_parts = len(result.features) + len(result.primers)
     logger.info(
         "Indexed: %s (%d bp, %d features, %d primers, %d parts)",
-        result.name, result.size_bp, len(result.features), len(result.primers), n_parts,
+        result.name,
+        result.size_bp,
+        len(result.features),
+        len(result.primers),
+        n_parts,
     )
     return indexed
 
@@ -379,9 +404,7 @@ async def remove_file(session: AsyncSession, file_path: Path) -> bool:
         return False
 
     # Cascade delete removes sequences and part_instances
-    await session.execute(
-        delete(Sequence).where(Sequence.file_id == indexed.id)
-    )
+    await session.execute(delete(Sequence).where(Sequence.file_id == indexed.id))
     indexed.status = "deleted"
     await session.commit()
     logger.info("Removed: %s", file_path.name)

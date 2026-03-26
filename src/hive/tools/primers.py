@@ -78,7 +78,9 @@ class PrimersTool(Tool):
             file_primers: list[dict] = []
             if meta.get("source") == "sid":
                 seq_obj = await resolve_sequence(
-                    session, sid=meta["sid"], load_parts=True,
+                    session,
+                    sid=meta["sid"],
+                    load_parts=True,
                 )
                 if seq_obj:
                     circular = seq_obj.topology == "circular"
@@ -118,7 +120,9 @@ class PrimersTool(Tool):
                             "source": "predicted",
                         }
                         for pp in find_primer_sites(
-                            seq_str.upper(), primer_parts, circular=circular,
+                            seq_str.upper(),
+                            primer_parts,
+                            circular=circular,
                         )
                     ]
             except Exception as e:

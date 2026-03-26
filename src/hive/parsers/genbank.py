@@ -107,20 +107,18 @@ def _parse_features(block: str) -> list[ParsedFeature]:
         # Parse qualifiers
         qualifiers = _parse_qualifiers(lines[i:])
 
-        feat_name = (
-            qualifiers.get("label")
-            or qualifiers.get("gene")
-            or feat_type
-        )
+        feat_name = qualifiers.get("label") or qualifiers.get("gene") or feat_type
 
-        features.append(ParsedFeature(
-            name=feat_name,
-            type=feat_type,
-            start=start,
-            end=end,
-            strand=strand,
-            qualifiers=qualifiers,
-        ))
+        features.append(
+            ParsedFeature(
+                name=feat_name,
+                type=feat_type,
+                start=start,
+                end=end,
+                strand=strand,
+                qualifiers=qualifiers,
+            )
+        )
 
     return features
 

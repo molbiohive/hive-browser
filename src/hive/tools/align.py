@@ -28,6 +28,7 @@ class AlignInput(BaseModel):
         if isinstance(v, str):
             return json.loads(v)
         return v
+
     algorithm: str = Field(
         default="auto",
         description="MAFFT algorithm: auto, linsi, ginsi, einsi, fftns",
@@ -47,6 +48,7 @@ class AlignTool(Tool):
         self._dep = None
         if config:
             from hive.deps.mafft import MafftDep
+
             self._dep = MafftDep(config.deps.mafft.bin_dir)
 
     def input_schema(self) -> dict:

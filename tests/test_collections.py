@@ -11,7 +11,7 @@ from hive.cloning.collections import (
     list_collections,
     update_collection,
 )
-from hive.db.models import Base, Collection, User
+from hive.db.models import Base, User
 
 
 @pytest.fixture
@@ -39,7 +39,9 @@ async def _make_user(session, username="testuser"):
 class TestCollectionCRUD:
     async def test_create_and_get(self, db_session):
         col = await create_collection(
-            db_session, name="Common Enzymes", set_type="enzymes",
+            db_session,
+            name="Common Enzymes",
+            set_type="enzymes",
             items=["EcoRI", "BamHI", "HindIII"],
         )
         await db_session.commit()
@@ -71,12 +73,18 @@ class TestCollectionCRUD:
 
     async def test_update(self, db_session):
         col = await create_collection(
-            db_session, name="Old Name", set_type="enzymes", items=["EcoRI"],
+            db_session,
+            name="Old Name",
+            set_type="enzymes",
+            items=["EcoRI"],
         )
         await db_session.commit()
 
         updated = await update_collection(
-            db_session, col.id, name="New Name", items=["EcoRI", "BamHI"],
+            db_session,
+            col.id,
+            name="New Name",
+            items=["EcoRI", "BamHI"],
         )
         assert updated.name == "New Name"
         assert updated.items == ["EcoRI", "BamHI"]
@@ -87,7 +95,10 @@ class TestCollectionCRUD:
 
     async def test_delete(self, db_session):
         col = await create_collection(
-            db_session, name="To Delete", set_type="enzymes", items=[],
+            db_session,
+            name="To Delete",
+            set_type="enzymes",
+            items=[],
         )
         await db_session.commit()
 
@@ -99,11 +110,17 @@ class TestCollectionCRUD:
 
     async def test_default_flag(self, db_session):
         await create_collection(
-            db_session, name="Custom", set_type="enzymes", items=["EcoRI"],
+            db_session,
+            name="Custom",
+            set_type="enzymes",
+            items=["EcoRI"],
         )
         await create_collection(
-            db_session, name="System Default", set_type="enzymes",
-            items=["EcoRI", "BamHI"], is_default=True,
+            db_session,
+            name="System Default",
+            set_type="enzymes",
+            items=["EcoRI", "BamHI"],
+            is_default=True,
         )
         await db_session.commit()
 
@@ -117,7 +134,9 @@ class TestActiveResolvers:
     async def test_enzyme_names_with_collection(self, db_session):
         user = await _make_user(db_session)
         col = await create_collection(
-            db_session, name="My Enzymes", set_type="enzymes",
+            db_session,
+            name="My Enzymes",
+            set_type="enzymes",
             items=["EcoRI", "BamHI"],
         )
         user.preferences = {"enzyme_collection_id": col.id}

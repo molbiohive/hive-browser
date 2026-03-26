@@ -35,9 +35,7 @@ class User(Base):
     slug: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     token: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     preferences: Mapped[dict] = mapped_column(JSON, nullable=False, server_default="{}")
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class IndexedFile(Base):
@@ -51,9 +49,7 @@ class IndexedFile(Base):
     error_msg: Mapped[str | None] = mapped_column(Text, nullable=True)
     file_size: Mapped[int] = mapped_column(BigInteger)
     file_mtime: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    indexed_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    indexed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     sequences: Mapped[list["Sequence"]] = relationship(back_populates="file", cascade="all")
 
@@ -72,9 +68,7 @@ class Sequence(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     search_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     meta: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
@@ -102,11 +96,13 @@ class CloningStep(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     sequence_id: Mapped[int] = mapped_column(
-        ForeignKey("sequences.id", ondelete="CASCADE"), nullable=False,
+        ForeignKey("sequences.id", ondelete="CASCADE"),
+        nullable=False,
     )
     node_id: Mapped[int] = mapped_column(Integer, nullable=False)
     parent_step_id: Mapped[int | None] = mapped_column(
-        ForeignKey("cloning_steps.id"), nullable=True,
+        ForeignKey("cloning_steps.id"),
+        nullable=True,
     )
     name: Mapped[str] = mapped_column(String, nullable=False, default="")
     operation: Mapped[str] = mapped_column(String, nullable=False, default="invalid")
@@ -121,13 +117,12 @@ class CloningStep(Base):
 
     sequence: Mapped[Sequence] = relationship(back_populates="cloning_steps")
     parent_step: Mapped["CloningStep | None"] = relationship(
-        remote_side=[id], back_populates="children",
+        remote_side=[id],
+        back_populates="children",
     )
     children: Mapped[list["CloningStep"]] = relationship(back_populates="parent_step")
 
-    __table_args__ = (
-        UniqueConstraint("sequence_id", "node_id", name="uq_cloning_step_seq_node"),
-    )
+    __table_args__ = (UniqueConstraint("sequence_id", "node_id", name="uq_cloning_step_seq_node"),)
 
 
 # ── Part system ──────────────────────────────────────────────────
@@ -141,9 +136,7 @@ class Part(Base):
     sequence: Mapped[str] = mapped_column(Text)
     molecule: Mapped[str] = mapped_column(Text)  # DNA | RNA | AA
     length: Mapped[int] = mapped_column(Integer)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     names: Mapped[list["PartName"]] = relationship(
         back_populates="part", cascade="all, delete-orphan"
@@ -167,15 +160,11 @@ class PartName(Base):
     name: Mapped[str] = mapped_column(Text)
     source: Mapped[str] = mapped_column(Text)  # "file" | "manual" | "external"
     source_detail: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     part: Mapped[Part] = relationship(back_populates="names")
 
-    __table_args__ = (
-        UniqueConstraint("part_id", "name", "source", name="uq_part_name_source"),
-    )
+    __table_args__ = (UniqueConstraint("part_id", "name", "source", name="uq_part_name_source"),)
 
 
 class PartInstance(Base):
@@ -209,9 +198,7 @@ class Library(Base):
     name: Mapped[str] = mapped_column(Text, unique=True)
     source: Mapped[str] = mapped_column(Text)  # "native" | "manual"
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     members: Mapped[list["LibraryMember"]] = relationship(
         back_populates="library", cascade="all, delete-orphan"
@@ -228,9 +215,7 @@ class LibraryMember(Base):
     library: Mapped[Library] = relationship(back_populates="members")
     part: Mapped[Part] = relationship(back_populates="library_members")
 
-    __table_args__ = (
-        UniqueConstraint("library_id", "part_id", name="uq_library_part"),
-    )
+    __table_args__ = (UniqueConstraint("library_id", "part_id", name="uq_library_part"),)
 
 
 # ── Annotations ──────────────────────────────────────────────────
@@ -247,9 +232,7 @@ class Annotation(Base):
 
     part: Mapped[Part] = relationship(back_populates="annotations")
 
-    __table_args__ = (
-        Index("idx_annotation_part_key", "part_id", "key"),
-    )
+    __table_args__ = (Index("idx_annotation_part_key", "part_id", "key"),)
 
 
 # ── Enzymes ──────────────────────────────────────────────────────
@@ -260,11 +243,11 @@ class Enzyme(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(Text, unique=True, index=True)
-    site: Mapped[str] = mapped_column(Text)       # IUPAC recognition sequence
-    cut5: Mapped[int] = mapped_column(Integer)     # sense strand cut offset
-    cut3: Mapped[int] = mapped_column(Integer)     # antisense cut offset
-    overhang: Mapped[int] = mapped_column(Integer) # neg=5', pos=3', 0=blunt
-    length: Mapped[int] = mapped_column(Integer)   # recognition site length
+    site: Mapped[str] = mapped_column(Text)  # IUPAC recognition sequence
+    cut5: Mapped[int] = mapped_column(Integer)  # sense strand cut offset
+    cut3: Mapped[int] = mapped_column(Integer)  # antisense cut offset
+    overhang: Mapped[int] = mapped_column(Integer)  # neg=5', pos=3', 0=blunt
+    length: Mapped[int] = mapped_column(Integer)  # recognition site length
     is_palindrome: Mapped[bool] = mapped_column(Boolean)
     is_blunt: Mapped[bool] = mapped_column(Boolean)
 
@@ -280,13 +263,9 @@ class Collection(Base):
     set_type: Mapped[str] = mapped_column(Text, nullable=False)  # "enzymes" | "primers"
     items: Mapped[list] = mapped_column(JSON, nullable=False)  # enzyme names or part IDs
     is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    __table_args__ = (
-        Index("idx_collection_type", "set_type"),
-    )
+    __table_args__ = (Index("idx_collection_type", "set_type"),)
 
 
 # ── Feedback & Tool Approvals ────────────────────────────────────
@@ -301,15 +280,11 @@ class Feedback(Base):
     rating: Mapped[str] = mapped_column(Text, nullable=False)  # 'good' | 'bad'
     priority: Mapped[int] = mapped_column(Integer, nullable=False, server_default="3")
     comment: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     user: Mapped[User] = relationship()
 
-    __table_args__ = (
-        Index("idx_feedback_user", "user_id"),
-    )
+    __table_args__ = (Index("idx_feedback_user", "user_id"),)
 
 
 class ToolApproval(Base):
@@ -320,9 +295,5 @@ class ToolApproval(Base):
     file_hash: Mapped[str] = mapped_column(Text, nullable=False)
     tool_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default="quarantined")
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
-    reviewed_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

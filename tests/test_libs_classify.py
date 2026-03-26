@@ -1,7 +1,5 @@
 """Tests for libs/classify -- deterministic part analysis."""
 
-import pytest
-
 from hive.libs.classify import (
     analyze_orf,
     analyze_primer,

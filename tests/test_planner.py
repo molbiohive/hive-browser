@@ -9,7 +9,6 @@ from hive.llm.planner import Planner
 from hive.llm.prompts import build_tool_catalog
 from hive.tools.base import Tool
 
-
 # ── Fixtures ──
 
 
@@ -73,10 +72,12 @@ class TestCatalog:
 class TestPlan:
     def _mock_llm(self, content):
         client = AsyncMock()
-        client.chat = AsyncMock(return_value={
-            "choices": [{"message": {"content": content}}],
-            "usage": {"prompt_tokens": 50, "completion_tokens": 10},
-        })
+        client.chat = AsyncMock(
+            return_value={
+                "choices": [{"message": {"content": content}}],
+                "usage": {"prompt_tokens": 50, "completion_tokens": 10},
+            }
+        )
         return client
 
     async def test_returns_plan_text_and_usage(self, planner):

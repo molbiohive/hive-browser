@@ -59,18 +59,22 @@ def find_primer_sites(
             bind_start = bind_end - primer_len
             # Normalize position for circular
             norm_start = bind_start % seq_len if circular else bind_start
-            if 0 <= bind_start and (pos < seq_len or circular):
+            if bind_start >= 0 and (pos < seq_len or circular):
                 actual_start = norm_start if circular and pos >= seq_len else bind_start
                 if actual_start < seq_len:
-                    results.append({
-                        "primer_id": primer_id,
-                        "name": primer_name,
-                        "start": actual_start,
-                        "end": (actual_start + primer_len) % seq_len if circular else actual_start + primer_len,
-                        "strand": 1,
-                        "primer_length": primer_len,
-                        "primer_sequence": primer_seq,
-                    })
+                    results.append(
+                        {
+                            "primer_id": primer_id,
+                            "name": primer_name,
+                            "start": actual_start,
+                            "end": (actual_start + primer_len) % seq_len
+                            if circular
+                            else actual_start + primer_len,
+                            "strand": 1,
+                            "primer_length": primer_len,
+                            "primer_sequence": primer_seq,
+                        }
+                    )
             start = pos + 1
 
         # Reverse binding: RC of anchor found on sense strand
@@ -86,15 +90,19 @@ def find_primer_sites(
             if pos < seq_len or circular:
                 actual_start = norm_start if circular and pos >= seq_len else bind_start
                 if actual_start < seq_len:
-                    results.append({
-                        "primer_id": primer_id,
-                        "name": primer_name,
-                        "start": actual_start,
-                        "end": (actual_start + primer_len) % seq_len if circular else actual_start + primer_len,
-                        "strand": -1,
-                        "primer_length": primer_len,
-                        "primer_sequence": primer_seq,
-                    })
+                    results.append(
+                        {
+                            "primer_id": primer_id,
+                            "name": primer_name,
+                            "start": actual_start,
+                            "end": (actual_start + primer_len) % seq_len
+                            if circular
+                            else actual_start + primer_len,
+                            "strand": -1,
+                            "primer_length": primer_len,
+                            "primer_sequence": primer_seq,
+                        }
+                    )
             start = pos + 1
 
     # Deduplicate (same primer_id + start + strand)

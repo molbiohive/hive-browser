@@ -64,7 +64,11 @@ async def scan_and_ingest(
             for path, match in batch:
                 try:
                     result = await ingest_file(
-                        session, path, match, commit=False, watcher_root=watcher_root,
+                        session,
+                        path,
+                        match,
+                        commit=False,
+                        watcher_root=watcher_root,
                         force=force,
                     )
                     if result is not None:
@@ -77,7 +81,11 @@ async def scan_and_ingest(
         done = min(batch_start + len(batch), total)
         logger.info(
             "Scan progress: %d/%d files (%d%%), %d indexed, %d errors",
-            done, total, done * 100 // total, indexed, errors,
+            done,
+            total,
+            done * 100 // total,
+            indexed,
+            errors,
         )
         if ctx:
             await ctx.check()

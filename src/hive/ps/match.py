@@ -10,7 +10,7 @@ from sqlalchemy import delete, select
 
 from hive.config import Settings
 from hive.db import session as db
-from hive.db.models import Annotation, Part, PartName
+from hive.db.models import Annotation, Part
 from hive.ps.base import Process, ProcessContext
 
 if TYPE_CHECKING:
@@ -57,11 +57,13 @@ def _process_hits(
         if identity < min_identity or coverage < min_coverage:
             continue
 
-        results.append({
-            "pid": hit_pid,
-            "identity": round(identity, 1),
-            "coverage": round(coverage, 1),
-        })
+        results.append(
+            {
+                "pid": hit_pid,
+                "identity": round(identity, 1),
+                "coverage": round(coverage, 1),
+            }
+        )
     return results
 
 
@@ -97,14 +99,15 @@ class MatchProcess(Process):
 
         db_path = Path(self._config.dep_data_dir("blast"))
 
-        logger.info("Starting BLAST variant detection (identity>=%.0f%%, coverage>=%.0f%%)",
-                    self._min_identity, self._min_coverage)
+        logger.info(
+            "Starting BLAST variant detection (identity>=%.0f%%, coverage>=%.0f%%)",
+            self._min_identity,
+            self._min_coverage,
+        )
 
         # Clear previous blast annotations
         async with db.async_session_factory() as session:
-            result = await session.execute(
-                delete(Annotation).where(Annotation.source == "blast")
-            )
+            result = await session.execute(delete(Annotation).where(Annotation.source == "blast"))
             await session.commit()
             if result.rowcount:
                 logger.info("Cleared %d previous blast annotations", result.rowcount)
@@ -117,12 +120,14 @@ class MatchProcess(Process):
 
         while True:
             async with db.async_session_factory() as session:
-                rows = (await session.execute(
-                    select(Part.id, Part.sequence, Part.molecule)
-                    .where(Part.id > last_id)
-                    .order_by(Part.id)
-                    .limit(batch_size)
-                )).all()
+                rows = (
+                    await session.execute(
+                        select(Part.id, Part.sequence, Part.molecule)
+                        .where(Part.id > last_id)
+                        .order_by(Part.id)
+                        .limit(batch_size)
+                    )
+                ).all()
 
             if not rows:
                 break
@@ -139,37 +144,55 @@ class MatchProcess(Process):
                     query_seq = sequence.replace("U", "T").replace("u", "t")
 
                 result = await blast_dep.run_search(
-                    program, query_seq, db_path,
+                    program,
+                    query_seq,
+                    db_path,
                 )
                 if result.get("error"):
                     logger.warning("BLAST error for pid %d: %s", pid, result["error"])
                     continue
 
                 matches = _process_hits(
-                    pid, len(sequence), result.get("hits", []),
-                    self._min_identity, self._min_coverage,
+                    pid,
+                    len(sequence),
+                    result.get("hits", []),
+                    self._min_identity,
+                    self._min_coverage,
                 )
 
                 n_hits = len(result.get("hits", []))
                 if matches:
                     async with db.async_session_factory() as session:
                         for m in matches:
-                            value = f"pid:{m['pid']} identity:{m['identity']} coverage:{m['coverage']}"
-                            session.add(Annotation(
-                                part_id=pid,
-                                key="blast_similar",
-                                value=value,
-                                source="blast",
-                            ))
+                            value = (
+                                f"pid:{m['pid']} identity:{m['identity']} coverage:{m['coverage']}"
+                            )
+                            session.add(
+                                Annotation(
+                                    part_id=pid,
+                                    key="blast_similar",
+                                    value=value,
+                                    source="blast",
+                                )
+                            )
                         await session.commit()
                     variants_found += len(matches)
 
                 scanned += 1
-                logger.debug("pid %d: %s %dbp, %d hits, %d matches",
-                             pid, program, len(sequence), n_hits, len(matches))
+                logger.debug(
+                    "pid %d: %s %dbp, %d hits, %d matches",
+                    pid,
+                    program,
+                    len(sequence),
+                    n_hits,
+                    len(matches),
+                )
                 if scanned % 100 == 0:
-                    logger.info("Match progress: %d parts scanned, %d variants so far",
-                                scanned, variants_found)
+                    logger.info(
+                        "Match progress: %d parts scanned, %d variants so far",
+                        scanned,
+                        variants_found,
+                    )
             await ctx.check()
 
         logger.info("Match complete: %d parts scanned, %d variants found", scanned, variants_found)

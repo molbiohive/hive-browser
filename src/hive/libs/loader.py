@@ -81,8 +81,10 @@ async def import_lib(session: AsyncSession, path: Path) -> dict:
             parts_existing += 1
         else:
             part = Part(
-                sequence_hash=seq_hash, sequence=sequence,
-                molecule=molecule, length=len(sequence),
+                sequence_hash=seq_hash,
+                sequence=sequence,
+                molecule=molecule,
+                length=len(sequence),
             )
             session.add(part)
             await session.flush()
@@ -96,7 +98,9 @@ async def import_lib(session: AsyncSession, path: Path) -> dict:
                 continue
             exists = await session.execute(
                 select(PartName).where(
-                    PartName.part_id == part.id, PartName.name == n, PartName.source == src,
+                    PartName.part_id == part.id,
+                    PartName.name == n,
+                    PartName.source == src,
                 )
             )
             if not exists.scalar_one_or_none():
@@ -110,19 +114,27 @@ async def import_lib(session: AsyncSession, path: Path) -> dict:
                 continue
             exists = await session.execute(
                 select(Annotation).where(
-                    Annotation.part_id == part.id, Annotation.key == key,
-                    Annotation.value == value, Annotation.source == ann_src,
+                    Annotation.part_id == part.id,
+                    Annotation.key == key,
+                    Annotation.value == value,
+                    Annotation.source == ann_src,
                 )
             )
             if not exists.scalar_one_or_none():
-                session.add(Annotation(
-                    part_id=part.id, key=key, value=value, source=ann_src,
-                ))
+                session.add(
+                    Annotation(
+                        part_id=part.id,
+                        key=key,
+                        value=value,
+                        source=ann_src,
+                    )
+                )
 
         # Library membership
         exists = await session.execute(
             select(LibraryMember).where(
-                LibraryMember.library_id == lib.id, LibraryMember.part_id == part.id,
+                LibraryMember.library_id == lib.id,
+                LibraryMember.part_id == part.id,
             )
         )
         if not exists.scalar_one_or_none():
@@ -131,8 +143,10 @@ async def import_lib(session: AsyncSession, path: Path) -> dict:
     await session.flush()
     logger.info("Library '%s': %d created, %d existing", lib_name, parts_created, parts_existing)
     return {
-        "type": "library", "name": lib_name,
-        "parts_created": parts_created, "parts_existing": parts_existing,
+        "type": "library",
+        "name": lib_name,
+        "parts_created": parts_created,
+        "parts_existing": parts_existing,
     }
 
 
@@ -146,38 +160,46 @@ async def export_lib(session: AsyncSession, name: str, path: Path):
     if not lib:
         raise ValueError(f"Library not found: {name}")
 
-    members = (await session.execute(
-        select(LibraryMember).where(LibraryMember.library_id == lib.id)
-    )).scalars().all()
+    members = (
+        (await session.execute(select(LibraryMember).where(LibraryMember.library_id == lib.id)))
+        .scalars()
+        .all()
+    )
 
     data = []
     for m in members:
-        part = (await session.execute(
-            select(Part).where(Part.id == m.part_id)
-        )).scalar_one()
+        part = (await session.execute(select(Part).where(Part.id == m.part_id))).scalar_one()
 
-        names = (await session.execute(
-            select(PartName).where(PartName.part_id == part.id)
-        )).scalars().all()
+        names = (
+            (await session.execute(select(PartName).where(PartName.part_id == part.id)))
+            .scalars()
+            .all()
+        )
 
-        annotations = (await session.execute(
-            select(Annotation).where(Annotation.part_id == part.id)
-        )).scalars().all()
+        annotations = (
+            (await session.execute(select(Annotation).where(Annotation.part_id == part.id)))
+            .scalars()
+            .all()
+        )
 
-        data.append({
-            "sequence": part.sequence,
-            "molecule": part.molecule,
-            "names": [{"name": n.name, "source": n.source} for n in names],
-            "annotations": [
-                {"key": a.key, "value": a.value, "source": a.source}
-                for a in annotations
-            ],
-        })
+        data.append(
+            {
+                "sequence": part.sequence,
+                "molecule": part.molecule,
+                "names": [{"name": n.name, "source": n.source} for n in names],
+                "annotations": [
+                    {"key": a.key, "value": a.value, "source": a.source} for a in annotations
+                ],
+            }
+        )
 
     envelope = {
-        "type": "library", "version": 1,
-        "name": lib.name, "source": lib.source,
-        "description": lib.description, "data": data,
+        "type": "library",
+        "version": 1,
+        "name": lib.name,
+        "source": lib.source,
+        "description": lib.description,
+        "data": data,
     }
     path.write_text(json.dumps(envelope, indent=2) + "\n")
     logger.info("Exported library '%s' (%d parts) to %s", name, len(data), path)

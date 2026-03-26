@@ -31,7 +31,9 @@ class SitesTool(Tool):
     name = "sites"
     description = "Find all restriction enzymes that cut a sequence."
     tags = {"analysis"}
-    guidelines = "Find all restriction enzymes that cut a sequence. Use max_cuts=1 for unique cutters."
+    guidelines = (
+        "Find all restriction enzymes that cut a sequence. Use max_cuts=1 for unique cutters."
+    )
 
     def __init__(self, **_):
         pass
@@ -46,7 +48,10 @@ class SitesTool(Tool):
             "type": "object",
             "properties": {
                 "sequence": {"type": "string", "description": "DNA sequence, sid:N, or pid:N"},
-                "max_cuts": {"type": "integer", "description": "Max cuts filter (1 = unique cutters)"},
+                "max_cuts": {
+                    "type": "integer",
+                    "description": "Max cuts filter (1 = unique cutters)",
+                },
             },
             "required": ["sequence"],
         }
@@ -87,7 +92,10 @@ class SitesTool(Tool):
                 enzymes = {k: v for k, v in enzymes.items() if k in active_upper}
 
         cutters = find_all_cutters(
-            cleaned, enzymes, circular=inp.circular, max_cuts=inp.max_cuts,
+            cleaned,
+            enzymes,
+            circular=inp.circular,
+            max_cuts=inp.max_cuts,
         )
 
         return {

@@ -42,6 +42,7 @@ async def lifespan(app: FastAPI):
     # --- Database ---
     try:
         from hive.db.session import init_db
+
         app.state.db_ready = await init_db(config.database)
     except Exception as e:
         logger.warning("Database init skipped: %s", e)
@@ -81,10 +82,9 @@ async def lifespan(app: FastAPI):
     approved_files: set[str] = set()
     if app.state.db_ready:
         from hive.tools.quarantine import sync_quarantine
+
         approved_files = await sync_quarantine(config.tools_dir)
-    app.state.tool_registry = ToolFactory.discover(
-        config, approved_files=approved_files
-    )
+    app.state.tool_registry = ToolFactory.discover(config, approved_files=approved_files)
     logger.info("Tool registry: %d tools", len(app.state.tool_registry.tools()))
 
     # --- Planner (cheap LLM call for task description) ---

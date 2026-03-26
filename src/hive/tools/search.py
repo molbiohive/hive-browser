@@ -96,7 +96,10 @@ class SearchTool(Tool):
         return {
             "type": "object",
             "properties": {
-                "query": {"type": "string", "description": "Keyword. Use && for AND, || for OR. Use * to list all."},
+                "query": {
+                    "type": "string",
+                    "description": "Keyword. Use && for AND, || for OR. Use * to list all.",
+                },
                 "tags": {"type": "string", "description": "Directory/project context"},
             },
             "required": ["query"],
@@ -112,7 +115,6 @@ class SearchTool(Tool):
         if total or parts_total:
             return f"Found {total} sequence(s){parts_msg} for '{query}'."
         return f"No results for '{query}'."
-
 
     async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         """Execute search with ParadeDB BM25 full-text search.
@@ -147,18 +149,18 @@ class SearchTool(Tool):
                     .selectinload(Part.names)
                 )
                 .where(IndexedFile.status == "active")
-                .where(text(
-                    f"(sequences.search_text {bm25_op} :bm25_q"
-                    f" OR sequences.name {bm25_op} :bm25_q)"
-                ).bindparams(bindparam("bm25_q", value=bm25_q)))
+                .where(
+                    text(
+                        f"(sequences.search_text {bm25_op} :bm25_q"
+                        f" OR sequences.name {bm25_op} :bm25_q)"
+                    ).bindparams(bindparam("bm25_q", value=bm25_q))
+                )
                 .order_by(score_expr.desc())
             )
 
             # Tags filter
             if inp.tags:
-                stmt = stmt.where(
-                    cast(Sequence.meta["tags"], Text).contains(inp.tags)
-                )
+                stmt = stmt.where(cast(Sequence.meta["tags"], Text).contains(inp.tags))
 
             # Apply filters
             if topo := inp.filters.get("topology"):
@@ -218,9 +220,7 @@ class SearchTool(Tool):
             )
 
             if inp.tags:
-                stmt = stmt.where(
-                    cast(Sequence.meta["tags"], Text).contains(inp.tags)
-                )
+                stmt = stmt.where(cast(Sequence.meta["tags"], Text).contains(inp.tags))
             if topo := inp.filters.get("topology"):
                 stmt = stmt.where(Sequence.topology == topo)
             if size_min := inp.filters.get("size_min"):
@@ -299,14 +299,16 @@ async def _search_parts(session: Any, bm25_q: str) -> list[dict]:
         if not part:
             continue
         types = list({pi.annotation_type for pi in part.instances if pi.annotation_type})
-        result.append({
-            "pid": part.id,
-            "names": [n.name for n in part.names],
-            "molecule": part.molecule,
-            "length": part.length,
-            "instance_count": len(part.instances),
-            "types": types,
-            "score": score_map[pid],
-        })
+        result.append(
+            {
+                "pid": part.id,
+                "names": [n.name for n in part.names],
+                "molecule": part.molecule,
+                "length": part.length,
+                "instance_count": len(part.instances),
+                "types": types,
+                "score": score_map[pid],
+            }
+        )
 
     return result

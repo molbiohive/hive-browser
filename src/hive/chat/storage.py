@@ -114,12 +114,14 @@ class ChatStorage:
                 with open(filepath) as f:
                     data = json.load(f)
                 chat_id = filepath.stem[prefix_len:] if prefix_len else filepath.stem
-                chats.append({
-                    "id": chat_id,
-                    "title": data.get("title"),
-                    "created": data["created"],
-                    "message_count": len(data.get("messages", [])),
-                })
+                chats.append(
+                    {
+                        "id": chat_id,
+                        "title": data.get("title"),
+                        "created": data["created"],
+                        "message_count": len(data.get("messages", [])),
+                    }
+                )
             except (json.JSONDecodeError, KeyError):
                 logger.warning("Skipping malformed chat file: %s", filepath)
         return chats

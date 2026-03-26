@@ -21,6 +21,7 @@ class ModelEntry(BaseSettings):
     model: str = "qwen2.5:7b"
     base_url: str = ""  # local endpoints only (Ollama, vLLM); empty for cloud providers
     api_key: str | None = None  # required for cloud providers
+
     @property
     def id(self) -> str:
         return f"{self.provider}/{self.model}"
@@ -127,10 +128,8 @@ def resolve_host_path(path: str) -> str:
         return path
     container_root = os.environ.get("HIVE_WATCHER_ROOT", "/watcher")
     if path.startswith(container_root):
-        return host_root.rstrip("/") + path[len(container_root.rstrip("/")):]
+        return host_root.rstrip("/") + path[len(container_root.rstrip("/")) :]
     return path
-
-
 
 
 def display_file_path(path: str) -> str:
@@ -146,9 +145,8 @@ def display_file_path(path: str) -> str:
     stripped = expanded.rstrip("/")
     if path.startswith(stripped):
         root_name = Path(stripped).name
-        return root_name + path[len(stripped):]
+        return root_name + path[len(stripped) :]
     return path
-
 
 
 def load_config(config_path: str | None = None) -> Settings:

@@ -8,14 +8,13 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from hive.config import display_file_path
-from hive.libs.classify import analyze_primer
 from hive.context import current_user_id
 from hive.db import session as db
+from hive.libs.classify import analyze_primer
 from hive.tools.base import Tool
 from hive.tools.resolve import dedup_primers, resolve_sequence
 
 logger = logging.getLogger(__name__)
-
 
 
 class ProfileInput(BaseModel):
@@ -119,7 +118,9 @@ class ProfileTool(Tool):
 
                     if active_names:
                         result = find_cut_sites(
-                            seq.sequence.upper(), active_names, enzymes,
+                            seq.sequence.upper(),
+                            active_names,
+                            enzymes,
                             circular=circular,
                         )
                         for er in result["enzyme_results"]:
@@ -127,39 +128,47 @@ class ProfileTool(Tool):
                             if not enz:
                                 continue
                             for pos in er["sites"]:
-                                cut_sites.append({
-                                    "enzyme": er["name"],
-                                    "position": pos,
-                                    "end": pos + enz.length,
-                                    "strand": 1,
-                                    "cutPosition": enz.cut5,
-                                    "complementCutPosition": enz.cut3,
-                                    "overhang": (
-                                        "5'" if enz.overhang < 0
-                                        else ("3'" if enz.overhang > 0 else "blunt")
-                                    ),
-                                })
+                                cut_sites.append(
+                                    {
+                                        "enzyme": er["name"],
+                                        "position": pos,
+                                        "end": pos + enz.length,
+                                        "strand": 1,
+                                        "cutPosition": enz.cut5,
+                                        "complementCutPosition": enz.cut3,
+                                        "overhang": (
+                                            "5'"
+                                            if enz.overhang < 0
+                                            else ("3'" if enz.overhang > 0 else "blunt")
+                                        ),
+                                    }
+                                )
                     else:
                         cutters = find_all_cutters(
-                            seq.sequence.upper(), enzymes, circular=circular,
+                            seq.sequence.upper(),
+                            enzymes,
+                            circular=circular,
                         )
                         for c in cutters:
                             enz = enzymes.get(c["name"].upper())
                             if not enz:
                                 continue
                             for pos in c["positions"]:
-                                cut_sites.append({
-                                    "enzyme": c["name"],
-                                    "position": pos,
-                                    "end": pos + enz.length,
-                                    "strand": 1,
-                                    "cutPosition": enz.cut5,
-                                    "complementCutPosition": enz.cut3,
-                                    "overhang": (
-                                        "5'" if enz.overhang < 0
-                                        else ("3'" if enz.overhang > 0 else "blunt")
-                                    ),
-                                })
+                                cut_sites.append(
+                                    {
+                                        "enzyme": c["name"],
+                                        "position": pos,
+                                        "end": pos + enz.length,
+                                        "strand": 1,
+                                        "cutPosition": enz.cut5,
+                                        "complementCutPosition": enz.cut3,
+                                        "overhang": (
+                                            "5'"
+                                            if enz.overhang < 0
+                                            else ("3'" if enz.overhang > 0 else "blunt")
+                                        ),
+                                    }
+                                )
                 except Exception as e:
                     logger.warning("Cut site scan failed: %s", e)
 
@@ -174,7 +183,9 @@ class ProfileTool(Tool):
                     primer_parts = await get_active_primer_parts(session, user_id)
                     if primer_parts:
                         predicted_primers = find_primer_sites(
-                            seq.sequence.upper(), primer_parts, circular=circular,
+                            seq.sequence.upper(),
+                            primer_parts,
+                            circular=circular,
                         )
                 except Exception as e:
                     logger.warning("Primer prediction failed: %s", e)
@@ -193,7 +204,8 @@ class ProfileTool(Tool):
                     }
                     for p in parts_list
                     if p["annotation_type"] == "primer_bind"
-                ] + [
+                ]
+                + [
                     {
                         "pid": pp["primer_id"],
                         "name": pp["name"],
@@ -234,13 +246,15 @@ class ProfileTool(Tool):
                     frame = abs(int(rf)) - 1
                 else:
                     frame = 0
-                translations.append({
-                    "start": p["start"],
-                    "end": p["end"],
-                    "strand": p["strand"],
-                    "aminoAcids": aa,
-                    "frame": max(0, min(2, frame)),
-                })
+                translations.append(
+                    {
+                        "start": p["start"],
+                        "end": p["end"],
+                        "strand": p["strand"],
+                        "aminoAcids": aa,
+                        "frame": max(0, min(2, frame)),
+                    }
+                )
 
             return {
                 "sequence": {

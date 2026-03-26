@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from hive.db.models import Collection, Part, PartInstance, PartName, User
+from hive.db.models import Collection, Part, PartInstance, User
 
 
 async def list_collections(
@@ -23,12 +23,11 @@ async def list_collections(
 
 
 async def get_collection(
-    session: AsyncSession, collection_id: int,
+    session: AsyncSession,
+    collection_id: int,
 ) -> Collection | None:
     return (
-        await session.execute(
-            select(Collection).where(Collection.id == collection_id)
-        )
+        await session.execute(select(Collection).where(Collection.id == collection_id))
     ).scalar_one_or_none()
 
 
@@ -79,7 +78,8 @@ async def delete_collection(session: AsyncSession, collection_id: int) -> bool:
 
 
 async def get_active_enzyme_names(
-    session: AsyncSession, user_id: int | None,
+    session: AsyncSession,
+    user_id: int | None,
 ) -> list[str] | None:
     """Return enzyme names from the user's active enzyme collection.
 
@@ -87,9 +87,7 @@ async def get_active_enzyme_names(
     """
     if user_id is None:
         return None
-    user = (
-        await session.execute(select(User).where(User.id == user_id))
-    ).scalar_one_or_none()
+    user = (await session.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
     if not user:
         return None
     col_id = (user.preferences or {}).get("enzyme_collection_id")
@@ -102,7 +100,8 @@ async def get_active_enzyme_names(
 
 
 async def get_active_primer_parts(
-    session: AsyncSession, user_id: int | None,
+    session: AsyncSession,
+    user_id: int | None,
 ) -> list[dict]:
     """Return primer parts from the user's active primer collection.
 
@@ -111,9 +110,7 @@ async def get_active_primer_parts(
     """
     col_id = None
     if user_id is not None:
-        user = (
-            await session.execute(select(User).where(User.id == user_id))
-        ).scalar_one_or_none()
+        user = (await session.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
         if user:
             col_id = (user.preferences or {}).get("primer_collection_id")
 
@@ -121,11 +118,7 @@ async def get_active_primer_parts(
         col = await get_collection(session, int(col_id))
         if col and col.set_type == "primers" and col.items:
             part_ids = [int(i) for i in col.items]
-            stmt = (
-                select(Part)
-                .where(Part.id.in_(part_ids))
-                .options(selectinload(Part.names))
-            )
+            stmt = select(Part).where(Part.id.in_(part_ids)).options(selectinload(Part.names))
             parts = (await session.execute(stmt)).scalars().all()
             return [
                 {

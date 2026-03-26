@@ -58,7 +58,9 @@ class MafftDep(Dep):
 
         # Write input FASTA
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".fasta", delete=False,
+            mode="w",
+            suffix=".fasta",
+            delete=False,
         ) as f:
             for name, seq in sequences:
                 safe = name.replace(" ", "_")

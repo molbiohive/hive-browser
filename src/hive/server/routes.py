@@ -30,8 +30,10 @@ async def create_user_endpoint(request: Request):
     username = body.get("username", "").strip()
     if not validate_username(username):
         return JSONResponse(
-            {"error": "Invalid username: ASCII letters, digits, hyphens,"
-             " underscores, spaces (1-50 chars)"},
+            {
+                "error": "Invalid username: ASCII letters, digits, hyphens,"
+                " underscores, spaces (1-50 chars)"
+            },
             status_code=422,
         )
     if not db.async_session_factory:
@@ -41,8 +43,10 @@ async def create_user_endpoint(request: Request):
             user = await create_user(s, username)
             await s.commit()
             return {
-                "id": user.id, "username": user.username,
-                "slug": user.slug, "token": user.token,
+                "id": user.id,
+                "username": user.username,
+                "slug": user.slug,
+                "token": user.token,
             }
     except ValueError as e:
         return JSONResponse({"error": str(e)}, status_code=409)
@@ -69,8 +73,10 @@ async def login_user(request: Request):
         if not user:
             return JSONResponse({"error": "User not found"}, status_code=404)
         return {
-            "id": user.id, "username": user.username,
-            "slug": user.slug, "token": user.token,
+            "id": user.id,
+            "username": user.username,
+            "slug": user.slug,
+            "token": user.token,
         }
 
 
@@ -135,22 +141,20 @@ async def delete_chat(chat_id: str, request: Request):
     return {"deleted": deleted}
 
 
-
 @router.get("/models")
 async def list_models(request: Request):
     """Return configured models + optionally auto-discovered Ollama models."""
     config = getattr(request.app.state, "config", None)
     pool = getattr(request.app.state, "model_pool", None)
-    configured = [
-        {"id": m.id, "provider": m.provider, "model": m.model}
-        for m in pool.entries()
-    ] if pool else []
+    configured = (
+        [{"id": m.id, "provider": m.provider, "model": m.model} for m in pool.entries()]
+        if pool
+        else []
+    )
 
     discovered = []
     if config and config.llm.auto_discover and pool:
-        ollama_base = next(
-            (m.base_url for m in pool.entries() if m.provider == "ollama"), None
-        )
+        ollama_base = next((m.base_url for m in pool.entries() if m.provider == "ollama"), None)
         if ollama_base:
             discovered = await _discover_ollama(ollama_base, configured)
 
@@ -190,8 +194,11 @@ async def list_collections_endpoint(request: Request, type: str | None = None):
         cols = await list_collections(s, set_type=type)
         return [
             {
-                "id": c.id, "name": c.name, "set_type": c.set_type,
-                "items": c.items, "is_default": c.is_default,
+                "id": c.id,
+                "name": c.name,
+                "set_type": c.set_type,
+                "items": c.items,
+                "is_default": c.is_default,
             }
             for c in cols
         ]
@@ -214,8 +221,11 @@ async def create_collection_endpoint(request: Request):
             col = await create_collection(s, name=name, set_type=set_type, items=items)
             await s.commit()
             return {
-                "id": col.id, "name": col.name, "set_type": col.set_type,
-                "items": col.items, "is_default": col.is_default,
+                "id": col.id,
+                "name": col.name,
+                "set_type": col.set_type,
+                "items": col.items,
+                "is_default": col.is_default,
             }
     except ValueError as e:
         return JSONResponse({"error": str(e)}, status_code=422)
@@ -231,14 +241,18 @@ async def update_collection_endpoint(collection_id: int, request: Request):
     try:
         async with db.async_session_factory() as s:
             col = await update_collection(
-                s, collection_id,
+                s,
+                collection_id,
                 name=body.get("name"),
                 items=body.get("items"),
             )
             await s.commit()
             return {
-                "id": col.id, "name": col.name, "set_type": col.set_type,
-                "items": col.items, "is_default": col.is_default,
+                "id": col.id,
+                "name": col.name,
+                "set_type": col.set_type,
+                "items": col.items,
+                "is_default": col.is_default,
             }
     except ValueError as e:
         return JSONResponse({"error": str(e)}, status_code=404)
@@ -267,10 +281,9 @@ async def list_enzymes():
     from hive.db.models import Enzyme
 
     async with db.async_session_factory() as s:
-        rows = (await s.execute(
-            select(Enzyme.name, Enzyme.site, Enzyme.length)
-            .order_by(Enzyme.name)
-        )).all()
+        rows = (
+            await s.execute(select(Enzyme.name, Enzyme.site, Enzyme.length).order_by(Enzyme.name))
+        ).all()
         return [{"name": r.name, "site": r.site, "length": r.length} for r in rows]
 
 
@@ -284,14 +297,20 @@ async def list_primer_parts():
     from hive.db.models import Part, PartInstance
 
     async with db.async_session_factory() as s:
-        parts = (await s.execute(
-            select(Part)
-            .join(PartInstance, Part.id == PartInstance.part_id)
-            .where(PartInstance.annotation_type == "primer_bind")
-            .options(selectinload(Part.names))
-            .distinct()
-            .order_by(Part.id)
-        )).scalars().all()
+        parts = (
+            (
+                await s.execute(
+                    select(Part)
+                    .join(PartInstance, Part.id == PartInstance.part_id)
+                    .where(PartInstance.annotation_type == "primer_bind")
+                    .options(selectinload(Part.names))
+                    .distinct()
+                    .order_by(Part.id)
+                )
+            )
+            .scalars()
+            .all()
+        )
         return [
             {
                 "id": p.id,
@@ -370,18 +389,16 @@ async def status():
 
     try:
         async with db.async_session_factory() as s:
-            files = (await s.execute(
-                select(func.count()).select_from(IndexedFile).where(IndexedFile.status == "active")
-            )).scalar()
-            seqs = (await s.execute(
-                select(func.count()).select_from(Sequence)
-            )).scalar()
-            parts = (await s.execute(
-                select(func.count()).select_from(Part)
-            )).scalar()
-            pis = (await s.execute(
-                select(func.count()).select_from(PartInstance)
-            )).scalar()
+            files = (
+                await s.execute(
+                    select(func.count())
+                    .select_from(IndexedFile)
+                    .where(IndexedFile.status == "active")
+                )
+            ).scalar()
+            seqs = (await s.execute(select(func.count()).select_from(Sequence))).scalar()
+            parts = (await s.execute(select(func.count()).select_from(Part))).scalar()
+            pis = (await s.execute(select(func.count()).select_from(PartInstance))).scalar()
 
         return {
             "indexed_files": files,

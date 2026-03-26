@@ -120,9 +120,7 @@ def safe_exec(code: str, variables: dict[str, Any] | None = None) -> dict[str, A
 
     value = namespace["feedback"]
     result_type = (
-        "list" if isinstance(value, list)
-        else "dict" if isinstance(value, dict)
-        else "scalar"
+        "list" if isinstance(value, list) else "dict" if isinstance(value, dict) else "scalar"
     )
 
     # Capture user-created variables (not feedback, not _-prefixed, not builtins)

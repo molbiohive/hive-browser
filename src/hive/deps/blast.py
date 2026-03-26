@@ -32,6 +32,7 @@ def _clean_nucl_seq(seq: str) -> str:
     """Strip non-nucleotide characters and newlines from a sequence."""
     return _NUCL_RE.sub("", seq.replace("\n", "").replace("\r", ""))
 
+
 # Program -> database type mapping
 PROGRAM_DB = {
     "blastn": "nucl",
@@ -116,17 +117,22 @@ class BlastDep(Dep):
 
         async with db.async_session_factory() as session:
             # Full sequences
-            seq_rows = (await session.execute(
-                select(Sequence.id, Sequence.name, Sequence.sequence, Sequence.molecule)
-                .join(IndexedFile, Sequence.file_id == IndexedFile.id)
-                .where(IndexedFile.status == "active")
-            )).all()
+            seq_rows = (
+                await session.execute(
+                    select(Sequence.id, Sequence.name, Sequence.sequence, Sequence.molecule)
+                    .join(IndexedFile, Sequence.file_id == IndexedFile.id)
+                    .where(IndexedFile.status == "active")
+                )
+            ).all()
 
             # Parts (canonical subsequences: CDS, promoters, etc.)
-            part_rows = (await session.execute(
-                select(Part.id, Part.sequence, Part.molecule, PartName.name)
-                .join(PartName, Part.id == PartName.part_id)
-            )).all()
+            part_rows = (
+                await session.execute(
+                    select(Part.id, Part.sequence, Part.molecule, PartName.name).join(
+                        PartName, Part.id == PartName.part_id
+                    )
+                )
+            ).all()
 
         if not seq_rows and not part_rows:
             logger.info("No sequences or parts to index for BLAST")
@@ -178,21 +184,29 @@ class BlastDep(Dep):
 
         # Build nucleotide DB
         if nucl_count > 0:
-            ok = await self._run_makeblastdb(
-                makeblastdb, nucl_fasta, blast_dir / "hive_nucl", "nucl"
-            ) and ok
+            ok = (
+                await self._run_makeblastdb(
+                    makeblastdb, nucl_fasta, blast_dir / "hive_nucl", "nucl"
+                )
+                and ok
+            )
             logger.info(
                 "BLAST nucl index: %d entries (%d seq + %d parts)",
-                nucl_count, len(seq_rows), len(seen_pids),
+                nucl_count,
+                len(seq_rows),
+                len(seen_pids),
             )
         else:
             logger.info("No nucleotide sequences to index for BLAST")
 
         # Build protein DB
         if prot_count > 0:
-            ok = await self._run_makeblastdb(
-                makeblastdb, prot_fasta, blast_dir / "hive_prot", "prot"
-            ) and ok
+            ok = (
+                await self._run_makeblastdb(
+                    makeblastdb, prot_fasta, blast_dir / "hive_prot", "prot"
+                )
+                and ok
+            )
             logger.info("BLAST prot index: %d entries", prot_count)
 
         return ok
@@ -200,10 +214,14 @@ class BlastDep(Dep):
     async def _run_makeblastdb(self, binary: str, fasta: Path, db_file: Path, dbtype: str) -> bool:
         proc = await asyncio.create_subprocess_exec(
             binary,
-            "-in", str(fasta),
-            "-dbtype", dbtype,
-            "-out", str(db_file),
-            "-blastdb_version", "5",
+            "-in",
+            str(fasta),
+            "-dbtype",
+            dbtype,
+            "-out",
+            str(db_file),
+            "-blastdb_version",
+            "5",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
@@ -242,19 +260,30 @@ class BlastDep(Dep):
         binary = self.resolve_binary(program)
         cmd = [
             binary,
-            "-query", query_file,
-            "-db", str(db_file),
+            "-query",
+            query_file,
+            "-db",
+            str(db_file),
             "-outfmt",
-            "6 sseqid pident length mismatch gapopen "
-            "qstart qend sstart send evalue bitscore",
+            "6 sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore",
         ]
 
         # Block params that override I/O, output format, or leak data externally
         blocked = {
-            "outfmt", "out", "query", "db", "remote", "html",
-            "import_search_strategy", "export_search_strategy",
-            "gilist", "negative_gilist", "seqidlist", "negative_seqidlist",
-            "entrez_query", "blastdb_version",
+            "outfmt",
+            "out",
+            "query",
+            "db",
+            "remote",
+            "html",
+            "import_search_strategy",
+            "export_search_strategy",
+            "gilist",
+            "negative_gilist",
+            "seqidlist",
+            "negative_seqidlist",
+            "entrez_query",
+            "blastdb_version",
         }
         for key, value in params.items():
             if value is None or key in blocked:
@@ -291,19 +320,21 @@ class BlastDep(Dep):
                 continue
             subject_name = parts[0]
             subject_names.add(subject_name)
-            hits.append({
-                "subject": subject_name,
-                "identity": float(parts[1]),
-                "alignment_length": int(parts[2]),
-                "mismatches": int(parts[3]),
-                "gaps": int(parts[4]),
-                "q_start": int(parts[5]),
-                "q_end": int(parts[6]),
-                "s_start": int(parts[7]),
-                "s_end": int(parts[8]),
-                "evalue": float(parts[9]),
-                "bitscore": float(parts[10]),
-            })
+            hits.append(
+                {
+                    "subject": subject_name,
+                    "identity": float(parts[1]),
+                    "alignment_length": int(parts[2]),
+                    "mismatches": int(parts[3]),
+                    "gaps": int(parts[4]),
+                    "q_start": int(parts[5]),
+                    "q_end": int(parts[6]),
+                    "s_start": int(parts[7]),
+                    "s_end": int(parts[8]),
+                    "evalue": float(parts[9]),
+                    "bitscore": float(parts[10]),
+                }
+            )
 
         return {
             "hits": hits,

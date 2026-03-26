@@ -48,7 +48,11 @@ NATIVE_LIBRARY_MAP = {
 
 
 async def add_annotation(
-    session: AsyncSession, part_id: int, key: str, value: str, source: str,
+    session: AsyncSession,
+    part_id: int,
+    key: str,
+    value: str,
+    source: str,
 ):
     """Add annotation if not already present."""
     existing = await session.execute(
@@ -60,18 +64,23 @@ async def add_annotation(
         )
     )
     if not existing.scalar_one_or_none():
-        session.add(Annotation(
-            part_id=part_id, key=key, value=value, source=source,
-        ))
+        session.add(
+            Annotation(
+                part_id=part_id,
+                key=key,
+                value=value,
+                source=source,
+            )
+        )
 
 
 async def get_or_create_library(
-    session: AsyncSession, name: str, source: str = "native",
+    session: AsyncSession,
+    name: str,
+    source: str = "native",
 ) -> Library:
     """Get or create a library by name."""
-    existing = await session.execute(
-        select(Library).where(Library.name == name)
-    )
+    existing = await session.execute(select(Library).where(Library.name == name))
     lib = existing.scalar_one_or_none()
     if lib:
         return lib
@@ -82,7 +91,9 @@ async def get_or_create_library(
 
 
 async def tag_libraries(
-    session: AsyncSession, part_id: int, annotation_type: str,
+    session: AsyncSession,
+    part_id: int,
+    annotation_type: str,
 ):
     """Add part to native library matching its annotation type."""
     lib_name = NATIVE_LIBRARY_MAP.get(annotation_type)

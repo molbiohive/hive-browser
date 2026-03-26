@@ -11,7 +11,6 @@ from hive.db.models import (
     Base,
     Library,
     LibraryMember,
-    Part,
     PartName,
 )
 from hive.libs.loader import export_lib, import_lib, validate_envelope
@@ -101,14 +100,20 @@ class TestImportLibrary:
         assert result["name"] == "Test Promoters"
         assert result["parts_created"] == 2
 
-        lib = (await db_session.execute(
-            select(Library).where(Library.name == "Test Promoters")
-        )).scalar_one()
+        lib = (
+            await db_session.execute(select(Library).where(Library.name == "Test Promoters"))
+        ).scalar_one()
         assert lib.source == "native"
 
-        members = (await db_session.execute(
-            select(LibraryMember).where(LibraryMember.library_id == lib.id)
-        )).scalars().all()
+        members = (
+            (
+                await db_session.execute(
+                    select(LibraryMember).where(LibraryMember.library_id == lib.id)
+                )
+            )
+            .scalars()
+            .all()
+        )
         assert len(members) == 2
 
     async def test_import_creates_names_and_annotations(self, db_session, tmp_path):

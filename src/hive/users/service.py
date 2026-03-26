@@ -20,9 +20,7 @@ def make_slug(username: str) -> str:
 def validate_username(username: str) -> bool:
     """Check username matches allowed chars and length."""
     return (
-        bool(username)
-        and len(username) <= _MAX_USERNAME_LEN
-        and bool(_USERNAME_RE.match(username))
+        bool(username) and len(username) <= _MAX_USERNAME_LEN and bool(_USERNAME_RE.match(username))
     )
 
 
@@ -65,7 +63,13 @@ async def list_users(session: AsyncSession) -> list[User]:
     return list(result.scalars().all())
 
 
-_ALLOWED_PREF_KEYS = {"theme", "model_id", "use_planner", "enzyme_collection_id", "primer_collection_id"}
+_ALLOWED_PREF_KEYS = {
+    "theme",
+    "model_id",
+    "use_planner",
+    "enzyme_collection_id",
+    "primer_collection_id",
+}
 
 
 async def update_preferences(session: AsyncSession, user_id: int, key: str, value) -> dict:
@@ -113,9 +117,7 @@ async def list_feedback(session: AsyncSession) -> list[Feedback]:
     from sqlalchemy.orm import selectinload
 
     result = await session.execute(
-        select(Feedback)
-        .options(selectinload(Feedback.user))
-        .order_by(Feedback.created_at.desc())
+        select(Feedback).options(selectinload(Feedback.user)).order_by(Feedback.created_at.desc())
     )
     return list(result.scalars().all())
 
@@ -124,21 +126,23 @@ async def feedback_stats(session: AsyncSession) -> dict:
     """Return feedback summary stats."""
     from sqlalchemy import func as sqlfunc
 
-    rows = (await session.execute(
-        select(Feedback.rating, sqlfunc.count()).group_by(Feedback.rating)
-    )).all()
+    rows = (
+        await session.execute(select(Feedback.rating, sqlfunc.count()).group_by(Feedback.rating))
+    ).all()
 
     counts = {r: c for r, c in rows}
     total = sum(counts.values())
     good = counts.get("good", 0)
     bad = counts.get("bad", 0)
 
-    last = (await session.execute(
-        select(Feedback.created_at, User.username)
-        .join(User, Feedback.user_id == User.id)
-        .order_by(Feedback.created_at.desc())
-        .limit(1)
-    )).first()
+    last = (
+        await session.execute(
+            select(Feedback.created_at, User.username)
+            .join(User, Feedback.user_id == User.id)
+            .order_by(Feedback.created_at.desc())
+            .limit(1)
+        )
+    ).first()
 
     return {
         "total": total,

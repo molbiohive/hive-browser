@@ -21,7 +21,9 @@ class ScanProcess(Process):
     name = "scan"
     description = "Initial file scan"
 
-    def __init__(self, config: WatcherConfig, data_root: str, dep_registry: DepRegistry | None = None):
+    def __init__(
+        self, config: WatcherConfig, data_root: str, dep_registry: DepRegistry | None = None
+    ):
         self.config = config
         self.dep_registry = dep_registry
 
@@ -36,7 +38,9 @@ class RescanProcess(Process):
     name = "rescan"
     description = "Full directory rescan"
 
-    def __init__(self, config: WatcherConfig, data_root: str, dep_registry: DepRegistry | None = None):
+    def __init__(
+        self, config: WatcherConfig, data_root: str, dep_registry: DepRegistry | None = None
+    ):
         self.config = config
         self.dep_registry = dep_registry
 
@@ -51,12 +55,17 @@ class ReindexProcess(Process):
     name = "reindex"
     description = "Re-parse all files"
 
-    def __init__(self, config: WatcherConfig, data_root: str, dep_registry: DepRegistry | None = None):
+    def __init__(
+        self, config: WatcherConfig, data_root: str, dep_registry: DepRegistry | None = None
+    ):
         self.config = config
         self.dep_registry = dep_registry
 
     async def run(self, ctx: ProcessContext) -> str:
         count = await scan_and_ingest(
-            self.config, dep_registry=self.dep_registry, ctx=ctx, force=True,
+            self.config,
+            dep_registry=self.dep_registry,
+            ctx=ctx,
+            force=True,
         )
         return f"{count} files re-parsed"

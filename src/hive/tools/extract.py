@@ -8,9 +8,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy import case, select
 from sqlalchemy.orm import selectinload
 
+from hive.cloning.seq import reverse_complement
 from hive.db import session as db
 from hive.db.models import Part, PartInstance, PartName
-from hive.cloning.seq import reverse_complement
 from hive.tools.base import Tool
 from hive.tools.resolve import resolve_sequence
 
@@ -67,7 +67,9 @@ class ExtractTool(Tool):
 
         async with db.async_session_factory() as session:
             seq_row = await resolve_sequence(
-                session, sid=inp.sid, name=inp.sequence_name,
+                session,
+                sid=inp.sid,
+                name=inp.sequence_name,
             )
 
             if not seq_row:
@@ -79,7 +81,10 @@ class ExtractTool(Tool):
             # Extract by primer name — query PartInstance + PartName
             if inp.primer_name:
                 pi = await _find_part_instance(
-                    session, seq_row.id, inp.primer_name, annotation_type="primer_bind",
+                    session,
+                    seq_row.id,
+                    inp.primer_name,
+                    annotation_type="primer_bind",
                 )
                 if not pi:
                     return {"error": f"Primer not found: {inp.primer_name} on {seq_row.name}"}
@@ -98,7 +103,9 @@ class ExtractTool(Tool):
             # Extract by feature name (prefer exact match, then longest)
             if inp.feature_name:
                 pi = await _find_part_instance(
-                    session, seq_row.id, inp.feature_name,
+                    session,
+                    seq_row.id,
+                    inp.feature_name,
                 )
                 if not pi:
                     return {"error": f"Feature not found: {inp.feature_name} on {seq_row.name}"}
@@ -126,8 +133,7 @@ class ExtractTool(Tool):
                     end = int(parts[1])
                 except (ValueError, IndexError):
                     return {
-                        "error": f"Invalid region format: "
-                        f"{inp.region}. Use start:end (1-based)"
+                        "error": f"Invalid region format: {inp.region}. Use start:end (1-based)"
                     }
 
                 # User provides 1-based inclusive -> convert to 0-based exclusive
@@ -155,15 +161,14 @@ class ExtractTool(Tool):
 
 
 async def _find_part_instance(
-    session, seq_id: int, name: str, annotation_type: str | None = None,
+    session,
+    seq_id: int,
+    name: str,
+    annotation_type: str | None = None,
 ) -> PartInstance | None:
     """Find a PartInstance by part name on a given sequence."""
     # Subquery: part_ids whose names match
-    name_sub = (
-        select(PartName.part_id)
-        .where(PartName.name.ilike(f"%{name}%"))
-        .subquery()
-    )
+    name_sub = select(PartName.part_id).where(PartName.name.ilike(f"%{name}%")).subquery()
     query = (
         select(PartInstance)
         .options(selectinload(PartInstance.part).selectinload(Part.names))
@@ -178,9 +183,10 @@ async def _find_part_instance(
     # Prefer exact match, then longest
     query = query.order_by(
         case(
-            (PartInstance.part_id.in_(
-                select(PartName.part_id).where(PartName.name.ilike(name))
-            ), 0),
+            (
+                PartInstance.part_id.in_(select(PartName.part_id).where(PartName.name.ilike(name))),
+                0,
+            ),
             else_=1,
         ),
         (PartInstance.end - PartInstance.start).desc(),

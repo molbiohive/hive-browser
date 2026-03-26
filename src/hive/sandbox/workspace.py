@@ -99,11 +99,14 @@ class Workspace:
         for key, val in result.items():
             if key == "error":
                 continue
-            if isinstance(val, list) and val:
-                handles.append(self.store(key, val, tool, p))
-            elif isinstance(val, str) and len(val) >= 200:
-                handles.append(self.store(key, val, tool, p))
-            elif isinstance(val, dict) and len(val) > 2:
+            if (
+                isinstance(val, list)
+                and val
+                or isinstance(val, str)
+                and len(val) >= 200
+                or isinstance(val, dict)
+                and len(val) > 2
+            ):
                 handles.append(self.store(key, val, tool, p))
         return handles
 
@@ -136,15 +139,17 @@ class Workspace:
         """Serialize entries for persistence. Evicted entries store value=None."""
         out = []
         for e in self._entries:
-            out.append({
-                "handle": e.handle,
-                "field_name": e.field_name,
-                "tool": e.tool,
-                "params": e.params,
-                "type_desc": e.type_desc,
-                "evicted": e.evicted,
-                "value": None if e.evicted else e.value,
-            })
+            out.append(
+                {
+                    "handle": e.handle,
+                    "field_name": e.field_name,
+                    "tool": e.tool,
+                    "params": e.params,
+                    "type_desc": e.type_desc,
+                    "evicted": e.evicted,
+                    "value": None if e.evicted else e.value,
+                }
+            )
         return out
 
     @classmethod

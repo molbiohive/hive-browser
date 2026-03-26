@@ -7,7 +7,6 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from hive.cloning.seq import translate as seq_translate
-
 from hive.tools.base import Tool
 from hive.tools.resolve import resolve_and_clean
 

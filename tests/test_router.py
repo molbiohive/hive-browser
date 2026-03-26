@@ -239,10 +239,12 @@ class TestGuidedNoLLM:
     async def test_guided_no_args_with_llm_uses_loop(self, registry):
         """Guided mode with LLM delegates to unified loop."""
         llm = AsyncMock()
-        llm.chat = AsyncMock(return_value={
-            "choices": [{"message": {"content": "Here's the direct tool."}}],
-            "usage": {"prompt_tokens": 10, "completion_tokens": 5},
-        })
+        llm.chat = AsyncMock(
+            return_value={
+                "choices": [{"message": {"content": "Here's the direct tool."}}],
+                "usage": {"prompt_tokens": 10, "completion_tokens": 5},
+            }
+        )
         resp = await route_input("/direct", registry, llm_client=llm)
         assert resp["type"] == "message"
 
@@ -280,18 +282,22 @@ class TestAgenticLoop:
     def _tool_call_response(self, tool_name, arguments, call_id="call_1", usage=None):
         """LLM response with a single tool call."""
         return {
-            "choices": [{
-                "message": {
-                    "content": None,
-                    "tool_calls": [{
-                        "id": call_id,
-                        "function": {
-                            "name": tool_name,
-                            "arguments": json.dumps(arguments),
-                        },
-                    }],
-                },
-            }],
+            "choices": [
+                {
+                    "message": {
+                        "content": None,
+                        "tool_calls": [
+                            {
+                                "id": call_id,
+                                "function": {
+                                    "name": tool_name,
+                                    "arguments": json.dumps(arguments),
+                                },
+                            }
+                        ],
+                    },
+                }
+            ],
             "usage": usage or {"prompt_tokens": 100, "completion_tokens": 20},
         }
 
@@ -304,10 +310,12 @@ class TestAgenticLoop:
 
     async def test_single_tool_call(self, registry):
         """LLM calls echo tool, then summarizes."""
-        llm = self._mock_llm([
-            self._tool_call_response("echo", {"query": "test"}),
-            self._text_response("Here are your echo results."),
-        ])
+        llm = self._mock_llm(
+            [
+                self._tool_call_response("echo", {"query": "test"}),
+                self._text_response("Here are your echo results."),
+            ]
+        )
         resp = await route_input("echo test", registry, llm_client=llm)
         assert resp["type"] == "tool_result"
         assert resp["tool"] == "echo"
@@ -316,11 +324,13 @@ class TestAgenticLoop:
 
     async def test_multi_tool_chain(self, registry):
         """LLM chains two tool calls before summarizing."""
-        llm = self._mock_llm([
-            self._tool_call_response("echo", {"query": "step1"}, call_id="c1"),
-            self._tool_call_response("echo", {"query": "step2"}, call_id="c2"),
-            self._text_response("Done with both steps."),
-        ])
+        llm = self._mock_llm(
+            [
+                self._tool_call_response("echo", {"query": "step1"}, call_id="c1"),
+                self._tool_call_response("echo", {"query": "step2"}, call_id="c2"),
+                self._text_response("Done with both steps."),
+            ]
+        )
         resp = await route_input("do two things", registry, llm_client=llm)
         assert resp["type"] == "tool_result"
         assert len(resp["chain"]) == 2
@@ -329,20 +339,24 @@ class TestAgenticLoop:
 
     async def test_unknown_tool_from_llm(self, registry):
         """LLM hallucinates a tool name → error message sent back, then text."""
-        llm = self._mock_llm([
-            self._tool_call_response("imaginary_tool", {}, call_id="c1"),
-            self._text_response("Sorry, let me try differently."),
-        ])
+        llm = self._mock_llm(
+            [
+                self._tool_call_response("imaginary_tool", {}, call_id="c1"),
+                self._text_response("Sorry, let me try differently."),
+            ]
+        )
         resp = await route_input("do something", registry, llm_client=llm)
         assert resp["type"] == "message"
         assert "Sorry" in resp["content"]
 
     async def test_max_turns_exceeded(self, registry):
         """Loop hits max turns → returns last result with warning."""
-        llm = self._mock_llm([
-            self._tool_call_response("echo", {"query": "t1"}, call_id="c1"),
-            self._tool_call_response("echo", {"query": "t2"}, call_id="c2"),
-        ])
+        llm = self._mock_llm(
+            [
+                self._tool_call_response("echo", {"query": "t1"}, call_id="c1"),
+                self._tool_call_response("echo", {"query": "t2"}, call_id="c2"),
+            ]
+        )
         resp = await route_input("loop forever", registry, llm_client=llm, max_turns=2)
         assert "chain" in resp
         assert "maximum reasoning steps" in resp["content"]
@@ -354,13 +368,13 @@ class TestAgenticLoop:
         async def on_progress(data):
             events.append(data)
 
-        llm = self._mock_llm([
-            self._tool_call_response("echo", {"query": "x"}),
-            self._text_response("Done."),
-        ])
-        await route_input(
-            "test progress", registry, llm_client=llm, on_progress=on_progress
+        llm = self._mock_llm(
+            [
+                self._tool_call_response("echo", {"query": "x"}),
+                self._text_response("Done."),
+            ]
         )
+        await route_input("test progress", registry, llm_client=llm, on_progress=on_progress)
         phases = [e["phase"] for e in events]
         assert phases[0] == "thinking"  # initial
         assert "tool" in phases  # before execute
@@ -398,22 +412,26 @@ class TestAgenticLoop:
         reg.register(LargeOutputTool())
         reg.register(ConsumerTool())
 
-        llm = self._mock_llm([
-            self._tool_call_response("producer", {"name": "test"}, call_id="c1"),
-            # LLM sends consumer with short placeholder -- cache should inject
-            self._tool_call_response("consumer", {"sequence": "injected"}, call_id="c2"),
-            self._text_response("Length is 300."),
-        ])
+        llm = self._mock_llm(
+            [
+                self._tool_call_response("producer", {"name": "test"}, call_id="c1"),
+                # LLM sends consumer with short placeholder -- cache should inject
+                self._tool_call_response("consumer", {"sequence": "injected"}, call_id="c2"),
+                self._text_response("Length is 300."),
+            ]
+        )
         resp = await route_input("pipe test", reg, llm_client=llm, pipe_min_length=200)
         assert resp["type"] == "tool_result"
         assert resp["data"]["length"] == 300  # got cached value, not "injected"
 
     async def test_guided_with_llm(self, registry):
         """Guided mode with LLM delegates to unified loop."""
-        llm = self._mock_llm([
-            self._tool_call_response("echo", {"query": "guided"}),
-            self._text_response("Guided echo result."),
-        ])
+        llm = self._mock_llm(
+            [
+                self._tool_call_response("echo", {"query": "guided"}),
+                self._text_response("Guided echo result."),
+            ]
+        )
         resp = await route_input("/echo test guided", registry, llm_client=llm)
         assert resp["type"] == "tool_result"
         assert resp["tool"] == "echo"
@@ -433,28 +451,34 @@ class TestAgenticLoop:
 class TestErrorSanitization:
     def test_rate_limit(self):
         from hive.tools.router import _sanitize_llm_error
+
         assert _sanitize_llm_error("Rate limit exceeded: 429") == "Rate limit reached"
 
     def test_auth_error(self):
         from hive.tools.router import _sanitize_llm_error
+
         assert _sanitize_llm_error("AuthenticationError: invalid key") == "LLM auth failed"
 
     def test_timeout(self):
         from hive.tools.router import _sanitize_llm_error
+
         assert _sanitize_llm_error("Request timeout after 30s") == "LLM request timed out"
 
     def test_connection_error(self):
         from hive.tools.router import _sanitize_llm_error
+
         assert _sanitize_llm_error("ConnectionError: refused") == "Could not connect to LLM"
 
     def test_unknown_capped(self):
         from hive.tools.router import _sanitize_llm_error
+
         long_msg = "x" * 200
         result = _sanitize_llm_error(long_msg)
         assert len(result) <= 120
 
     def test_unknown_first_sentence(self):
         from hive.tools.router import _sanitize_llm_error
+
         result = _sanitize_llm_error("Something broke. More details here.")
         assert result == "Something broke"
 
@@ -484,15 +508,20 @@ class TestPlannerIntegration:
 
         planner = Planner(tools=registry.tools())
 
-        llm = self._mock_llm([
-            # Plan call
-            self._text_response("respond conversationally"),
-            # Agent loop
-            self._text_response("Hello! How can I help?"),
-        ])
+        llm = self._mock_llm(
+            [
+                # Plan call
+                self._text_response("respond conversationally"),
+                # Agent loop
+                self._text_response("Hello! How can I help?"),
+            ]
+        )
         resp = await route_input(
-            "hello", registry, llm_client=llm,
-            planner=planner, use_planner=True,
+            "hello",
+            registry,
+            llm_client=llm,
+            planner=planner,
+            use_planner=True,
         )
         assert resp["type"] == "message"
         assert "Hello" in resp["content"]
@@ -505,13 +534,18 @@ class TestPlannerIntegration:
 
         planner = Planner(tools=registry.tools())
 
-        llm = self._mock_llm([
-            self._text_response("Echo the input back."),
-            self._text_response("Here is your echo."),
-        ])
+        llm = self._mock_llm(
+            [
+                self._text_response("Echo the input back."),
+                self._text_response("Here is your echo."),
+            ]
+        )
         resp = await route_input(
-            "echo test", registry, llm_client=llm,
-            planner=planner, use_planner=True,
+            "echo test",
+            registry,
+            llm_client=llm,
+            planner=planner,
+            use_planner=True,
         )
         assert resp["type"] == "message"
         assert llm.chat.call_count == 2
@@ -530,15 +564,20 @@ class TestPlannerIntegration:
 
         planner = Planner(tools=registry.tools())
 
-        llm = self._mock_llm([
-            self._text_response("respond conversationally",
-                                usage={"prompt_tokens": 50, "completion_tokens": 10}),
-            self._text_response("Hi!",
-                                usage={"prompt_tokens": 80, "completion_tokens": 5}),
-        ])
+        llm = self._mock_llm(
+            [
+                self._text_response(
+                    "respond conversationally", usage={"prompt_tokens": 50, "completion_tokens": 10}
+                ),
+                self._text_response("Hi!", usage={"prompt_tokens": 80, "completion_tokens": 5}),
+            ]
+        )
         resp = await route_input(
-            "hello", registry, llm_client=llm,
-            planner=planner, use_planner=True,
+            "hello",
+            registry,
+            llm_client=llm,
+            planner=planner,
+            use_planner=True,
         )
         assert resp["tokens"]["in"] == 130  # 50 + 80
         assert resp["tokens"]["out"] == 15  # 10 + 5
@@ -549,13 +588,18 @@ class TestPlannerIntegration:
 
         planner = Planner(tools=registry.tools())
 
-        llm = self._mock_llm([
-            Exception("LLM down"),
-            self._text_response("Recovered."),
-        ])
+        llm = self._mock_llm(
+            [
+                Exception("LLM down"),
+                self._text_response("Recovered."),
+            ]
+        )
         resp = await route_input(
-            "test fallback", registry, llm_client=llm,
-            planner=planner, use_planner=True,
+            "test fallback",
+            registry,
+            llm_client=llm,
+            planner=planner,
+            use_planner=True,
         )
         assert resp["type"] == "message"
         assert "Recovered" in resp["content"]
@@ -571,8 +615,11 @@ class TestPlannerIntegration:
 
         llm = self._mock_llm([self._text_response("Done.")])
         resp = await route_input(
-            "echo test", registry, llm_client=llm,
-            planner=planner, use_planner=False,
+            "echo test",
+            registry,
+            llm_client=llm,
+            planner=planner,
+            use_planner=False,
         )
         assert resp["type"] == "message"
         planner.plan.assert_not_called()
@@ -585,8 +632,11 @@ class TestPlannerIntegration:
 
         llm = self._mock_llm([self._text_response("Hello.")])
         await route_input(
-            "find GFP sequences", registry, llm_client=llm,
-            planner=planner, use_planner=False,
+            "find GFP sequences",
+            registry,
+            llm_client=llm,
+            planner=planner,
+            use_planner=False,
         )
         # Only one LLM call (agent loop, no planning)
         assert llm.chat.call_count == 1
@@ -623,18 +673,22 @@ class TestSandboxIntegration:
 
     def _tool_call_response(self, tool_name, arguments, call_id="call_1", usage=None):
         return {
-            "choices": [{
-                "message": {
-                    "content": None,
-                    "tool_calls": [{
-                        "id": call_id,
-                        "function": {
-                            "name": tool_name,
-                            "arguments": json.dumps(arguments),
-                        },
-                    }],
-                },
-            }],
+            "choices": [
+                {
+                    "message": {
+                        "content": None,
+                        "tool_calls": [
+                            {
+                                "id": call_id,
+                                "function": {
+                                    "name": tool_name,
+                                    "arguments": json.dumps(arguments),
+                                },
+                            }
+                        ],
+                    },
+                }
+            ],
             "usage": usage or {"prompt_tokens": 100, "completion_tokens": 20},
         }
 
@@ -669,16 +723,21 @@ class TestSandboxIntegration:
         reg = ToolRegistry()
         reg.register(SearchTool())
 
-        llm = self._mock_llm([
-            self._tool_call_response("search", {"query": "test"}, call_id="c1"),
-            self._text_response("Found 2 results."),
-        ])
+        llm = self._mock_llm(
+            [
+                self._tool_call_response("search", {"query": "test"}, call_id="c1"),
+                self._text_response("Found 2 results."),
+            ]
+        )
         resp = await route_input("find test", reg, llm_client=llm)
         assert resp["type"] == "tool_result"
         assert resp["tool"] == "search"
         # Verify cache info appears in the tool message sent to LLM
-        tool_msg = [m for m in llm.chat.call_args_list[-1][0][0]
-                    if isinstance(m, dict) and m.get("role") == "tool"]
+        tool_msg = [
+            m
+            for m in llm.chat.call_args_list[-1][0][0]
+            if isinstance(m, dict) and m.get("role") == "tool"
+        ]
         assert any("Stored:" in m.get("content", "") for m in tool_msg)
 
     async def test_python_dispatched_to_sandbox(self):
@@ -711,15 +770,17 @@ class TestSandboxIntegration:
         reg = ToolRegistry()
         reg.register(SearchTool())
 
-        llm = self._mock_llm([
-            self._tool_call_response("search", {"query": "GFP"}, call_id="c1"),
-            self._tool_call_response(
-                "python",
-                {"code": 'feedback = [r["sid"] for r in r1]'},
-                call_id="c2",
-            ),
-            self._text_response("SIDs are 1 and 2."),
-        ])
+        llm = self._mock_llm(
+            [
+                self._tool_call_response("search", {"query": "GFP"}, call_id="c1"),
+                self._tool_call_response(
+                    "python",
+                    {"code": 'feedback = [r["sid"] for r in r1]'},
+                    call_id="c2",
+                ),
+                self._text_response("SIDs are 1 and 2."),
+            ]
+        )
         resp = await route_input("find GFP sids", reg, llm_client=llm)
         # Scalar sandbox keeps previous tool's widget visible
         assert resp["type"] == "tool_result"
@@ -756,15 +817,17 @@ class TestSandboxIntegration:
         reg = ToolRegistry()
         reg.register(SearchTool())
 
-        llm = self._mock_llm([
-            self._tool_call_response("search", {"query": "test"}, call_id="c1"),
-            self._tool_call_response(
-                "python",
-                {"code": 'feedback = sum(1 for r in r1 if r["topology"] == "circular")'},
-                call_id="c2",
-            ),
-            self._text_response("1 circular sequence."),
-        ])
+        llm = self._mock_llm(
+            [
+                self._tool_call_response("search", {"query": "test"}, call_id="c1"),
+                self._tool_call_response(
+                    "python",
+                    {"code": 'feedback = sum(1 for r in r1 if r["topology"] == "circular")'},
+                    call_id="c2",
+                ),
+                self._text_response("1 circular sequence."),
+            ]
+        )
         resp = await route_input("count circular", reg, llm_client=llm)
         # Scalar sandbox keeps previous tool's widget
         assert resp["type"] == "tool_result"
@@ -800,10 +863,12 @@ class TestSandboxIntegration:
         reg = ToolRegistry()
         reg.register(SearchTool())
 
-        llm = self._mock_llm([
-            self._tool_call_response("search", {"query": "x"}, call_id="c1"),
-            self._text_response("Done."),
-        ])
+        llm = self._mock_llm(
+            [
+                self._tool_call_response("search", {"query": "x"}, call_id="c1"),
+                self._text_response("Done."),
+            ]
+        )
         await route_input("test", reg, llm_client=llm)
 
         # First LLM call (turn 0): python schema present from the start
@@ -836,20 +901,26 @@ class TestSandboxIntegration:
         reg = ToolRegistry()
         reg.register(SearchTool())
 
-        llm = self._mock_llm([
-            self._tool_call_response("search", {"query": "x"}, call_id="c1"),
-            self._tool_call_response(
-                "python", {"code": 'feedback = len(r1)'}, call_id="c2",
-            ),
-            self._text_response("1 result."),
-        ])
+        llm = self._mock_llm(
+            [
+                self._tool_call_response("search", {"query": "x"}, call_id="c1"),
+                self._tool_call_response(
+                    "python",
+                    {"code": "feedback = len(r1)"},
+                    call_id="c2",
+                ),
+                self._text_response("1 result."),
+            ]
+        )
         await route_input("count results", reg, llm_client=llm)
 
         # Check the tool message for the python call has feedback
         last_call_msgs = llm.chat.call_args_list[-1][0][0]
         python_tool_msgs = [
-            m for m in last_call_msgs
-            if isinstance(m, dict) and m.get("role") == "tool"
+            m
+            for m in last_call_msgs
+            if isinstance(m, dict)
+            and m.get("role") == "tool"
             and "feedback = 1" in m.get("content", "")
         ]
         assert len(python_tool_msgs) == 1
@@ -879,20 +950,25 @@ class TestSandboxIntegration:
         reg = ToolRegistry()
         reg.register(SearchTool())
 
-        llm = self._mock_llm([
-            self._tool_call_response("search", {"query": "x"}, call_id="c1"),
-            self._tool_call_response(
-                "python", {"code": "feedback = undefined_var_1"}, call_id="c2",
-            ),
-            self._tool_call_response(
-                "python", {"code": "feedback = undefined_var_2"}, call_id="c3",
-            ),
-            self._text_response("Could not process the data."),
-        ])
+        llm = self._mock_llm(
+            [
+                self._tool_call_response("search", {"query": "x"}, call_id="c1"),
+                self._tool_call_response(
+                    "python",
+                    {"code": "feedback = undefined_var_1"},
+                    call_id="c2",
+                ),
+                self._tool_call_response(
+                    "python",
+                    {"code": "feedback = undefined_var_2"},
+                    call_id="c3",
+                ),
+                self._text_response("Could not process the data."),
+            ]
+        )
         await route_input("process data", reg, llm_client=llm, max_turns=10)
 
         # Python schema should still be present on the last LLM call
         last_call_tools = llm.chat.call_args_list[-1][1].get("tools", [])
         tool_names = [t["function"]["name"] for t in last_call_tools]
         assert "python" in tool_names
-

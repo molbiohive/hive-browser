@@ -32,22 +32,30 @@ async def db_session():
 
 def _make_file(session, path="/tmp/test.dna", file_hash="abc123", status="active"):
     f = IndexedFile(
-        file_path=path, file_hash=file_hash, format="dna",
-        status=status, file_size=1000,
+        file_path=path,
+        file_hash=file_hash,
+        format="dna",
+        status=status,
+        file_size=1000,
         file_mtime=datetime.now(UTC),
     )
     session.add(f)
     return f
 
 
-async def _make_file_with_seq(session, path="/tmp/test.dna", file_hash="abc123",
-                               seq_name="pTest", seq_text="ATGC"):
+async def _make_file_with_seq(
+    session, path="/tmp/test.dna", file_hash="abc123", seq_name="pTest", seq_text="ATGC"
+):
     f = _make_file(session, path=path, file_hash=file_hash)
     await session.flush()
     seq = Sequence(
-        file_id=f.id, name=seq_name, length=len(seq_text),
-        topology="circular", sequence=seq_text,
-        sequence_hash=hash_sequence(seq_text), molecule="DNA",
+        file_id=f.id,
+        name=seq_name,
+        length=len(seq_text),
+        topology="circular",
+        sequence=seq_text,
+        sequence_hash=hash_sequence(seq_text),
+        molecule="DNA",
     )
     session.add(seq)
     await session.flush()
@@ -55,29 +63,39 @@ async def _make_file_with_seq(session, path="/tmp/test.dna", file_hash="abc123",
     # Create a Part + PartInstance (replaces Feature)
     # Use get-or-create since Part.sequence_hash is unique
     part_hash = hash_sequence(seq_text)
-    existing = (await session.execute(
-        select(Part).where(Part.sequence_hash == part_hash)
-    )).scalar_one_or_none()
+    existing = (
+        await session.execute(select(Part).where(Part.sequence_hash == part_hash))
+    ).scalar_one_or_none()
     if existing:
         part = existing
     else:
         part = Part(
-            sequence_hash=part_hash, sequence=seq_text.upper(),
-            molecule="DNA", length=len(seq_text),
+            sequence_hash=part_hash,
+            sequence=seq_text.upper(),
+            molecule="DNA",
+            length=len(seq_text),
         )
         session.add(part)
         await session.flush()
-    existing_name = (await session.execute(
-        select(PartName).where(
-            PartName.part_id == part.id, PartName.name == "GFP", PartName.source == "file"
+    existing_name = (
+        await session.execute(
+            select(PartName).where(
+                PartName.part_id == part.id, PartName.name == "GFP", PartName.source == "file"
+            )
         )
-    )).scalar_one_or_none()
+    ).scalar_one_or_none()
     if not existing_name:
         session.add(PartName(part_id=part.id, name="GFP", source="file"))
-    session.add(PartInstance(
-        part_id=part.id, seq_id=seq.id,
-        annotation_type="CDS", start=1, end=len(seq_text), strand=1,
-    ))
+    session.add(
+        PartInstance(
+            part_id=part.id,
+            seq_id=seq.id,
+            annotation_type="CDS",
+            start=1,
+            end=len(seq_text),
+            strand=1,
+        )
+    )
     await session.commit()
     return f
 
@@ -132,9 +150,11 @@ class TestDedupe:
         assert result["removed"] == 1
         assert result["dry_run"] is True
         # Records should still be there
-        count = len((await db_session.execute(
-            select(IndexedFile).where(IndexedFile.status == "active")
-        )).scalars().all())
+        count = len(
+            (await db_session.execute(select(IndexedFile).where(IndexedFile.status == "active")))
+            .scalars()
+            .all()
+        )
         assert count == 2
 
     async def test_execute(self, db_session):
@@ -144,18 +164,20 @@ class TestDedupe:
         assert result["removed"] == 1
         assert result["dry_run"] is False
         # Only newest should remain
-        remaining = (await db_session.execute(
-            select(IndexedFile).where(IndexedFile.status == "active")
-        )).scalars().all()
+        remaining = (
+            (await db_session.execute(select(IndexedFile).where(IndexedFile.status == "active")))
+            .scalars()
+            .all()
+        )
         assert len(remaining) == 1
 
     async def test_keeps_newest(self, db_session):
         await _make_file_with_seq(db_session, path="/tmp/old.dna", file_hash="same")
         await _make_file_with_seq(db_session, path="/tmp/new.dna", file_hash="same")
         result = await dedupe(db_session, dry_run=False)
-        remaining = (await db_session.execute(
-            select(IndexedFile).where(IndexedFile.status == "active")
-        )).scalar_one()
+        remaining = (
+            await db_session.execute(select(IndexedFile).where(IndexedFile.status == "active"))
+        ).scalar_one()
         # Newest has highest id
         assert remaining.file_path == "/tmp/new.dna"
         assert result["details"][0]["path"] == "/tmp/old.dna"
@@ -184,9 +206,11 @@ class TestPrune:
         assert result["pruned"] == 1
         assert result["dry_run"] is True
         # Record should still exist
-        count = len((await db_session.execute(
-            select(IndexedFile).where(IndexedFile.status == "active")
-        )).scalars().all())
+        count = len(
+            (await db_session.execute(select(IndexedFile).where(IndexedFile.status == "active")))
+            .scalars()
+            .all()
+        )
         assert count == 1
 
     async def test_execute(self, db_session):
@@ -194,19 +218,27 @@ class TestPrune:
         await db_session.commit()
         result = await prune(db_session, "/tmp", dry_run=False, no_archive=True)
         assert result["pruned"] == 1
-        remaining = (await db_session.execute(
-            select(IndexedFile).where(IndexedFile.status == "active")
-        )).scalars().all()
+        remaining = (
+            (await db_session.execute(select(IndexedFile).where(IndexedFile.status == "active")))
+            .scalars()
+            .all()
+        )
         assert len(remaining) == 0
 
     async def test_archive_jsonl(self, db_session, tmp_path):
         await _make_file_with_seq(
-            db_session, path="/nonexistent/orphan.dna",
-            file_hash="orph", seq_name="pOrphan", seq_text="ATGCATGC",
+            db_session,
+            path="/nonexistent/orphan.dna",
+            file_hash="orph",
+            seq_name="pOrphan",
+            seq_text="ATGCATGC",
         )
         archive_dir = str(tmp_path / "archive")
         result = await prune(
-            db_session, "/tmp", archive_dir=archive_dir, dry_run=False,
+            db_session,
+            "/tmp",
+            archive_dir=archive_dir,
+            dry_run=False,
         )
         assert result["pruned"] == 1
 

@@ -1,11 +1,8 @@
 """Tests for sandbox: Workspace, safe_exec, and SandboxRunner."""
 
-import pytest
-
 from hive.sandbox.exec import safe_exec
 from hive.sandbox.runner import SandboxRunner
 from hive.sandbox.workspace import Workspace
-
 
 # ── Workspace ──
 
@@ -229,7 +226,7 @@ class TestSafeExec:
         assert "SyntaxError" in result["error"]
 
     def test_runtime_error(self):
-        result = safe_exec('feedback = 1 / 0')
+        result = safe_exec("feedback = 1 / 0")
         assert result["status"] == "error"
         assert "ZeroDivisionError" in result["error"]
 
@@ -281,7 +278,7 @@ class TestSafeExec:
     def test_cached_variables_in_scope(self):
         """Variables from workspace namespace are accessible."""
         result = safe_exec(
-            'feedback = len(r0) + len(r1)',
+            "feedback = len(r0) + len(r1)",
             {"r0": [1, 2, 3], "r1": [4, 5]},
         )
         assert result["status"] == "ok"
@@ -342,7 +339,7 @@ class TestSandboxRunner:
         ws = Workspace()
         ws.store("sequence_data", "ATGCATGC", "profile")
         runner = SandboxRunner(ws)
-        result = await runner.execute('feedback = len(r0)')
+        result = await runner.execute("feedback = len(r0)")
         assert result["status"] == "ok"
         assert result["feedback"] == 8
 

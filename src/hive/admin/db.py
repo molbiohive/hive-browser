@@ -33,30 +33,27 @@ async def audit(
     root = Path(watcher_root).expanduser().resolve()
 
     # --- Totals ---
-    active_files = (await session.execute(
-        select(func.count()).select_from(IndexedFile)
-        .where(IndexedFile.status == "active")
-    )).scalar()
-    error_files = (await session.execute(
-        select(func.count()).select_from(IndexedFile)
-        .where(IndexedFile.status == "error")
-    )).scalar()
-    deleted_files = (await session.execute(
-        select(func.count()).select_from(IndexedFile)
-        .where(IndexedFile.status == "deleted")
-    )).scalar()
-    sequences = (await session.execute(
-        select(func.count()).select_from(Sequence)
-    )).scalar()
-    parts = (await session.execute(
-        select(func.count()).select_from(Part)
-    )).scalar()
-    part_instances = (await session.execute(
-        select(func.count()).select_from(PartInstance)
-    )).scalar()
-    libraries = (await session.execute(
-        select(func.count()).select_from(Library)
-    )).scalar()
+    active_files = (
+        await session.execute(
+            select(func.count()).select_from(IndexedFile).where(IndexedFile.status == "active")
+        )
+    ).scalar()
+    error_files = (
+        await session.execute(
+            select(func.count()).select_from(IndexedFile).where(IndexedFile.status == "error")
+        )
+    ).scalar()
+    deleted_files = (
+        await session.execute(
+            select(func.count()).select_from(IndexedFile).where(IndexedFile.status == "deleted")
+        )
+    ).scalar()
+    sequences = (await session.execute(select(func.count()).select_from(Sequence))).scalar()
+    parts = (await session.execute(select(func.count()).select_from(Part))).scalar()
+    part_instances = (
+        await session.execute(select(func.count()).select_from(PartInstance))
+    ).scalar()
+    libraries = (await session.execute(select(func.count()).select_from(Library))).scalar()
 
     # --- Hash duplicates (active files with same file_hash) ---
     dupe_q = (
@@ -78,16 +75,16 @@ async def audit(
                 .order_by(IndexedFile.id)
             )
             paths = (await session.execute(paths_q)).all()
-            hash_dupe_details.append({
-                "hash": row.file_hash[:12],
-                "count": row.cnt,
-                "files": [{"id": p.id, "path": p.file_path} for p in paths],
-            })
+            hash_dupe_details.append(
+                {
+                    "hash": row.file_hash[:12],
+                    "count": row.cnt,
+                    "files": [{"id": p.id, "path": p.file_path} for p in paths],
+                }
+            )
 
     # --- Inode duplicates (symlinks/hardlinks to same physical file) ---
-    active_q = select(IndexedFile.id, IndexedFile.file_path).where(
-        IndexedFile.status == "active"
-    )
+    active_q = select(IndexedFile.id, IndexedFile.file_path).where(IndexedFile.status == "active")
     active_rows = (await session.execute(active_q)).all()
 
     inode_map: dict[tuple[int, int], list[dict]] = {}
@@ -120,7 +117,9 @@ async def audit(
     result = {
         "totals": {
             "indexed_files": {
-                "active": active_files, "error": error_files, "deleted": deleted_files,
+                "active": active_files,
+                "error": error_files,
+                "deleted": deleted_files,
             },
             "sequences": sequences,
             "parts": parts,
@@ -157,11 +156,17 @@ async def dedupe(session: AsyncSession, dry_run: bool = True) -> dict:
 
     to_remove = []
     for file_hash in dupe_hashes:
-        rows = (await session.execute(
-            select(IndexedFile)
-            .where(IndexedFile.status == "active", IndexedFile.file_hash == file_hash)
-            .order_by(IndexedFile.id.desc())
-        )).scalars().all()
+        rows = (
+            (
+                await session.execute(
+                    select(IndexedFile)
+                    .where(IndexedFile.status == "active", IndexedFile.file_hash == file_hash)
+                    .order_by(IndexedFile.id.desc())
+                )
+            )
+            .scalars()
+            .all()
+        )
 
         # Keep newest (first), remove rest
         for old in rows[1:]:
@@ -169,6 +174,7 @@ async def dedupe(session: AsyncSession, dry_run: bool = True) -> dict:
 
     if not dry_run and to_remove:
         from sqlalchemy import delete
+
         ids = [r["id"] for r in to_remove]
         for file_id in ids:
             await session.execute(delete(Sequence).where(Sequence.file_id == file_id))
@@ -180,8 +186,6 @@ async def dedupe(session: AsyncSession, dry_run: bool = True) -> dict:
         "removed": len(to_remove),
         "details": to_remove,
     }
-
-
 
 
 async def prune(
@@ -221,10 +225,7 @@ async def prune(
                 seqs = (await session.execute(seqs_q)).scalars().all()
 
                 for seq in seqs:
-                    pis_q = (
-                        select(PartInstance)
-                        .where(PartInstance.seq_id == seq.id)
-                    )
+                    pis_q = select(PartInstance).where(PartInstance.seq_id == seq.id)
                     pis = (await session.execute(pis_q)).scalars().all()
 
                     record = {
@@ -235,15 +236,21 @@ async def prune(
                         "length": seq.length,
                         "sequence_hash": (
                             seq.sequence_hash or hash_sequence(seq.sequence)
-                            if seq.sequence else None
+                            if seq.sequence
+                            else None
                         ),
                         "topology": seq.topology,
                         "molecule": seq.molecule,
                         "description": seq.description,
                         "meta": seq.meta,
                         "parts": [
-                            {"part_id": pi.part_id, "type": pi.annotation_type,
-                             "start": pi.start, "end": pi.end, "strand": pi.strand}
+                            {
+                                "part_id": pi.part_id,
+                                "type": pi.annotation_type,
+                                "start": pi.start,
+                                "end": pi.end,
+                                "strand": pi.strand,
+                            }
                             for pi in pis
                         ],
                     }
@@ -253,6 +260,7 @@ async def prune(
 
     # Delete orphan records
     from sqlalchemy import delete
+
     for f in orphans:
         await session.execute(delete(Sequence).where(Sequence.file_id == f.id))
         await session.execute(delete(IndexedFile).where(IndexedFile.id == f.id))

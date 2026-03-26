@@ -25,7 +25,9 @@ async def db_session():
 def _make_part(seq: str) -> Part:
     return Part(
         sequence_hash=hash_sequence(seq),
-        sequence=seq, molecule="DNA", length=len(seq),
+        sequence=seq,
+        molecule="DNA",
+        length=len(seq),
     )
 
 
@@ -87,11 +89,14 @@ class TestFlagVariant:
         await flag_variant(db_session, p1.id, [10, 20])
         await db_session.flush()
 
-        ann = (await db_session.execute(
-            select(Annotation).where(
-                Annotation.part_id == p1.id, Annotation.key == "variant_of",
+        ann = (
+            await db_session.execute(
+                select(Annotation).where(
+                    Annotation.part_id == p1.id,
+                    Annotation.key == "variant_of",
+                )
             )
-        )).scalar_one()
+        ).scalar_one()
         assert ann.value == "10,20"
         assert ann.source == "computed"
 
@@ -103,9 +108,11 @@ class TestFlagVariant:
         await flag_variant(db_session, p1.id, [])
         await db_session.flush()
 
-        anns = (await db_session.execute(
-            select(Annotation).where(Annotation.part_id == p1.id)
-        )).scalars().all()
+        anns = (
+            (await db_session.execute(select(Annotation).where(Annotation.part_id == p1.id)))
+            .scalars()
+            .all()
+        )
         assert len(anns) == 0
 
     async def test_idempotent(self, db_session):
@@ -117,9 +124,16 @@ class TestFlagVariant:
         await flag_variant(db_session, p1.id, [10])
         await db_session.flush()
 
-        anns = (await db_session.execute(
-            select(Annotation).where(
-                Annotation.part_id == p1.id, Annotation.key == "variant_of",
+        anns = (
+            (
+                await db_session.execute(
+                    select(Annotation).where(
+                        Annotation.part_id == p1.id,
+                        Annotation.key == "variant_of",
+                    )
+                )
             )
-        )).scalars().all()
+            .scalars()
+            .all()
+        )
         assert len(anns) == 1

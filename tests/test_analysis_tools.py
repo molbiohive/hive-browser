@@ -102,12 +102,24 @@ def _mock_enzymes():
     from types import SimpleNamespace
 
     ecori = SimpleNamespace(
-        name="EcoRI", site="GAATTC", cut5=1, cut3=-1,
-        overhang=-4, length=6, is_palindrome=True, is_blunt=False,
+        name="EcoRI",
+        site="GAATTC",
+        cut5=1,
+        cut3=-1,
+        overhang=-4,
+        length=6,
+        is_palindrome=True,
+        is_blunt=False,
     )
     bamhi = SimpleNamespace(
-        name="BamHI", site="GGATCC", cut5=1, cut3=-1,
-        overhang=-4, length=6, is_palindrome=True, is_blunt=False,
+        name="BamHI",
+        site="GGATCC",
+        cut5=1,
+        cut3=-1,
+        overhang=-4,
+        length=6,
+        is_palindrome=True,
+        is_blunt=False,
     )
     return {"ECORI": ecori, "BAMHI": bamhi}
 
@@ -182,9 +194,7 @@ class TestDigest:
         assert len(result["gel_data"]["lanes"]) == 3
 
     async def test_invalid_enzyme(self, tool):
-        result = await tool.execute(
-            {"sequence": "ATGC", "reactions": ["NotAnEnzyme"]}
-        )
+        result = await tool.execute({"sequence": "ATGC", "reactions": ["NotAnEnzyme"]})
         assert "error" in result
 
     async def test_empty_sequence(self, tool):
@@ -476,18 +486,14 @@ class TestSites:
     async def test_max_cuts_filter(self, tool):
         # Two EcoRI sites -- max_cuts=1 should exclude it
         seq = "GAATTCAAAAAAGAATTCAAAAAA"
-        result = await tool.execute(
-            {"sequence": seq, "circular": False, "max_cuts": 1}
-        )
+        result = await tool.execute({"sequence": seq, "circular": False, "max_cuts": 1})
         ecori_hits = [c for c in result["cutters"] if c["name"] == "EcoRI"]
         assert len(ecori_hits) == 0
 
     async def test_unique_cutters(self, tool):
         # One EcoRI site, one BamHI site -- both should appear with max_cuts=1
         seq = "AAAGAATTCAAAGGATCCAAA"
-        result = await tool.execute(
-            {"sequence": seq, "circular": False, "max_cuts": 1}
-        )
+        result = await tool.execute({"sequence": seq, "circular": False, "max_cuts": 1})
         names = {c["name"] for c in result["cutters"]}
         assert "EcoRI" in names
         assert "BamHI" in names

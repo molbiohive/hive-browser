@@ -369,7 +369,6 @@ def cmd_lib_create(args):
     print(f"Created library: {data['name']} (id: {data['id']})")
 
 
-
 def cmd_lib_show(args):
     libs = _get(args, "/admin/libraries").get("libraries", [])
     lib = next((lib_ for lib_ in libs if lib_["name"] == args.library_name), None)

@@ -1,7 +1,5 @@
 """Tests for cloning/primers -- primer binding site prediction."""
 
-import pytest
-
 from hive.cloning.primers import find_primer_sites
 
 

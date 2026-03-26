@@ -196,7 +196,9 @@ async def _unified_loop(
     if planner and use_planner:
         try:
             plan_content, plan_usage = await planner.plan(
-                user_input, llm_client, history,
+                user_input,
+                llm_client,
+                history,
             )
             tokens["in"] += plan_usage.get("in", 0)
             tokens["out"] += plan_usage.get("out", 0)
@@ -216,9 +218,7 @@ async def _unified_loop(
         for t in chat_tasks:
             mark = "x" if t.get("done") else " "
             task_lines.append(f"- [{mark}] {t.get('text', '')}")
-        messages.append({"role": "system", "content": (
-            "Current tasks:\n" + "\n".join(task_lines)
-        )})
+        messages.append({"role": "system", "content": ("Current tasks:\n" + "\n".join(task_lines))})
 
     # Inject historical workspace summary so LLM knows what data is available
     ws_history = ""
@@ -226,9 +226,12 @@ async def _unified_loop(
         ws_history = f"\n\n[Workspace from previous messages]\n{workspace.describe_all()}"
 
     if plan_text:
-        messages.append({"role": "user", "content": (
-            f"[Plan]\n{plan_text}\n\n[User request]\n{user_input}{ws_history}"
-        )})
+        messages.append(
+            {
+                "role": "user",
+                "content": (f"[Plan]\n{plan_text}\n\n[User request]\n{user_input}{ws_history}"),
+            }
+        )
     else:
         messages.append({"role": "user", "content": f"{user_input}{ws_history}"})
 
@@ -238,12 +241,14 @@ async def _unified_loop(
 
         # Log payload sizes for token debugging
         msg_chars = sum(len(str(m.get("content", ""))) for m in messages)
-        schema_chars = sum(
-            len(json.dumps(s)) for s in turn_tools
-        ) if turn_tools else 0
+        schema_chars = sum(len(json.dumps(s)) for s in turn_tools) if turn_tools else 0
         logger.debug(
             "PAYLOAD turn %d: %d msgs (%d chars) + %d tool schemas (%d chars)",
-            turn, len(messages), msg_chars, len(turn_tools) if turn_tools else 0, schema_chars,
+            turn,
+            len(messages),
+            msg_chars,
+            len(turn_tools) if turn_tools else 0,
+            schema_chars,
         )
         try:
             response = await llm_client.chat(messages, tools=turn_tools)
@@ -261,8 +266,13 @@ async def _unified_loop(
         tokens["out"] += turn_out
         logger.debug(
             "TOKENS turn %d: in=%d out=%d (cum: in=%d out=%d) | msgs=%d tools=%d",
-            turn, turn_in, turn_out, tokens["in"], tokens["out"],
-            len(messages), len(turn_tools) if turn_tools else 0,
+            turn,
+            turn_in,
+            turn_out,
+            tokens["in"],
+            tokens["out"],
+            len(messages),
+            len(turn_tools) if turn_tools else 0,
         )
 
         msg = response["choices"][0]["message"]
@@ -282,7 +292,8 @@ async def _unified_loop(
             content = msg.get("content", "")
             logger.info(
                 "Unified loop done after %d turn(s): %s",
-                turn + 1, [s["tool"] for s in chain],
+                turn + 1,
+                [s["tool"] for s in chain],
             )
 
             # Report dict populated by sandbox → becomes the widget data
@@ -316,9 +327,11 @@ async def _unified_loop(
             tool_name = tc["function"]["name"]
 
             try:
-                params = json.loads(tc["function"]["arguments"]) if isinstance(
-                    tc["function"]["arguments"], str
-                ) else tc["function"]["arguments"]
+                params = (
+                    json.loads(tc["function"]["arguments"])
+                    if isinstance(tc["function"]["arguments"], str)
+                    else tc["function"]["arguments"]
+                )
                 params = {k: v for k, v in params.items() if v is not None}
             except (json.JSONDecodeError, AttributeError):
                 params = {}
@@ -327,7 +340,8 @@ async def _unified_loop(
             args_len = len(args_raw) if isinstance(args_raw, str) else len(json.dumps(args_raw))
             logger.debug(
                 "TOOL_CALL %s: args=%d chars",
-                tool_name, args_len,
+                tool_name,
+                args_len,
             )
 
             # Built-in sandbox -- not a registered tool
@@ -341,11 +355,13 @@ async def _unified_loop(
                         sb_result = await sandbox.execute(code)
 
                 compact = sandbox.summary_for_llm(sb_result)
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": tc["id"],
-                    "content": compact,
-                })
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tc["id"],
+                        "content": compact,
+                    }
+                )
 
                 # Human-readable chain summary (shown in UI, not sent to LLM)
                 if sb_result["status"] != "ok":
@@ -354,11 +370,13 @@ async def _unified_loop(
                     desc = str(sb_result.get("feedback", ""))
                     chain_summary = desc[:80] if len(desc) > 80 else desc
 
-                chain.append({
-                    "tool": "python",
-                    "params": {"code": code},
-                    "summary": chain_summary,
-                })
+                chain.append(
+                    {
+                        "tool": "python",
+                        "params": {"code": code},
+                        "summary": chain_summary,
+                    }
+                )
 
                 logger.info("Sandbox exec: %s", compact[:200])
                 await _emit("thinking")
@@ -367,11 +385,13 @@ async def _unified_loop(
             tool = tool_map.get(tool_name)
 
             if not tool:
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": tc["id"],
-                    "content": f"Error: unknown tool '{tool_name}'",
-                })
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tc["id"],
+                        "content": f"Error: unknown tool '{tool_name}'",
+                    }
+                )
                 continue
 
             # Auto-fill from workspace: inject stored values into matching params
@@ -379,9 +399,7 @@ async def _unified_loop(
             schema_props = tool.input_schema().get("properties", {})
             for key in schema_props:
                 provided = params.get(key)
-                if not provided or (
-                    isinstance(provided, str) and len(provided) < pipe_min_length
-                ):
+                if not provided or (isinstance(provided, str) and len(provided) < pipe_min_length):
                     cached = workspace.find_by_field(key, pipe_min_length)
                     if cached is not None:
                         params[key] = cached
@@ -400,21 +418,28 @@ async def _unified_loop(
 
             logger.debug(
                 "TOOL_MSG %s: %d chars | result keys: %s",
-                tool_name, len(compact),
-                {k: type(v).__name__ + f"({len(v) if isinstance(v, (str, list)) else v})"
-                 for k, v in result.items()},
+                tool_name,
+                len(compact),
+                {
+                    k: type(v).__name__ + f"({len(v) if isinstance(v, (str, list)) else v})"
+                    for k, v in result.items()
+                },
             )
-            messages.append({
-                "role": "tool",
-                "tool_call_id": tc["id"],
-                "content": compact,
-            })
+            messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": tc["id"],
+                    "content": compact,
+                }
+            )
 
-            chain.append({
-                "tool": tool_name,
-                "params": params,
-                "summary": tool.format_result(result),
-            })
+            chain.append(
+                {
+                    "tool": tool_name,
+                    "params": params,
+                    "summary": tool.format_result(result),
+                }
+            )
             logger.info("Unified turn %d: %s(%s)", turn + 1, tool_name, json.dumps(params))
 
             last_result = result
@@ -427,11 +452,16 @@ async def _unified_loop(
         exceeded = True
         logger.warning(
             "Unified loop hit max turns (%d): %s",
-            max_turns, [s["tool"] for s in chain],
+            max_turns,
+            [s["tool"] for s in chain],
         )
 
     if not chain:
-        resp = _error(f"LLM error: {error_msg}") if error_msg else _error("No tools were called during reasoning.")
+        resp = (
+            _error(f"LLM error: {error_msg}")
+            if error_msg
+            else _error("No tools were called during reasoning.")
+        )
         if plan_text:
             resp["plan"] = plan_text
         return resp

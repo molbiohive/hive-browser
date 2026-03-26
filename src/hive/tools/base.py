@@ -155,5 +155,3 @@ def _params_to_schema(params: dict) -> dict:
     if required:
         schema["required"] = required
     return schema
-
-

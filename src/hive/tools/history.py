@@ -6,13 +6,12 @@ import logging
 from typing import Any
 
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
 from hive.db import session as db
 from hive.db.models import CloningStep
 from hive.tools.base import Tool
 from hive.tools.resolve import resolve_sequence
-
-from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +62,10 @@ class HistoryTool(Tool):
 
         async with db.async_session_factory() as session:
             seq = await resolve_sequence(
-                session, sid=inp.sid, name=inp.name, load_file=True,
+                session,
+                sid=inp.sid,
+                name=inp.name,
+                load_file=True,
             )
             if not seq:
                 return {"error": f"Sequence not found: {inp.sid or inp.name}"}
@@ -144,10 +146,7 @@ def _to_cloning_node(step: CloningStep, children_map: dict[int, list]) -> dict:
 
         node["source"] = {
             "action": action,
-            "inputs": [
-                {"node": _to_cloning_node(child, children_map)}
-                for child in kids
-            ],
+            "inputs": [{"node": _to_cloning_node(child, children_map)} for child in kids],
         }
 
     return node

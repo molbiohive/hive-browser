@@ -25,6 +25,7 @@ class DummyTool(Tool):
 
 class ParamsTool(Tool):
     """Tool using declarative params instead of Pydantic."""
+
     name = "paramtool"
     description = "Declarative params tool"
     params = {
@@ -79,25 +80,31 @@ class TestToolMetadata:
 
 class TestParamsToSchema:
     def test_basic(self):
-        schema = _params_to_schema({
-            "query": {"type": "string", "description": "Search", "required": True},
-        })
+        schema = _params_to_schema(
+            {
+                "query": {"type": "string", "description": "Search", "required": True},
+            }
+        )
         assert schema["type"] == "object"
         assert "query" in schema["properties"]
         assert schema["properties"]["query"]["type"] == "string"
         assert schema["required"] == ["query"]
 
     def test_optional_with_default(self):
-        schema = _params_to_schema({
-            "limit": {"type": "integer", "default": 10},
-        })
+        schema = _params_to_schema(
+            {
+                "limit": {"type": "integer", "default": 10},
+            }
+        )
         assert schema["properties"]["limit"]["default"] == 10
         assert "required" not in schema
 
     def test_enum(self):
-        schema = _params_to_schema({
-            "mode": {"type": "string", "enum": ["fast", "precise"]},
-        })
+        schema = _params_to_schema(
+            {
+                "mode": {"type": "string", "enum": ["fast", "precise"]},
+            }
+        )
         assert schema["properties"]["mode"]["enum"] == ["fast", "precise"]
 
     def test_declarative_tool_schema(self):

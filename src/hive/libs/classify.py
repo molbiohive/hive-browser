@@ -71,7 +71,6 @@ def _tm_salt_adjusted(seq: str) -> float:
     """Salt-adjusted Tm for oligonucleotides >13 nt (50 mM Na+)."""
     n = len(seq)
     gc = sum(1 for c in seq if c in "GC")
-    gc_frac = gc / n if n > 0 else 0.0
     # Bolton & McCarthy (1962), adjusted for salt
     return 64.9 + 41.0 * (gc - 16.4) / n
 

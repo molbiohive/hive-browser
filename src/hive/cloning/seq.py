@@ -54,7 +54,7 @@ def translate(seq: str, table: int = 1) -> str:
     stops = set(ct["stop_codons"])
     protein = []
     for i in range(0, len(seq) - 2, 3):
-        codon = seq[i:i + 3]
+        codon = seq[i : i + 3]
         if codon in stops:
             protein.append("*")
         elif codon in forward:

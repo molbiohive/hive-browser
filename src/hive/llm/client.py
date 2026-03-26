@@ -80,13 +80,18 @@ class LLMClient:
             kwargs["extra_body"]["chat_template_kwargs"] = {"enable_thinking": False}
 
         if _dump.isEnabledFor(logging.DEBUG):
-            _dump.debug(json.dumps({
-                "dir": "request",
-                "model": self._model,
-                "messages": messages,
-                "tools": [t["function"]["name"] for t in tools] if tools else None,
-                "tool_choice": tool_choice,
-            }, default=str))
+            _dump.debug(
+                json.dumps(
+                    {
+                        "dir": "request",
+                        "model": self._model,
+                        "messages": messages,
+                        "tools": [t["function"]["name"] for t in tools] if tools else None,
+                        "tool_choice": tool_choice,
+                    },
+                    default=str,
+                )
+            )
 
         response = await litellm.acompletion(**kwargs)
         try:
@@ -96,12 +101,17 @@ class LLMClient:
             result = _extract_response(response)
 
         if _dump.isEnabledFor(logging.DEBUG):
-            _dump.debug(json.dumps({
-                "dir": "response",
-                "model": self._model,
-                "usage": result.get("usage"),
-                "choices": result.get("choices"),
-            }, default=str))
+            _dump.debug(
+                json.dumps(
+                    {
+                        "dir": "response",
+                        "model": self._model,
+                        "usage": result.get("usage"),
+                        "choices": result.get("choices"),
+                    },
+                    default=str,
+                )
+            )
 
         return result
 
@@ -113,9 +123,7 @@ class LLMClient:
                 base = self._config.base_url.rstrip("/")
                 if not base.endswith("/v1"):
                     base += "/v1"
-                async with httpx.AsyncClient(
-                    base_url=base, timeout=5.0
-                ) as client:
+                async with httpx.AsyncClient(base_url=base, timeout=5.0) as client:
                     response = await client.get("/models")
                     return response.status_code == 200
             except httpx.HTTPError:

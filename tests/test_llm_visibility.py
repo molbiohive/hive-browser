@@ -12,7 +12,6 @@ import pytest
 from hive.sandbox.workspace import Workspace
 from hive.tools.router import _tool_response
 
-
 # ── Helpers ──
 
 
@@ -26,15 +25,38 @@ def widget_gets(tool_name: str, result: dict) -> dict:
 
 SEARCH_RESULT = {
     "results": [
-        {"sid": 1, "name": "pUC19", "size_bp": 2686, "topology": "circular",
-         "features": ["AmpR", "lacZ"], "tags": ["plasmid"], "file_path": "/data/pUC19.dna", "score": 0.95},
-        {"sid": 2, "name": "pBR322", "size_bp": 4361, "topology": "circular",
-         "features": ["AmpR", "TetR"], "tags": [], "file_path": "/data/pBR322.dna", "score": 0.88},
+        {
+            "sid": 1,
+            "name": "pUC19",
+            "size_bp": 2686,
+            "topology": "circular",
+            "features": ["AmpR", "lacZ"],
+            "tags": ["plasmid"],
+            "file_path": "/data/pUC19.dna",
+            "score": 0.95,
+        },
+        {
+            "sid": 2,
+            "name": "pBR322",
+            "size_bp": 4361,
+            "topology": "circular",
+            "features": ["AmpR", "TetR"],
+            "tags": [],
+            "file_path": "/data/pBR322.dna",
+            "score": 0.88,
+        },
     ],
     "total": 2,
     "parts": [
-        {"pid": 10, "names": ["AmpR"], "molecule": "dna", "length": 861,
-         "instance_count": 5, "types": ["CDS"], "score": 0.92},
+        {
+            "pid": 10,
+            "names": ["AmpR"],
+            "molecule": "dna",
+            "length": 861,
+            "instance_count": 5,
+            "types": ["CDS"],
+            "score": 0.92,
+        },
     ],
     "parts_total": 1,
     "query": "ampicillin",
@@ -42,35 +64,86 @@ SEARCH_RESULT = {
 
 PROFILE_RESULT = {
     "sequence": {
-        "sid": 1, "name": "pUC19", "size_bp": 2686, "topology": "circular",
-        "molecule": "dna", "description": "Cloning vector",
-        "meta": {"organism": "synthetic"}, "sequence_data": "ATCG" * 500,
+        "sid": 1,
+        "name": "pUC19",
+        "size_bp": 2686,
+        "topology": "circular",
+        "molecule": "dna",
+        "description": "Cloning vector",
+        "meta": {"organism": "synthetic"},
+        "sequence_data": "ATCG" * 500,
     },
     "features": [
-        {"pid": 10, "name": "AmpR", "type": "CDS", "start": 100, "end": 960,
-         "strand": 1, "qualifiers": {"product": "ampicillin resistance"}},
+        {
+            "pid": 10,
+            "name": "AmpR",
+            "type": "CDS",
+            "start": 100,
+            "end": 960,
+            "strand": 1,
+            "qualifiers": {"product": "ampicillin resistance"},
+        },
     ],
     "primers": [
-        {"pid": 20, "name": "M13F", "start": 400, "end": 417, "strand": 1,
-         "length": 17, "sequence": "GTAAAACGACGGCCAGT", "source": "file"},
+        {
+            "pid": 20,
+            "name": "M13F",
+            "start": 400,
+            "end": 417,
+            "strand": 1,
+            "length": 17,
+            "sequence": "GTAAAACGACGGCCAGT",
+            "source": "file",
+        },
     ],
     "cut_sites": [
-        {"enzyme": "EcoRI", "position": 396, "end": 402, "strand": 1,
-         "cutPosition": 397, "complementCutPosition": 401, "overhang": "5'"},
+        {
+            "enzyme": "EcoRI",
+            "position": 396,
+            "end": 402,
+            "strand": 1,
+            "cutPosition": 397,
+            "complementCutPosition": 401,
+            "overhang": "5'",
+        },
     ],
     "file": {"path": "/data/pUC19.dna", "format": "sgff", "size": 8192, "indexed_at": "2025-01-01"},
 }
 
 BLAST_RESULT = {
     "hits": [
-        {"subject": "pUC19 complete vector", "identity": 99.5, "alignment_length": 2686,
-         "mismatches": 13, "gaps": 0, "q_start": 1, "q_end": 2686,
-         "s_start": 1, "s_end": 2686, "evalue": 0.0, "bitscore": 4962.0,
-         "sid": 1, "pid": None, "file_path": "/data/pUC19.dna"},
-        {"subject": "pBR322 origin region", "identity": 85.2, "alignment_length": 600,
-         "mismatches": 89, "gaps": 2, "q_start": 1500, "q_end": 2100,
-         "s_start": 2000, "s_end": 2600, "evalue": 1e-120, "bitscore": 450.0,
-         "sid": 2, "pid": None, "file_path": "/data/pBR322.dna"},
+        {
+            "subject": "pUC19 complete vector",
+            "identity": 99.5,
+            "alignment_length": 2686,
+            "mismatches": 13,
+            "gaps": 0,
+            "q_start": 1,
+            "q_end": 2686,
+            "s_start": 1,
+            "s_end": 2686,
+            "evalue": 0.0,
+            "bitscore": 4962.0,
+            "sid": 1,
+            "pid": None,
+            "file_path": "/data/pUC19.dna",
+        },
+        {
+            "subject": "pBR322 origin region",
+            "identity": 85.2,
+            "alignment_length": 600,
+            "mismatches": 89,
+            "gaps": 2,
+            "q_start": 1500,
+            "q_end": 2100,
+            "s_start": 2000,
+            "s_end": 2600,
+            "evalue": 1e-120,
+            "bitscore": 450.0,
+            "sid": 2,
+            "pid": None,
+            "file_path": "/data/pBR322.dna",
+        },
     ],
     "total": 2,
     "query_length": 2686,
@@ -95,13 +168,22 @@ EXTRACT_RESULT = {
 
 DIGEST_RESULT = {
     "reactions": [
-        {"name": "EcoRI", "enzymes": [{"name": "EcoRI", "sites": [396]}],
-         "fragments": [2686], "total_cuts": 1},
+        {
+            "name": "EcoRI",
+            "enzymes": [{"name": "EcoRI", "sites": [396]}],
+            "fragments": [2686],
+            "total_cuts": 1,
+        },
     ],
     "sequence_length": 2686,
     "circular": True,
     "gel_data": {
-        "lanes": [{"label": "EcoRI", "bands": [{"position": 0.5, "intensity": 1.0, "size": 2686, "name": ""}]}],
+        "lanes": [
+            {
+                "label": "EcoRI",
+                "bands": [{"position": 0.5, "intensity": 1.0, "size": 2686, "name": ""}],
+            }
+        ],
         "gelType": "agarose",
         "stain": "ethidium",
     },
@@ -118,12 +200,23 @@ SITES_RESULT = {
 
 PARTS_PID_RESULT = {
     "part": {
-        "pid": 10, "names": ["AmpR"], "molecule": "dna",
-        "length": 861, "sequence": "ATCG" * 200, "sequence_hash": "abc123",
+        "pid": 10,
+        "names": ["AmpR"],
+        "molecule": "dna",
+        "length": 861,
+        "sequence": "ATCG" * 200,
+        "sequence_hash": "abc123",
     },
     "instances": [
-        {"sid": 1, "sequence_name": "pUC19", "annotation_type": "CDS",
-         "start": 100, "end": 960, "strand": 1, "file_path": "/data/pUC19.dna"},
+        {
+            "sid": 1,
+            "sequence_name": "pUC19",
+            "annotation_type": "CDS",
+            "start": 100,
+            "end": 960,
+            "strand": 1,
+            "file_path": "/data/pUC19.dna",
+        },
     ],
     "instances_count": 1,
     "annotations": [{"key": "product", "value": "ampicillin resistance", "source": "genbank"}],
@@ -133,8 +226,24 @@ PARTS_PID_RESULT = {
 
 PARTS_SID_RESULT = {
     "parts": [
-        {"pid": 10, "name": "AmpR", "type": "CDS", "start": 100, "end": 960, "strand": 1, "length": 861},
-        {"pid": 20, "name": "lacZ", "type": "CDS", "start": 1200, "end": 2400, "strand": -1, "length": 1200},
+        {
+            "pid": 10,
+            "name": "AmpR",
+            "type": "CDS",
+            "start": 100,
+            "end": 960,
+            "strand": 1,
+            "length": 861,
+        },
+        {
+            "pid": 20,
+            "name": "lacZ",
+            "type": "CDS",
+            "start": 1200,
+            "end": 2400,
+            "strand": -1,
+            "length": 1200,
+        },
     ],
     "total": 2,
     "sequence_name": "pUC19",
@@ -153,7 +262,15 @@ TRANSLATE_RESULT = {
 
 TRANSCRIBE_RESULT = {"rna": "AUCG" * 200, "length": 800}
 
-GC_RESULT = {"gc_percent": 52.3, "at_percent": 47.7, "length": 2686, "g": 702, "c": 703, "a": 640, "t": 641}
+GC_RESULT = {
+    "gc_percent": 52.3,
+    "at_percent": 47.7,
+    "length": 2686,
+    "g": 702,
+    "c": 703,
+    "a": 640,
+    "t": 641,
+}
 
 
 # ── Tests ──
@@ -162,21 +279,24 @@ GC_RESULT = {"gc_percent": 52.3, "at_percent": 47.7, "length": 2686, "g": 702, "
 class TestWidgetGetsFullData:
     """Widget (frontend) must receive the complete, unmodified result dict."""
 
-    @pytest.mark.parametrize("tool_name,result", [
-        ("search", SEARCH_RESULT),
-        ("profile", PROFILE_RESULT),
-        ("blast", BLAST_RESULT),
-        ("align", ALIGN_RESULT),
-        ("extract", EXTRACT_RESULT),
-        ("digest", DIGEST_RESULT),
-        ("sites", SITES_RESULT),
-        ("parts", PARTS_PID_RESULT),
-        ("parts", PARTS_SID_RESULT),
-        ("revcomp", REVCOMP_RESULT),
-        ("translate", TRANSLATE_RESULT),
-        ("transcribe", TRANSCRIBE_RESULT),
-        ("gc", GC_RESULT),
-    ])
+    @pytest.mark.parametrize(
+        "tool_name,result",
+        [
+            ("search", SEARCH_RESULT),
+            ("profile", PROFILE_RESULT),
+            ("blast", BLAST_RESULT),
+            ("align", ALIGN_RESULT),
+            ("extract", EXTRACT_RESULT),
+            ("digest", DIGEST_RESULT),
+            ("sites", SITES_RESULT),
+            ("parts", PARTS_PID_RESULT),
+            ("parts", PARTS_SID_RESULT),
+            ("revcomp", REVCOMP_RESULT),
+            ("translate", TRANSLATE_RESULT),
+            ("transcribe", TRANSCRIBE_RESULT),
+            ("gc", GC_RESULT),
+        ],
+    )
     def test_widget_receives_exact_result(self, tool_name, result):
         """_tool_response passes the full result dict to data field untouched."""
         data = widget_gets(tool_name, result)

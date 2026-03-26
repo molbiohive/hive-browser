@@ -115,8 +115,7 @@ class PartsTool(Tool):
             ]
 
             annotations = [
-                {"key": a.key, "value": a.value, "source": a.source}
-                for a in part.annotations
+                {"key": a.key, "value": a.value, "source": a.source} for a in part.annotations
             ]
 
             libraries = [

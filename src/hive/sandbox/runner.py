@@ -52,7 +52,8 @@ class SandboxRunner:
                 if call_count[0] > budget:
                     raise RuntimeError(f"Tool call budget exceeded ({budget})")
                 future = asyncio.run_coroutine_threadsafe(
-                    _tool.execute(dict(kwargs)), loop,
+                    _tool.execute(dict(kwargs)),
+                    loop,
                 )
                 result = future.result(timeout=30)
                 if "error" not in result:
@@ -76,9 +77,7 @@ class SandboxRunner:
         for tool in tools:
             schema = tool.input_schema()
             props = schema.get("properties", {})
-            params = ", ".join(
-                f"{name}: {spec.get('type', 'any')}" for name, spec in props.items()
-            )
+            params = ", ".join(f"{name}: {spec.get('type', 'any')}" for name, spec in props.items())
             param_descs = []
             for name, spec in props.items():
                 if d := spec.get("description"):
@@ -93,7 +92,7 @@ class SandboxRunner:
             "Execute Python on cached data. Variables in scope:\n"
             + self.workspace.describe_all()
             + "\n`report` dict accumulates widget data. "
-            "Assign named values: report[\"features\"] = [...].\n"
+            'Assign named values: report["features"] = [...].\n'
             "Must assign to `feedback` (caption text for the widget)."
         )
         sigs = self._tool_signatures()
@@ -149,7 +148,7 @@ class SandboxRunner:
         if isinstance(value, (list, dict)):
             text = json.dumps(value, default=str)
             if len(text) > max_chars:
-                text = text[:max_chars - 3] + "..."
+                text = text[: max_chars - 3] + "..."
         else:
             text = str(value)
 

@@ -17,9 +17,17 @@ _EXTRAS_DIR = Path(__file__).resolve().parent.parent / "extras"
 
 # IUPAC ambiguity codes -> regex character classes
 IUPAC_MAP = {
-    "R": "[AG]", "Y": "[CT]", "W": "[AT]", "S": "[GC]",
-    "M": "[AC]", "K": "[GT]", "B": "[CGT]", "D": "[AGT]",
-    "H": "[ACT]", "V": "[ACG]", "N": "[ACGT]",
+    "R": "[AG]",
+    "Y": "[CT]",
+    "W": "[AT]",
+    "S": "[GC]",
+    "M": "[AC]",
+    "K": "[GT]",
+    "B": "[CGT]",
+    "D": "[AGT]",
+    "H": "[ACT]",
+    "V": "[ACG]",
+    "N": "[ACGT]",
 }
 
 # Module-level cache: {UPPER_NAME: Enzyme}
@@ -106,11 +114,13 @@ def find_cut_sites(
                     sites.append(pos % seq_len)
 
         sites = sorted(set(sites))
-        enzyme_results.append({
-            "name": enz.name,
-            "sites": sites,
-            "num_cuts": len(sites),
-        })
+        enzyme_results.append(
+            {
+                "name": enz.name,
+                "sites": sites,
+                "num_cuts": len(sites),
+            }
+        )
         all_cuts.extend(sites)
 
     all_cuts = sorted(set(all_cuts))
@@ -187,12 +197,14 @@ def find_all_cutters(
             continue
         if max_cuts is not None and len(positions) > max_cuts:
             continue
-        cutters.append({
-            "name": enz.name,
-            "site": enz.site,
-            "num_cuts": len(positions),
-            "positions": positions,
-        })
+        cutters.append(
+            {
+                "name": enz.name,
+                "site": enz.site,
+                "num_cuts": len(positions),
+                "positions": positions,
+            }
+        )
 
     cutters.sort(key=lambda x: x["num_cuts"])
     return cutters
@@ -206,9 +218,7 @@ async def bootstrap_enzymes(session: AsyncSession) -> int:
 
     Returns the number of enzymes loaded (0 if already populated).
     """
-    count = (await session.execute(
-        select(func.count()).select_from(Enzyme)
-    )).scalar() or 0
+    count = (await session.execute(select(func.count()).select_from(Enzyme))).scalar() or 0
     if count > 0:
         logger.debug("Enzymes already loaded: %d", count)
         await _bootstrap_default_collection(session)
@@ -226,16 +236,18 @@ async def bootstrap_enzymes(session: AsyncSession) -> int:
         name = entry.get("name")
         if not name:
             continue
-        session.add(Enzyme(
-            name=entry["name"],
-            site=entry["site"],
-            cut5=entry["cut5"],
-            cut3=entry["cut3"],
-            overhang=entry["overhang"],
-            length=entry["length"],
-            is_palindrome=entry["is_palindrome"],
-            is_blunt=entry["is_blunt"],
-        ))
+        session.add(
+            Enzyme(
+                name=entry["name"],
+                site=entry["site"],
+                cut5=entry["cut5"],
+                cut3=entry["cut3"],
+                overhang=entry["overhang"],
+                length=entry["length"],
+                is_palindrome=entry["is_palindrome"],
+                is_blunt=entry["is_blunt"],
+            )
+        )
 
     await session.flush()
     loaded = len(items)
@@ -248,27 +260,58 @@ async def bootstrap_enzymes(session: AsyncSession) -> int:
 
 
 _DEFAULT_ENZYMES = [
-    "EcoRI", "BamHI", "HindIII", "XbaI", "SalI", "PstI", "SphI", "KpnI",
-    "NcoI", "NdeI", "NheI", "XhoI", "NotI", "EcoRV", "SmaI", "SacI",
-    "SacII", "ClaI", "BglII", "ApaI", "MluI", "StuI", "ScaI", "SpeI",
-    "BsaI", "BbsI", "BsmBI", "SapI", "AarI", "DpnI",
+    "EcoRI",
+    "BamHI",
+    "HindIII",
+    "XbaI",
+    "SalI",
+    "PstI",
+    "SphI",
+    "KpnI",
+    "NcoI",
+    "NdeI",
+    "NheI",
+    "XhoI",
+    "NotI",
+    "EcoRV",
+    "SmaI",
+    "SacI",
+    "SacII",
+    "ClaI",
+    "BglII",
+    "ApaI",
+    "MluI",
+    "StuI",
+    "ScaI",
+    "SpeI",
+    "BsaI",
+    "BbsI",
+    "BsmBI",
+    "SapI",
+    "AarI",
+    "DpnI",
 ]
 
 
 async def _bootstrap_default_collection(session: AsyncSession) -> None:
     """Create a default 'Common Enzymes' collection if none exists."""
-    existing = (await session.execute(
-        select(func.count()).select_from(Collection)
-        .where(Collection.set_type == "enzymes", Collection.is_default.is_(True))
-    )).scalar() or 0
+    existing = (
+        await session.execute(
+            select(func.count())
+            .select_from(Collection)
+            .where(Collection.set_type == "enzymes", Collection.is_default.is_(True))
+        )
+    ).scalar() or 0
     if existing > 0:
         return
 
-    session.add(Collection(
-        name="Common Enzymes",
-        set_type="enzymes",
-        items=_DEFAULT_ENZYMES,
-        is_default=True,
-    ))
+    session.add(
+        Collection(
+            name="Common Enzymes",
+            set_type="enzymes",
+            items=_DEFAULT_ENZYMES,
+            is_default=True,
+        )
+    )
     await session.flush()
     logger.info("Bootstrapped default enzyme collection (%d enzymes)", len(_DEFAULT_ENZYMES))

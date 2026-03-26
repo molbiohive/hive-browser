@@ -8,16 +8,26 @@ from hive.watcher.rules import match_file
 
 def _rules():
     return [
-        WatcherRule(match="*.dna", action="parse", parser="sgffp",
-                    extract=["sequence", "features", "primers", "notes"]),
-        WatcherRule(match="*.gb", action="parse", parser="biopython",
-                    extract=["sequence", "features", "description"]),
-        WatcherRule(match="*.gbk", action="parse", parser="biopython",
-                    extract=["sequence", "features", "description"]),
-        WatcherRule(match="*.fasta", action="parse", parser="biopython",
-                    extract=["sequence"]),
-        WatcherRule(match="*.fa", action="parse", parser="biopython",
-                    extract=["sequence"]),
+        WatcherRule(
+            match="*.dna",
+            action="parse",
+            parser="sgffp",
+            extract=["sequence", "features", "primers", "notes"],
+        ),
+        WatcherRule(
+            match="*.gb",
+            action="parse",
+            parser="biopython",
+            extract=["sequence", "features", "description"],
+        ),
+        WatcherRule(
+            match="*.gbk",
+            action="parse",
+            parser="biopython",
+            extract=["sequence", "features", "description"],
+        ),
+        WatcherRule(match="*.fasta", action="parse", parser="biopython", extract=["sequence"]),
+        WatcherRule(match="*.fa", action="parse", parser="biopython", extract=["sequence"]),
         WatcherRule(match=".*", action="ignore"),
         WatcherRule(match="*.tmp", action="ignore"),
         WatcherRule(match="*.log", action="log", message="Log file detected"),

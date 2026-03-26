@@ -53,8 +53,11 @@ class ToolDB:
         async with db.async_session_factory() as session:
             stmt = (
                 select(
-                    Sequence.id, Sequence.name, Sequence.length,
-                    Sequence.topology, Sequence.description,
+                    Sequence.id,
+                    Sequence.name,
+                    Sequence.length,
+                    Sequence.topology,
+                    Sequence.description,
                     IndexedFile.file_path,
                 )
                 .join(IndexedFile, Sequence.file_id == IndexedFile.id)
@@ -81,9 +84,13 @@ class ToolDB:
 
             return [
                 {
-                    "id": r.id, "name": r.name, "size_bp": r.length,
-                    "topology": r.topology, "description": r.description,
-                    "file_path": r.file_path, "score": round(float(r.score), 3),
+                    "id": r.id,
+                    "name": r.name,
+                    "size_bp": r.length,
+                    "topology": r.topology,
+                    "description": r.description,
+                    "file_path": r.file_path,
+                    "score": round(float(r.score), 3),
                 }
                 for r in rows
             ]
@@ -126,17 +133,19 @@ class ToolDB:
 
             parts = []
             for pi in seq.part_instances:
-                parts.append({
-                    "pid": pi.part.id,
-                    "name": pi.part.names[0].name if pi.part.names else "",
-                    "annotation_type": pi.annotation_type,
-                    "start": pi.start,
-                    "end": pi.end,
-                    "strand": pi.strand,
-                    "qualifiers": pi.qualifiers,
-                    "length": pi.part.length,
-                    "molecule": pi.part.molecule,
-                })
+                parts.append(
+                    {
+                        "pid": pi.part.id,
+                        "name": pi.part.names[0].name if pi.part.names else "",
+                        "annotation_type": pi.annotation_type,
+                        "start": pi.start,
+                        "end": pi.end,
+                        "strand": pi.strand,
+                        "qualifiers": pi.qualifiers,
+                        "length": pi.part.length,
+                        "molecule": pi.part.molecule,
+                    }
+                )
 
             return {
                 "id": seq.id,
@@ -201,8 +210,11 @@ class ToolDB:
                     "pid": pi.part.id,
                     "name": pi.part.names[0].name if pi.part.names else "",
                     "annotation_type": pi.annotation_type,
-                    "start": pi.start, "end": pi.end, "strand": pi.strand,
-                    "qualifiers": pi.qualifiers, "seq_name": seq_name,
+                    "start": pi.start,
+                    "end": pi.end,
+                    "strand": pi.strand,
+                    "qualifiers": pi.qualifiers,
+                    "seq_name": seq_name,
                 }
                 for pi, seq_name in rows
             ]
@@ -235,7 +247,9 @@ class ToolDB:
 
             return [
                 {
-                    "id": f.id, "file_path": f.file_path, "format": f.format,
+                    "id": f.id,
+                    "file_path": f.file_path,
+                    "format": f.format,
                     "file_size": f.file_size,
                     "indexed_at": f.indexed_at.isoformat() if f.indexed_at else None,
                 }

@@ -32,5 +32,3 @@ async def init_db(config: DatabaseConfig) -> bool:
     except Exception as e:
         logger.warning("Database not available: %s", e)
         return False
-
-

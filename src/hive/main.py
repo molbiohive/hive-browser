@@ -40,9 +40,7 @@ def init_logging(config: Settings) -> None:
     # LLM dump — llm.jsonl, 50MB x 3
     if config.logging.llm_dump:
         llm_logger = logging.getLogger("hive.llm.dump")
-        llm_handler = RotatingFileHandler(
-            log_dir / "llm.jsonl", maxBytes=50_000_000, backupCount=3
-        )
+        llm_handler = RotatingFileHandler(log_dir / "llm.jsonl", maxBytes=50_000_000, backupCount=3)
         llm_handler.setFormatter(logging.Formatter("%(message)s"))
         llm_logger.addHandler(llm_handler)
         llm_logger.setLevel(logging.DEBUG)

@@ -11,9 +11,9 @@ from uuid import uuid4
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy import func, select
 
+from hive.context import current_chat_tasks, current_user_id
 from hive.db import session as db
 from hive.db.models import IndexedFile, Part, Sequence, User
-from hive.context import current_chat_tasks, current_user_id
 from hive.sandbox import Workspace
 from hive.tools.router import route_input
 from hive.users.service import create_feedback, get_user_by_token, update_preferences
@@ -117,36 +117,49 @@ async def websocket_endpoint(websocket: WebSocket):
     use_planner = bool((user.preferences or {}).get("use_planner", True))
 
     # Per-connection chat tracking (mutable dict so background tasks can update it)
-    chat = {"id": None, "messages": [], "title_generated": False, "model": current_model_id, "tasks": [], "workspace": Workspace()}
+    chat = {
+        "id": None,
+        "messages": [],
+        "title_generated": False,
+        "model": current_model_id,
+        "tasks": [],
+        "workspace": Workspace(),
+    }
 
     try:
         # Send config, tool metadata, models, user, and initial status to frontend
         current_client = (
             _resolve_model(model_pool, current_model_id, config)
-            if model_pool and current_model_id else None
+            if model_pool and current_model_id
+            else None
         )
         tool_count = len(registry.tools()) if registry else 0
         init_status = await _quick_status(current_client, tool_count=tool_count)
-        await manager.send_json(conn_id, {
-            "type": "init",
-            "config": {
-                "max_history_pairs": max_pairs,
-                "planner_available": planner is not None,
+        await manager.send_json(
+            conn_id,
+            {
+                "type": "init",
+                "config": {
+                    "max_history_pairs": max_pairs,
+                    "planner_available": planner is not None,
+                },
+                "tools": registry.metadata() if registry else [],
+                "status": init_status,
+                "models": [
+                    {"id": m.id, "provider": m.provider, "model": m.model}
+                    for m in model_pool.entries()
+                ]
+                if model_pool
+                else [],
+                "currentModel": current_model_id,
+                "user": {
+                    "id": user.id,
+                    "username": user.username,
+                    "slug": user.slug,
+                    "preferences": user.preferences or {},
+                },
             },
-            "tools": registry.metadata() if registry else [],
-            "status": init_status,
-            "models": [
-                {"id": m.id, "provider": m.provider, "model": m.model}
-                for m in model_pool.entries()
-            ] if model_pool else [],
-            "currentModel": current_model_id,
-            "user": {
-                "id": user.id,
-                "username": user.username,
-                "slug": user.slug,
-                "preferences": user.preferences or {},
-            },
-        })
+        )
 
         while True:
             raw = await websocket.receive_text()
@@ -164,22 +177,34 @@ async def websocket_endpoint(websocket: WebSocket):
             # Handle model switch — seamless, no chat message
             if data.get("type") == "set_model":
                 model_id = data.get("modelId")
-                client = _resolve_model(
-                    model_pool, model_id, config,
-                ) if model_pool and model_id else None
+                client = (
+                    _resolve_model(
+                        model_pool,
+                        model_id,
+                        config,
+                    )
+                    if model_pool and model_id
+                    else None
+                )
                 if client:
                     current_model_id = model_id
                     chat["model"] = model_id
-                    await manager.send_json(conn_id, {
-                        "type": "model_changed",
-                        "modelId": model_id,
-                    })
+                    await manager.send_json(
+                        conn_id,
+                        {
+                            "type": "model_changed",
+                            "modelId": model_id,
+                        },
+                    )
                     # Persist as user preference
                     if db.async_session_factory:
                         try:
                             async with db.async_session_factory() as s:
                                 await update_preferences(
-                                    s, user.id, "model_id", model_id,
+                                    s,
+                                    user.id,
+                                    "model_id",
+                                    model_id,
                                 )
                         except Exception as e:
                             logger.warning("Model pref save failed: %s", e)
@@ -196,10 +221,13 @@ async def websocket_endpoint(websocket: WebSocket):
                             prefs = await update_preferences(s, user.id, key, value)
                         if key == "use_planner":
                             use_planner = bool(value)
-                        await manager.send_json(conn_id, {
-                            "type": "preferences_updated",
-                            "preferences": prefs,
-                        })
+                        await manager.send_json(
+                            conn_id,
+                            {
+                                "type": "preferences_updated",
+                                "preferences": prefs,
+                            },
+                        )
                     except Exception as e:
                         logger.warning("Preference update failed: %s", e)
                 continue
@@ -252,8 +280,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         chat["workspace"] = Workspace.from_json(ws_data) if ws_data else Workspace()
                         chat["title_generated"] = bool(saved.get("title"))
                         manager.histories[conn_id] = [
-                            {"role": m["role"], "content": m["content"]}
-                            for m in chat["messages"]
+                            {"role": m["role"], "content": m["content"]} for m in chat["messages"]
                         ]
                         # Restore model from saved chat (fallback to default)
                         saved_model = saved.get("model")
@@ -262,20 +289,27 @@ async def websocket_endpoint(websocket: WebSocket):
                         elif model_pool:
                             current_model_id = model_pool.default_id
                         chat["model"] = current_model_id
-                        await manager.send_json(conn_id, {
-                            "type": "chat_loaded",
-                            "chatId": chat["id"],
-                            "messages": chat["messages"],
-                            "title": saved.get("title"),
-                            "model": current_model_id,
-                            "tasks": chat["tasks"],
-                        })
+                        await manager.send_json(
+                            conn_id,
+                            {
+                                "type": "chat_loaded",
+                                "chatId": chat["id"],
+                                "messages": chat["messages"],
+                                "title": saved.get("title"),
+                                "model": current_model_id,
+                                "tasks": chat["tasks"],
+                            },
+                        )
                         # Auto-rerun stale widgets in background
                         max_rerun = config.chat.rerun_stale_widgets if config else 3
                         if max_rerun != 0:
                             asyncio.create_task(
                                 _rerun_stale_widgets(
-                                    conn_id, chat, registry, user.id, max_rerun,
+                                    conn_id,
+                                    chat,
+                                    registry,
+                                    user.id,
+                                    max_rerun,
                                 )
                             )
                 continue
@@ -290,11 +324,14 @@ async def websocket_endpoint(websocket: WebSocket):
                 if tool:
                     try:
                         result = await tool.execute(params)
-                        await manager.send_json(conn_id, {
-                            "type": "widget_data",
-                            "messageIndex": message_index,
-                            "data": result,
-                        })
+                        await manager.send_json(
+                            conn_id,
+                            {
+                                "type": "widget_data",
+                                "messageIndex": message_index,
+                                "data": result,
+                            },
+                        )
                         if message_index is not None and 0 <= message_index < len(chat["messages"]):
                             w = chat["messages"][message_index].get("widget")
                             if w:
@@ -302,11 +339,14 @@ async def websocket_endpoint(websocket: WebSocket):
                                 w.pop("stale", None)
                     except Exception as e:
                         logger.error("Re-run %s failed: %s", tool_name, e, exc_info=True)
-                        await manager.send_json(conn_id, {
-                            "type": "widget_data",
-                            "messageIndex": message_index,
-                            "data": {"error": "Tool execution failed. Check server logs."},
-                        })
+                        await manager.send_json(
+                            conn_id,
+                            {
+                                "type": "widget_data",
+                                "messageIndex": message_index,
+                                "data": {"error": "Tool execution failed. Check server logs."},
+                            },
+                        )
                 continue
 
             # Handle task operations (user-driven, no LLM)
@@ -314,15 +354,22 @@ async def websocket_endpoint(websocket: WebSocket):
                 text = data.get("text", "").strip()
                 if text:
                     from uuid import uuid4
+
                     chat["tasks"].append({"id": uuid4().hex[:8], "text": text, "done": False})
                     if chat_storage and chat["id"]:
                         chat_storage.save(
-                            chat["id"], chat["messages"],
-                            user_slug=user_slug, tasks=chat["tasks"],
+                            chat["id"],
+                            chat["messages"],
+                            user_slug=user_slug,
+                            tasks=chat["tasks"],
                         )
-                    await manager.send_json(conn_id, {
-                        "type": "tasks_updated", "tasks": chat["tasks"],
-                    })
+                    await manager.send_json(
+                        conn_id,
+                        {
+                            "type": "tasks_updated",
+                            "tasks": chat["tasks"],
+                        },
+                    )
                 continue
 
             if data.get("type") == "task_toggle":
@@ -334,12 +381,18 @@ async def websocket_endpoint(websocket: WebSocket):
                             break
                     if chat_storage and chat["id"]:
                         chat_storage.save(
-                            chat["id"], chat["messages"],
-                            user_slug=user_slug, tasks=chat["tasks"],
+                            chat["id"],
+                            chat["messages"],
+                            user_slug=user_slug,
+                            tasks=chat["tasks"],
                         )
-                    await manager.send_json(conn_id, {
-                        "type": "tasks_updated", "tasks": chat["tasks"],
-                    })
+                    await manager.send_json(
+                        conn_id,
+                        {
+                            "type": "tasks_updated",
+                            "tasks": chat["tasks"],
+                        },
+                    )
                 continue
 
             if data.get("type") == "task_remove":
@@ -348,12 +401,18 @@ async def websocket_endpoint(websocket: WebSocket):
                     chat["tasks"] = [t for t in chat["tasks"] if t["id"] != task_id]
                     if chat_storage and chat["id"]:
                         chat_storage.save(
-                            chat["id"], chat["messages"],
-                            user_slug=user_slug, tasks=chat["tasks"],
+                            chat["id"],
+                            chat["messages"],
+                            user_slug=user_slug,
+                            tasks=chat["tasks"],
                         )
-                    await manager.send_json(conn_id, {
-                        "type": "tasks_updated", "tasks": chat["tasks"],
-                    })
+                    await manager.send_json(
+                        conn_id,
+                        {
+                            "type": "tasks_updated",
+                            "tasks": chat["tasks"],
+                        },
+                    )
                 continue
 
             content = data.get("content", "").strip()
@@ -361,16 +420,20 @@ async def websocket_endpoint(websocket: WebSocket):
                 continue
 
             if not registry:
-                await manager.send_json(conn_id, {
-                    "type": "message",
-                    "content": "Server not ready -- tool registry not initialized.",
-                })
+                await manager.send_json(
+                    conn_id,
+                    {
+                        "type": "message",
+                        "content": "Server not ready -- tool registry not initialized.",
+                    },
+                )
                 continue
 
             # Resolve per-connection LLM client
             current_client = (
                 _resolve_model(model_pool, current_model_id, config)
-                if model_pool and current_model_id else None
+                if model_pool and current_model_id
+                else None
             )
 
             # Process message as a cancellable background task
@@ -502,14 +565,19 @@ async def _handle_message(
 
         # If tasks tool was used, send tasks_updated to sync frontend store
         if result.get("tool") == "tasks" and result.get("data", {}).get("tasks") is not None:
-            await manager.send_json(conn_id, {
-                "type": "tasks_updated", "tasks": chat["tasks"],
-            })
+            await manager.send_json(
+                conn_id,
+                {
+                    "type": "tasks_updated",
+                    "tasks": chat["tasks"],
+                },
+            )
 
         # Send status update after tool results (counts may have changed)
         if result.get("type") == "tool_result":
             updated_status = await _quick_status(
-                llm_client, tool_count=len(registry.tools()) if registry else 0,
+                llm_client,
+                tool_count=len(registry.tools()) if registry else 0,
             )
             await manager.send_json(conn_id, {"type": "status_update", "status": updated_status})
 
@@ -529,8 +597,11 @@ async def _handle_message(
                 logger.info("Workspace evicted %d entries (limit %d bytes)", evicted, max_ws)
 
             chat_storage.save(
-                chat["id"], messages_to_save, user_slug=user_slug,
-                model=chat.get("model"), tasks=chat.get("tasks"),
+                chat["id"],
+                messages_to_save,
+                user_slug=user_slug,
+                model=chat.get("model"),
+                tasks=chat.get("tasks"),
                 workspace=ws.to_json(),
             )
 
@@ -549,20 +620,26 @@ async def _handle_message(
             if is_new or not chat.get("title_sent"):
                 chat["title_sent"] = True
                 saved_data = chat_storage.load(chat["id"], user_slug)
-                await manager.send_json(conn_id, {
-                    "type": "chat_saved",
-                    "chatId": chat["id"],
-                    "title": saved_data.get("title") if saved_data else None,
-                })
+                await manager.send_json(
+                    conn_id,
+                    {
+                        "type": "chat_saved",
+                        "chatId": chat["id"],
+                        "title": saved_data.get("title") if saved_data else None,
+                    },
+                )
 
     except asyncio.CancelledError:
         await manager.send_json(conn_id, {"type": "message", "content": "Cancelled."})
     except Exception as e:
         logger.error("Message processing failed: %s", e, exc_info=True)
-        await manager.send_json(conn_id, {
-            "type": "message",
-            "content": "Something went wrong. Check server logs for details.",
-        })
+        await manager.send_json(
+            conn_id,
+            {
+                "type": "message",
+                "content": "Something went wrong. Check server logs for details.",
+            },
+        )
     finally:
         manager.tasks.pop(conn_id, None)
 
@@ -607,7 +684,7 @@ async def _generate_chat_title(llm_client, messages: list[dict]) -> str | None:
         raw_title = resp["choices"][0]["message"].get("content", "").strip()
         # Strip any leaked <think> blocks and surrounding quotes
         title, _ = _extract_thinking(raw_title)
-        title = title.strip('"\'')
+        title = title.strip("\"'")
         if not title:
             return None
         # Enforce max 2 words
@@ -661,11 +738,14 @@ async def _rerun_stale_widgets(
             continue
         try:
             result = await tool.execute(params)
-            await manager.send_json(conn_id, {
-                "type": "widget_data",
-                "messageIndex": idx,
-                "data": result,
-            })
+            await manager.send_json(
+                conn_id,
+                {
+                    "type": "widget_data",
+                    "messageIndex": idx,
+                    "data": result,
+                },
+            )
             widget["data"] = result
             widget.pop("stale", None)
         except Exception as e:
@@ -702,30 +782,31 @@ def _now_iso() -> str:
 async def _quick_status(llm_client=None, tool_count: int = 0) -> dict:
     """Lightweight status for the status bar (no full tool execution)."""
     status = {
-        "indexed_files": 0, "sequences": 0, "parts": 0, "users": 0,
+        "indexed_files": 0,
+        "sequences": 0,
+        "parts": 0,
+        "users": 0,
         "tools": tool_count,
-        "db_connected": False, "llm_available": False, "last_updated": None,
+        "db_connected": False,
+        "llm_available": False,
+        "last_updated": None,
     }
     if db.async_session_factory:
         try:
             async with db.async_session_factory() as s:
-                status["indexed_files"] = (await s.execute(
-                    select(func.count())
-                    .select_from(IndexedFile)
-                    .where(IndexedFile.status == "active")
-                )).scalar()
-                status["sequences"] = (await s.execute(
-                    select(func.count()).select_from(Sequence)
-                )).scalar()
-                status["parts"] = (await s.execute(
-                    select(func.count()).select_from(Part)
-                )).scalar()
-                status["users"] = (await s.execute(
-                    select(func.count()).select_from(User)
-                )).scalar()
-                last = (await s.execute(
-                    select(func.max(IndexedFile.indexed_at))
-                )).scalar()
+                status["indexed_files"] = (
+                    await s.execute(
+                        select(func.count())
+                        .select_from(IndexedFile)
+                        .where(IndexedFile.status == "active")
+                    )
+                ).scalar()
+                status["sequences"] = (
+                    await s.execute(select(func.count()).select_from(Sequence))
+                ).scalar()
+                status["parts"] = (await s.execute(select(func.count()).select_from(Part))).scalar()
+                status["users"] = (await s.execute(select(func.count()).select_from(User))).scalar()
+                last = (await s.execute(select(func.max(IndexedFile.indexed_at)))).scalar()
                 status["last_updated"] = last.isoformat() if last else None
             status["db_connected"] = True
         except Exception as e:

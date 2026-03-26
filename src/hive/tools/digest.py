@@ -11,12 +11,19 @@ from hive.db import session as db
 from hive.tools.base import Tool
 from hive.tools.resolve import resolve_and_clean
 
-
 # NEB 1kb+ DNA Ladder — (size_bp, relative_intensity)
 _1KB_PLUS_LADDER = [
-    (10000, 0.4), (8000, 0.3), (6000, 0.3), (5000, 0.35),
-    (4000, 0.35), (3000, 1.0), (2000, 0.4), (1500, 0.4),
-    (1000, 1.0), (500, 0.5), (250, 0.3),
+    (10000, 0.4),
+    (8000, 0.3),
+    (6000, 0.3),
+    (5000, 0.35),
+    (4000, 0.35),
+    (3000, 1.0),
+    (2000, 0.4),
+    (1500, 0.4),
+    (1000, 1.0),
+    (500, 0.5),
+    (250, 0.3),
 ]
 
 
@@ -59,10 +66,12 @@ def _compute_gel_data(reactions: list[dict]) -> dict:
 
     lanes = [{"label": "1kb+ Ladder", "bands": ladder_bands, "isLadder": True}]
     for rxn in reactions:
-        lanes.append({
-            "label": rxn["name"],
-            "bands": _make_bands(rxn["fragments"], log_max, log_min),
-        })
+        lanes.append(
+            {
+                "label": rxn["name"],
+                "bands": _make_bands(rxn["fragments"], log_max, log_min),
+            }
+        )
 
     return {
         "lanes": lanes,
@@ -150,12 +159,14 @@ class DigestTool(Tool):
             except ValueError as exc:
                 return {"error": str(exc)}
 
-            reaction_results.append({
-                "name": rxn_str,
-                "enzymes": result["enzyme_results"],
-                "fragments": result["fragments"],
-                "total_cuts": result["total_cuts"],
-            })
+            reaction_results.append(
+                {
+                    "name": rxn_str,
+                    "enzymes": result["enzyme_results"],
+                    "fragments": result["fragments"],
+                    "total_cuts": result["total_cuts"],
+                }
+            )
 
         return {
             "reactions": reaction_results,

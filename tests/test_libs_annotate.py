@@ -27,7 +27,9 @@ async def cds_part(db_session):
     seq = "ATGAAAGCCTAA"
     part = Part(
         sequence_hash=hash_sequence(seq),
-        sequence=seq, molecule="DNA", length=len(seq),
+        sequence=seq,
+        molecule="DNA",
+        length=len(seq),
     )
     db_session.add(part)
     await db_session.flush()
@@ -39,11 +41,18 @@ class TestAnnotatePart:
         await annotate_part(db_session, cds_part.id, "CDS", cds_part.sequence)
         await db_session.flush()
 
-        anns = (await db_session.execute(
-            select(Annotation).where(
-                Annotation.part_id == cds_part.id, Annotation.key == "type",
+        anns = (
+            (
+                await db_session.execute(
+                    select(Annotation).where(
+                        Annotation.part_id == cds_part.id,
+                        Annotation.key == "type",
+                    )
+                )
             )
-        )).scalars().all()
+            .scalars()
+            .all()
+        )
         assert len(anns) == 1
         assert anns[0].value == "CDS"
         assert anns[0].source == "native"
@@ -52,11 +61,18 @@ class TestAnnotatePart:
         await annotate_part(db_session, cds_part.id, "CDS", cds_part.sequence)
         await db_session.flush()
 
-        anns = (await db_session.execute(
-            select(Annotation).where(
-                Annotation.part_id == cds_part.id, Annotation.source == "computed",
+        anns = (
+            (
+                await db_session.execute(
+                    select(Annotation).where(
+                        Annotation.part_id == cds_part.id,
+                        Annotation.source == "computed",
+                    )
+                )
             )
-        )).scalars().all()
+            .scalars()
+            .all()
+        )
         keys = {a.key for a in anns}
         assert "gc_content" in keys
         assert "orf_status" in keys
@@ -66,26 +82,29 @@ class TestAnnotatePart:
         await annotate_part(db_session, cds_part.id, "CDS", cds_part.sequence)
         await db_session.flush()
 
-        orf = (await db_session.execute(
-            select(Annotation).where(
-                Annotation.part_id == cds_part.id, Annotation.key == "orf_status",
+        orf = (
+            await db_session.execute(
+                select(Annotation).where(
+                    Annotation.part_id == cds_part.id,
+                    Annotation.key == "orf_status",
+                )
             )
-        )).scalar_one()
+        ).scalar_one()
         assert orf.value == "complete"
 
     async def test_tags_library(self, db_session, cds_part):
         await annotate_part(db_session, cds_part.id, "CDS", cds_part.sequence)
         await db_session.flush()
 
-        lib = (await db_session.execute(
-            select(Library).where(Library.name == "CDS")
-        )).scalar_one()
-        member = (await db_session.execute(
-            select(LibraryMember).where(
-                LibraryMember.library_id == lib.id,
-                LibraryMember.part_id == cds_part.id,
+        lib = (await db_session.execute(select(Library).where(Library.name == "CDS"))).scalar_one()
+        member = (
+            await db_session.execute(
+                select(LibraryMember).where(
+                    LibraryMember.library_id == lib.id,
+                    LibraryMember.part_id == cds_part.id,
+                )
             )
-        )).scalar_one()
+        ).scalar_one()
         assert member is not None
 
 
@@ -101,7 +120,7 @@ class TestTagLibraries:
         await tag_libraries(db_session, cds_part.id, "promoter")
         await db_session.flush()
 
-        lib = (await db_session.execute(
-            select(Library).where(Library.name == "Promoters")
-        )).scalar_one()
+        lib = (
+            await db_session.execute(select(Library).where(Library.name == "Promoters"))
+        ).scalar_one()
         assert lib.source == "native"

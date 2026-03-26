@@ -36,28 +36,31 @@ class BlastInput(BaseModel):
     )
     program: str = Field(
         default="auto",
-        description=(
-            "BLAST program: auto, blastn, blastp, blastx, tblastn, tblastx"
-        ),
+        description=("BLAST program: auto, blastn, blastp, blastx, tblastn, tblastx"),
     )
     evalue: float | None = Field(
-        default=None, description="E-value threshold",
+        default=None,
+        description="E-value threshold",
     )
     max_hits: int | None = Field(
-        default=None, description="Maximum number of hits to return",
+        default=None,
+        description="Maximum number of hits to return",
     )
     word_size: int | None = Field(
-        default=None, description="Word size for initial matches",
+        default=None,
+        description="Word size for initial matches",
     )
     matrix: str | None = Field(
         default=None,
         description="Scoring matrix (protein: BLOSUM62, BLOSUM45, PAM250)",
     )
     gap_open: int | None = Field(
-        default=None, description="Gap opening cost",
+        default=None,
+        description="Gap opening cost",
     )
     gap_extend: int | None = Field(
-        default=None, description="Gap extension cost",
+        default=None,
+        description="Gap extension cost",
     )
     task: str | None = Field(
         default=None,
@@ -115,13 +118,11 @@ class BlastTool(Tool):
             return f"Error: {error}"
         total = len(result.get("hits", []))
         prog = result.get("program", "blast")
-        return (
-            f"Found {total} {prog} hit(s)." if total
-            else f"No {prog} hits found."
-        )
+        return f"Found {total} {prog} hit(s)." if total else f"No {prog} hits found."
 
     async def execute(
-        self, params: dict[str, Any],
+        self,
+        params: dict[str, Any],
     ) -> dict[str, Any]:
         """Run BLAST+ against the local index."""
         if not params.get("sequence"):
@@ -162,8 +163,7 @@ class BlastTool(Tool):
             program = "blastp" if _is_protein(query_seq) else "blastn"
         if program not in VALID_PROGRAMS:
             return {
-                "error": f"Invalid program: {program}. "
-                f"Use: {', '.join(sorted(VALID_PROGRAMS))}",
+                "error": f"Invalid program: {program}. Use: {', '.join(sorted(VALID_PROGRAMS))}",
                 "hits": [],
             }
 
@@ -201,7 +201,9 @@ class BlastTool(Tool):
                 search_params.setdefault("dust", "no")
 
         result = await self._dep.run_search(
-            program, query_seq, self._db_path,
+            program,
+            query_seq,
+            self._db_path,
             **search_params,
         )
 
@@ -286,11 +288,13 @@ async def _resolve_hit_metadata(names: set[str]) -> dict[str, dict]:
     # Batch-resolve SIDs to file paths
     if sid_map and db.async_session_factory:
         async with db.async_session_factory() as session:
-            rows = (await session.execute(
-                select(Sequence.id, IndexedFile.file_path)
-                .join(IndexedFile, Sequence.file_id == IndexedFile.id)
-                .where(Sequence.id.in_(list(sid_map.keys())))
-            )).all()
+            rows = (
+                await session.execute(
+                    select(Sequence.id, IndexedFile.file_path)
+                    .join(IndexedFile, Sequence.file_id == IndexedFile.id)
+                    .where(Sequence.id.in_(list(sid_map.keys())))
+                )
+            ).all()
             for sid, file_path in rows:
                 subject = sid_map[sid]
                 result[subject] = {

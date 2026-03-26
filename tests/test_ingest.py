@@ -87,9 +87,7 @@ class TestIngestGenbank:
         match = MatchResult(action="parse", parser="biopython", extract=None)
         await ingest_file(db_session, FIXTURES / "test_plasmid.gb", match)
 
-        count = (await db_session.execute(
-            select(func.count()).select_from(IndexedFile)
-        )).scalar()
+        count = (await db_session.execute(select(func.count()).select_from(IndexedFile))).scalar()
         assert count == 1
 
 
@@ -128,9 +126,9 @@ class TestRemoveFile:
         assert removed is True
 
         # IndexedFile should be marked deleted
-        f = (await db_session.execute(
-            select(IndexedFile).where(IndexedFile.file_path == str(path))
-        )).scalar_one()
+        f = (
+            await db_session.execute(select(IndexedFile).where(IndexedFile.file_path == str(path)))
+        ).scalar_one()
         assert f.status == "deleted"
 
     async def test_remove_nonexistent(self, db_session):
@@ -169,7 +167,9 @@ class TestIngestWithTags:
     async def test_tags_populated(self, db_session):
         match = MatchResult(action="parse", parser="biopython", extract=None)
         await ingest_file(
-            db_session, FIXTURES / "test_plasmid.gb", match,
+            db_session,
+            FIXTURES / "test_plasmid.gb",
+            match,
             watcher_root=str(FIXTURES.parent),
         )
         seq = (await db_session.execute(select(Sequence))).scalar_one()

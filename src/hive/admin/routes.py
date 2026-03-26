@@ -71,19 +71,20 @@ async def admin_status(request: Request):
     if db.async_session_factory:
         try:
             async with db.async_session_factory() as s:
-                counts["indexed_files"] = (await s.execute(
-                    select(func.count()).select_from(IndexedFile)
-                    .where(IndexedFile.status == "active")
-                )).scalar()
-                counts["sequences"] = (await s.execute(
-                    select(func.count()).select_from(Sequence)
-                )).scalar()
-                counts["parts"] = (await s.execute(
-                    select(func.count()).select_from(Part)
-                )).scalar()
-                counts["part_instances"] = (await s.execute(
-                    select(func.count()).select_from(PartInstance)
-                )).scalar()
+                counts["indexed_files"] = (
+                    await s.execute(
+                        select(func.count())
+                        .select_from(IndexedFile)
+                        .where(IndexedFile.status == "active")
+                    )
+                ).scalar()
+                counts["sequences"] = (
+                    await s.execute(select(func.count()).select_from(Sequence))
+                ).scalar()
+                counts["parts"] = (await s.execute(select(func.count()).select_from(Part))).scalar()
+                counts["part_instances"] = (
+                    await s.execute(select(func.count()).select_from(PartInstance))
+                ).scalar()
         except Exception as e:
             logger.warning("Status query failed: %s", e)
 
@@ -172,7 +173,6 @@ async def ps_resume(name: str, request: Request):
 # ── Database ─────────────────────────────────────────────────────────
 
 
-
 @admin_router.get("/db/errors", dependencies=[Depends(verify_token)])
 async def db_errors(request: Request):
     """List files that failed to parse."""
@@ -180,13 +180,15 @@ async def db_errors(request: Request):
         raise HTTPException(status_code=503, detail="Database not available")
 
     async with db.async_session_factory() as s:
-        rows = (await s.execute(
-            select(
-                IndexedFile.file_path,
-                IndexedFile.error_msg,
-                IndexedFile.indexed_at,
-            ).where(IndexedFile.status == "error")
-        )).all()
+        rows = (
+            await s.execute(
+                select(
+                    IndexedFile.file_path,
+                    IndexedFile.error_msg,
+                    IndexedFile.indexed_at,
+                ).where(IndexedFile.status == "error")
+            )
+        ).all()
 
     return {
         "errors": [
@@ -247,8 +249,11 @@ async def db_prune(request: Request, body: dict | None = None):
 
     async with db.async_session_factory() as s:
         return await prune(
-            s, watcher_root, archive_dir=archive_dir,
-            dry_run=dry_run, no_archive=no_archive,
+            s,
+            watcher_root,
+            archive_dir=archive_dir,
+            dry_run=dry_run,
+            no_archive=no_archive,
         )
 
 
@@ -264,16 +269,21 @@ async def list_libraries():
     from hive.db.models import Library, LibraryMember
 
     async with db.async_session_factory() as s:
-        libs = (await s.execute(
-            select(
-                Library.id, Library.name, Library.source,
-                Library.description, Library.created_at,
-                func.count(LibraryMember.id).label("member_count"),
+        libs = (
+            await s.execute(
+                select(
+                    Library.id,
+                    Library.name,
+                    Library.source,
+                    Library.description,
+                    Library.created_at,
+                    func.count(LibraryMember.id).label("member_count"),
+                )
+                .outerjoin(LibraryMember, Library.id == LibraryMember.library_id)
+                .group_by(Library.id)
+                .order_by(Library.name)
             )
-            .outerjoin(LibraryMember, Library.id == LibraryMember.library_id)
-            .group_by(Library.id)
-            .order_by(Library.name)
-        )).all()
+        ).all()
 
     return {
         "libraries": [
@@ -303,9 +313,9 @@ async def create_library(body: dict):
         raise HTTPException(status_code=422, detail="Library name required")
 
     async with db.async_session_factory() as s:
-        existing = (await s.execute(
-            select(Library).where(Library.name == name)
-        )).scalar_one_or_none()
+        existing = (
+            await s.execute(select(Library).where(Library.name == name))
+        ).scalar_one_or_none()
         if existing:
             raise HTTPException(status_code=409, detail=f"Library already exists: {name}")
 
@@ -332,24 +342,22 @@ async def add_to_library(lib_id: int, body: dict):
         raise HTTPException(status_code=422, detail="pid required")
 
     async with db.async_session_factory() as s:
-        lib = (await s.execute(
-            select(Library).where(Library.id == lib_id)
-        )).scalar_one_or_none()
+        lib = (await s.execute(select(Library).where(Library.id == lib_id))).scalar_one_or_none()
         if not lib:
             raise HTTPException(status_code=404, detail="Library not found")
 
-        part = (await s.execute(
-            select(Part).where(Part.id == pid)
-        )).scalar_one_or_none()
+        part = (await s.execute(select(Part).where(Part.id == pid))).scalar_one_or_none()
         if not part:
             raise HTTPException(status_code=404, detail=f"Part not found: PID {pid}")
 
-        existing = (await s.execute(
-            select(LibraryMember).where(
-                LibraryMember.library_id == lib_id,
-                LibraryMember.part_id == pid,
+        existing = (
+            await s.execute(
+                select(LibraryMember).where(
+                    LibraryMember.library_id == lib_id,
+                    LibraryMember.part_id == pid,
+                )
             )
-        )).scalar_one_or_none()
+        ).scalar_one_or_none()
         if existing:
             return {"status": "already_member"}
 

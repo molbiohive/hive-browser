@@ -61,9 +61,7 @@ async def sync_quarantine(tools_dir: str) -> set[str]:
         logger.warning("No DB session — skipping external tools")
         return approved
 
-    py_files = sorted(
-        f for f in tools_path.glob("*.py") if not f.name.startswith("_")
-    )
+    py_files = sorted(f for f in tools_path.glob("*.py") if not f.name.startswith("_"))
 
     if not py_files:
         return approved
@@ -76,19 +74,19 @@ async def sync_quarantine(tools_dir: str) -> set[str]:
             tool_name = extract_tool_name(source)
 
             record = (
-                await session.execute(
-                    select(ToolApproval).where(ToolApproval.filename == filename)
-                )
+                await session.execute(select(ToolApproval).where(ToolApproval.filename == filename))
             ).scalar_one_or_none()
 
             if record is None:
                 # New tool — quarantine
-                session.add(ToolApproval(
-                    filename=filename,
-                    file_hash=file_hash,
-                    tool_name=tool_name,
-                    status="quarantined",
-                ))
+                session.add(
+                    ToolApproval(
+                        filename=filename,
+                        file_hash=file_hash,
+                        tool_name=tool_name,
+                        status="quarantined",
+                    )
+                )
                 logger.warning("Quarantined new tool: %s", filename)
             elif record.status == "approved":
                 if record.file_hash == file_hash:
@@ -99,13 +97,9 @@ async def sync_quarantine(tools_dir: str) -> set[str]:
                     record.tool_name = tool_name
                     record.status = "quarantined"
                     record.reviewed_at = None
-                    logger.warning(
-                        "Re-quarantined modified tool: %s", filename
-                    )
+                    logger.warning("Re-quarantined modified tool: %s", filename)
             else:
-                logger.info(
-                    "Skipping %s tool: %s", record.status, filename
-                )
+                logger.info("Skipping %s tool: %s", record.status, filename)
 
         await session.commit()
 

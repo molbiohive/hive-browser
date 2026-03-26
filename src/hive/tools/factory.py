@@ -104,7 +104,8 @@ def _load_external(
             for v in violations:
                 logger.warning(
                     "Skipping %s: forbidden import '%s' — use hive.sdk instead",
-                    py_file.name, v,
+                    py_file.name,
+                    v,
                 )
             continue
 
@@ -125,7 +126,8 @@ def _load_external(
         if existing := registry.get(tool.name):
             logger.warning(
                 "External tool '%s' overrides internal tool from %s",
-                tool.name, type(existing).__module__,
+                tool.name,
+                type(existing).__module__,
             )
 
         registry.register(tool)
@@ -163,6 +165,7 @@ def _load_tool_from_file(py_file: Path, source: str) -> Tool | None:
 
     # Inject read-only DB access
     from hive.sdk.db import ToolDB
+
     tool.db = ToolDB()
 
     return tool
@@ -196,7 +199,4 @@ def _is_forbidden(module: str) -> bool:
     if any(module == p or module.startswith(p + ".") for p in _ALLOWED_PREFIXES):
         return False
     # Forbid other hive internals
-    return any(
-        module == p or module.startswith(p + ".")
-        for p in _FORBIDDEN_PREFIXES
-    )
+    return any(module == p or module.startswith(p + ".") for p in _FORBIDDEN_PREFIXES)

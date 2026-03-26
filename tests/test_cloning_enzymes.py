@@ -5,18 +5,24 @@ from types import SimpleNamespace
 import pytest
 
 from hive.cloning.enzymes import (
-    _reverse_complement,
     _site_to_regex,
     find_cut_sites,
 )
+from hive.cloning.seq import reverse_complement
 
 
 def _make_enzyme(**kwargs):
     """Create an enzyme-like object for testing (no DB required)."""
     defaults = {
-        "id": 1, "name": "Test", "site": "GAATTC",
-        "cut5": 1, "cut3": -1, "overhang": -4, "length": 6,
-        "is_palindrome": True, "is_blunt": False,
+        "id": 1,
+        "name": "Test",
+        "site": "GAATTC",
+        "cut5": 1,
+        "cut3": -1,
+        "overhang": -4,
+        "length": 6,
+        "is_palindrome": True,
+        "is_blunt": False,
     }
     defaults.update(kwargs)
     return SimpleNamespace(**defaults)
@@ -45,13 +51,13 @@ class TestSiteToRegex:
 
 class TestReverseComplement:
     def test_basic(self):
-        assert _reverse_complement("GAATTC") == "GAATTC"  # palindrome
+        assert reverse_complement("GAATTC") == "GAATTC"  # palindrome
 
     def test_non_palindrome(self):
-        assert _reverse_complement("GGTCTC") == "GAGACC"
+        assert reverse_complement("GGTCTC") == "GAGACC"
 
     def test_iupac(self):
-        assert _reverse_complement("GANTC") == "GANTC"  # palindrome with N
+        assert reverse_complement("GANTC") == "GANTC"  # palindrome with N
 
 
 # ── Cut site scanner ─────────────────────────────────────────────
@@ -68,8 +74,14 @@ class TestEcoRI:
     @pytest.fixture
     def ecori(self):
         return _make_enzyme(
-            name="EcoRI", site="GAATTC", cut5=1, cut3=-1,
-            overhang=-4, length=6, is_palindrome=True, is_blunt=False,
+            name="EcoRI",
+            site="GAATTC",
+            cut5=1,
+            cut3=-1,
+            overhang=-4,
+            length=6,
+            is_palindrome=True,
+            is_blunt=False,
         )
 
     def test_single_site_linear(self, ecori):
@@ -101,8 +113,14 @@ class TestHinfI:
     @pytest.fixture
     def hinfi(self):
         return _make_enzyme(
-            name="HinfI", site="GANTC", cut5=1, cut3=-1,
-            overhang=-3, length=5, is_palindrome=True, is_blunt=False,
+            name="HinfI",
+            site="GANTC",
+            cut5=1,
+            cut3=-1,
+            overhang=-3,
+            length=5,
+            is_palindrome=True,
+            is_blunt=False,
         )
 
     def test_matches_all_n_variants(self, hinfi):
@@ -119,8 +137,14 @@ class TestBsaI:
     @pytest.fixture
     def bsai(self):
         return _make_enzyme(
-            name="BsaI", site="GGTCTC", cut5=7, cut3=5,
-            overhang=-4, length=6, is_palindrome=False, is_blunt=False,
+            name="BsaI",
+            site="GGTCTC",
+            cut5=7,
+            cut3=5,
+            overhang=-4,
+            length=6,
+            is_palindrome=False,
+            is_blunt=False,
         )
 
     def test_forward_match(self, bsai):
@@ -154,8 +178,14 @@ class TestAccBSI:
     @pytest.fixture
     def accbsi(self):
         return _make_enzyme(
-            name="AccBSI", site="CCGCTC", cut5=3, cut3=-3,
-            overhang=0, length=6, is_palindrome=False, is_blunt=True,
+            name="AccBSI",
+            site="CCGCTC",
+            cut5=3,
+            cut3=-3,
+            overhang=0,
+            length=6,
+            is_palindrome=False,
+            is_blunt=True,
         )
 
     def test_forward_match(self, accbsi):
@@ -180,8 +210,14 @@ class TestCircular:
     @pytest.fixture
     def ecori(self):
         return _make_enzyme(
-            name="EcoRI", site="GAATTC", cut5=1, cut3=-1,
-            overhang=-4, length=6, is_palindrome=True, is_blunt=False,
+            name="EcoRI",
+            site="GAATTC",
+            cut5=1,
+            cut3=-1,
+            overhang=-4,
+            length=6,
+            is_palindrome=True,
+            is_blunt=False,
         )
 
     def test_wrap_around_site(self, ecori):
@@ -203,16 +239,32 @@ class TestMultiEnzyme:
 
     def test_two_enzymes(self):
         ecori = _make_enzyme(
-            name="EcoRI", site="GAATTC", cut5=1, cut3=-1,
-            overhang=-4, length=6, is_palindrome=True, is_blunt=False,
+            name="EcoRI",
+            site="GAATTC",
+            cut5=1,
+            cut3=-1,
+            overhang=-4,
+            length=6,
+            is_palindrome=True,
+            is_blunt=False,
         )
         bamhi = _make_enzyme(
-            id=2, name="BamHI", site="GGATCC", cut5=1, cut3=-1,
-            overhang=-4, length=6, is_palindrome=True, is_blunt=False,
+            id=2,
+            name="BamHI",
+            site="GGATCC",
+            cut5=1,
+            cut3=-1,
+            overhang=-4,
+            length=6,
+            is_palindrome=True,
+            is_blunt=False,
         )
         seq = "GAATTC" + "A" * 20 + "GGATCC" + "A" * 20
         result = find_cut_sites(
-            seq, ["EcoRI", "BamHI"], _enzymes(ecori, bamhi), circular=False,
+            seq,
+            ["EcoRI", "BamHI"],
+            _enzymes(ecori, bamhi),
+            circular=False,
         )
         assert result["total_cuts"] == 2
         assert len(result["enzyme_results"]) == 2
@@ -226,8 +278,14 @@ class TestFragments:
     @pytest.fixture
     def smai(self):
         return _make_enzyme(
-            name="SmaI", site="CCCGGG", cut5=3, cut3=-3,
-            overhang=0, length=6, is_palindrome=True, is_blunt=True,
+            name="SmaI",
+            site="CCCGGG",
+            cut5=3,
+            cut3=-3,
+            overhang=0,
+            length=6,
+            is_palindrome=True,
+            is_blunt=True,
         )
 
     def test_linear_fragments_sum(self, smai):

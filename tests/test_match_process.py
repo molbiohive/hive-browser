@@ -6,7 +6,6 @@ import pytest
 
 from hive.ps.match import MatchProcess, _parse_part_id, _process_hits
 
-
 # -- _parse_part_id ----------------------------------------------------------
 
 
@@ -136,10 +135,12 @@ class TestMatchProcessRun:
         mock_session = AsyncMock()
         # First call: delete annotations
         # Second call: select parts -> empty
-        mock_session.execute = AsyncMock(side_effect=[
-            MagicMock(),  # delete
-            MagicMock(all=lambda: []),  # select parts (empty)
-        ])
+        mock_session.execute = AsyncMock(
+            side_effect=[
+                MagicMock(),  # delete
+                MagicMock(all=lambda: []),  # select parts (empty)
+            ]
+        )
         mock_session.commit = AsyncMock()
         mock_factory = MagicMock()
         mock_factory.__aenter__ = AsyncMock(return_value=mock_session)
@@ -156,22 +157,26 @@ class TestMatchProcessRun:
         """One part with one BLAST hit -> 1 variant found."""
         registry = MagicMock()
         blast_dep = AsyncMock()
-        blast_dep.run_search = AsyncMock(return_value={
-            "hits": [{
-                "subject": "pid_20_eGFP",
-                "identity": 97.5,
-                "alignment_length": 100,
-                "mismatches": 2,
-                "gaps": 0,
-                "q_start": 1,
-                "q_end": 100,
-                "s_start": 1,
-                "s_end": 100,
-                "evalue": 1e-50,
-                "bitscore": 200.0,
-            }],
-            "subject_names": {"pid_20_eGFP"},
-        })
+        blast_dep.run_search = AsyncMock(
+            return_value={
+                "hits": [
+                    {
+                        "subject": "pid_20_eGFP",
+                        "identity": 97.5,
+                        "alignment_length": 100,
+                        "mismatches": 2,
+                        "gaps": 0,
+                        "q_start": 1,
+                        "q_end": 100,
+                        "s_start": 1,
+                        "s_end": 100,
+                        "evalue": 1e-50,
+                        "bitscore": 200.0,
+                    }
+                ],
+                "subject_names": {"pid_20_eGFP"},
+            }
+        )
         registry.get.return_value = blast_dep
 
         config = MagicMock()
@@ -218,8 +223,6 @@ class TestMatchProcessRun:
             def add(self, obj):
                 committed_annotations.append(obj)
 
-        session_count = [0]
-
         def make_session():
             s = FakeSession()
             return s
@@ -243,20 +246,25 @@ class TestMatchProcessRun:
 class TestSanitizeFastaName:
     def test_basic(self):
         from hive.deps.blast import _sanitize_fasta_name
+
         assert _sanitize_fasta_name("pUC19") == "pUC19"
 
     def test_spaces(self):
         from hive.deps.blast import _sanitize_fasta_name
+
         assert _sanitize_fasta_name("my plasmid") == "my_plasmid"
 
     def test_unicode_stripped(self):
         from hive.deps.blast import _sanitize_fasta_name
+
         assert _sanitize_fasta_name("p\u00dcC19") == "pC19"
 
     def test_all_unicode(self):
         from hive.deps.blast import _sanitize_fasta_name
+
         assert _sanitize_fasta_name("\u00fc\u00e4\u00f6") == "unnamed"
 
     def test_empty(self):
         from hive.deps.blast import _sanitize_fasta_name
+
         assert _sanitize_fasta_name("") == "unnamed"

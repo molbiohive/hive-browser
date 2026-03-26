@@ -79,10 +79,7 @@ async def resolve_part(
     if load_annotations:
         stmt = stmt.options(selectinload(Part.annotations))
     if load_libraries:
-        stmt = stmt.options(
-            selectinload(Part.library_members)
-            .selectinload(LibraryMember.library)
-        )
+        stmt = stmt.options(selectinload(Part.library_members).selectinload(LibraryMember.library))
 
     return (await session.execute(stmt)).scalar_one_or_none()
 
