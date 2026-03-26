@@ -1,4 +1,6 @@
 <script>
+	import { sendMessage } from '$lib/stores/chat.ts';
+
 	let { rows = [], columns = [], actions = [], defaultPageSize = 10 } = $props();
 
 	let pageSize = $state(10);
@@ -12,6 +14,7 @@
 	let colWidths = $state([]); // pixel widths per column (0 = auto)
 	let tableEl = $state(undefined);
 	let fitted = $state(true); // true = fixed layout (fit screen), false = auto (scrollable)
+	let gradientMode = $state(0); // 0=off, 1=red-white-green, 2=green-white-red
 
 	// Reset column widths when columns change
 	$effect(() => {
@@ -20,13 +23,85 @@
 		}
 	});
 
-	function sortValue(row, col) {
+	function rawValue(row, col) {
 		const def = columns.find(c => c.key === col);
-		const val = def?.value ? def.value(row) : row[col];
+		return def?.value ? def.value(row) : row[col];
+	}
+
+	function sortValue(row, col) {
+		const val = rawValue(row, col);
 		if (typeof val === 'number') return val ?? 0;
 		if (Array.isArray(val)) return val.join(', ');
 		return String(val ?? '');
 	}
+
+	function isNumericCol(colKey) {
+		if (!rows?.length) return false;
+		for (let i = 0; i < Math.min(rows.length, 20); i++) {
+			const v = rawValue(rows[i], colKey);
+			if (v == null) continue;
+			if (typeof v === 'number') return true;
+			if (typeof v === 'boolean') return true;
+			return false;
+		}
+		return false;
+	}
+
+	// Per-column gradient rank maps: colKey -> Map<rowIndex, normalizedRank 0..1>
+	const gradientRanks = $derived.by(() => {
+		if (gradientMode === 0 || !rows?.length) return {};
+		const ranks = {};
+		for (const col of columns) {
+			if (!isNumericCol(col.key)) continue;
+			const vals = rows.map((r, i) => {
+				const v = rawValue(r, col.key);
+				const n = typeof v === 'boolean' ? (v ? 1 : 0) : (typeof v === 'number' ? v : null);
+				return { idx: i, val: n };
+			}).filter(x => x.val != null);
+			if (vals.length < 2) continue;
+			vals.sort((a, b) => a.val - b.val);
+			const map = new Map();
+			for (let i = 0; i < vals.length; i++) {
+				map.set(vals[i].idx, i / (vals.length - 1));
+			}
+			ranks[col.key] = map;
+		}
+		return ranks;
+	});
+
+	function cellBg(row, colKey) {
+		if (gradientMode === 0) return '';
+		const rankMap = gradientRanks[colKey];
+		if (!rankMap) return '';
+		const rowIdx = rows.indexOf(row);
+		const rank = rankMap.get(rowIdx);
+		if (rank == null) return '';
+		// rank 0 = lowest value, 1 = highest value
+		// mode 1: low=red, mid=white, high=green
+		// mode 2: low=green, mid=white, high=red
+		let r, g, b;
+		const t = gradientMode === 1 ? rank : 1 - rank;
+		if (t < 0.5) {
+			// red → white (t: 0→0.5)
+			const p = t * 2;
+			r = 220 + Math.round(35 * p);
+			g = 80 + Math.round(175 * p);
+			b = 80 + Math.round(175 * p);
+		} else {
+			// white → green (t: 0.5→1)
+			const p = (t - 0.5) * 2;
+			r = 255 - Math.round(175 * p);
+			g = 255 - Math.round(30 * p);
+			b = 255 - Math.round(175 * p);
+		}
+		return `rgba(${r}, ${g}, ${b}, 0.35)`;
+	}
+
+	function cycleGradient() {
+		gradientMode = (gradientMode + 1) % 3;
+	}
+
+	const hasNumericCols = $derived(columns.some(c => isNumericCol(c.key)));
 
 	const sortedRows = $derived.by(() => {
 		if (!rows?.length) return [];
@@ -80,8 +155,33 @@
 		return String(val);
 	}
 
+	// Auto-detect SID/PID columns for View button
+	const hasSid = $derived(columns.some(c => c.key === 'sid'));
+	const hasPid = $derived(columns.some(c => c.key === 'pid'));
+
+	const allActions = $derived.by(() => {
+		const result = [...actions];
+		const hasView = actions.some(a => a.label === 'View' || a.label === 'Profile');
+		if (!hasView) {
+			if (hasSid) {
+				result.push({
+					label: 'View',
+					onClick: (row) => sendMessage(`//profile ${JSON.stringify({ sid: row.sid })}`),
+					title: () => 'View sequence details',
+				});
+			} else if (hasPid) {
+				result.push({
+					label: 'View',
+					onClick: (row) => sendMessage(`//parts ${JSON.stringify({ pid: row.pid })}`),
+					title: () => 'View part details',
+				});
+			}
+		}
+		return result;
+	});
+
 	function visibleActions(row) {
-		return actions.filter(a => !a.show || a.show(row));
+		return allActions.filter(a => !a.show || a.show(row));
 	}
 
 	// Column resize via drag
@@ -95,7 +195,7 @@
 		// If no explicit widths yet, snapshot current widths
 		if (colWidths.every(w => w === 0) && tableEl) {
 			const ths = tableEl.querySelectorAll('thead th');
-			const totalCols = columns.length + (actions.length ? 1 : 0);
+			const totalCols = columns.length + (allActions.length ? 1 : 0);
 			const newWidths = columns.map((_, i) => i < ths.length ? ths[i].offsetWidth : 80);
 			colWidths = newWidths;
 		}
@@ -143,6 +243,11 @@
 		<button class:active={fitted} onclick={toggleFit} title={fitted ? 'Switch to scrollable layout' : 'Fit table to screen'}>
 			{fitted ? 'Fitted' : 'Scroll'}
 		</button>
+		{#if hasNumericCols}
+			<button class="gradient-btn" onclick={cycleGradient} title={gradientMode === 0 ? 'Enable gradient coloring' : gradientMode === 1 ? 'Reverse gradient' : 'Disable gradient'}>
+				<span class="gradient-swatch" class:mode1={gradientMode === 1} class:mode2={gradientMode === 2}></span>
+			</button>
+		{/if}
 	</div>
 	<div class="page-nav">
 		<button onclick={() => currentPage = Math.max(0, currentPage - 1)} disabled={currentPage === 0}>&lt;</button>
@@ -158,7 +263,7 @@
 		{#each columns as _, i}
 			<col style={colWidths[i] ? `width: ${colWidths[i]}px` : ''} />
 		{/each}
-		{#if actions.length}
+		{#if allActions.length}
 			<col />
 		{/if}
 	</colgroup>
@@ -184,7 +289,7 @@
 					></span>
 				</th>
 			{/each}
-			{#if actions.length}
+			{#if allActions.length}
 				<th class="actions-th"></th>
 			{/if}
 		</tr>
@@ -193,9 +298,11 @@
 		{#each pageRows as row}
 		<tr>
 			{#each columns as col}
-				<td class={col.class || ''} title={cellText(row, col)}>{formatCell(row, col)}</td>
+				<td class={col.class || ''} title={cellText(row, col)}
+					style={cellBg(row, col.key) ? `background: ${cellBg(row, col.key)}` : ''}
+				>{formatCell(row, col)}</td>
 			{/each}
-			{#if actions.length}
+			{#if allActions.length}
 				<td class="actions">
 					{#each visibleActions(row) as action}
 						<button class="action-btn" onclick={() => action.onClick(row)} title={action.title?.(row) || action.label}>{action.label}</button>
@@ -236,8 +343,8 @@
 		display: inline;
 		pointer-events: none;
 	}
-	.actions { white-space: nowrap; }
-	.actions-th { width: auto; }
+	.actions { white-space: nowrap; position: sticky; right: 0; background: var(--bg-surface); }
+	.actions-th { width: auto; position: sticky; right: 0; background: var(--bg-muted); }
 	.action-btn {
 		font-size: 0.75rem;
 		padding: 0.2rem 0.6rem;
@@ -287,6 +394,29 @@
 		background: var(--btn-bg);
 		color: var(--btn-fg);
 		border-color: var(--btn-bg);
+	}
+
+	.gradient-btn {
+		padding: 0.15rem 0.35rem;
+		display: flex;
+		align-items: center;
+	}
+
+	.gradient-swatch {
+		display: inline-block;
+		width: 10px;
+		height: 16px;
+		border-radius: 2px;
+		border: 1px solid var(--border);
+		background: var(--bg-surface);
+	}
+	.gradient-swatch.mode1 {
+		background: linear-gradient(to bottom, rgba(220, 80, 80, 0.5), rgba(255, 255, 255, 0.5), rgba(80, 225, 80, 0.5));
+		border-color: var(--text-faint);
+	}
+	.gradient-swatch.mode2 {
+		background: linear-gradient(to bottom, rgba(80, 225, 80, 0.5), rgba(255, 255, 255, 0.5), rgba(220, 80, 80, 0.5));
+		border-color: var(--text-faint);
 	}
 
 	.page-nav {

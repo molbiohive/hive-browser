@@ -31,7 +31,7 @@
 
 	const seqActions = [
 		{
-			label: 'Profile',
+			label: 'View',
 			onClick: (row) => sendMessage(`//profile ${JSON.stringify({ sid: row.sid })}`),
 			title: () => 'View sequence details',
 		},
@@ -65,7 +65,7 @@
 
 	const blastSeqActions = [
 		{
-			label: 'Profile',
+			label: 'View',
 			onClick: (row) => sendMessage(`//profile ${JSON.stringify({ sid: row.sid })}`),
 			title: () => 'View sequence details',
 		},
