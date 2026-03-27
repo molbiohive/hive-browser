@@ -146,11 +146,16 @@ class Workspace:
         for name in sorted(self._user_vars):
             val = self._user_vars[name]
             lines.append(f"# {name} -- {_value_shape(val)}")
+            for detail_line in _render_value(name, val):
+                lines.append(f"#   {detail_line}")
 
         # Report entries (sandbox report dict)
         if report:
             for key, val in report.items():
-                lines.append(f'# report["{key}"] -- {_value_shape(val)}')
+                rname = f'report["{key}"]'
+                lines.append(f"# {rname} -- {_value_shape(val)}")
+                for detail_line in _render_value(rname, val):
+                    lines.append(f"#   {detail_line}")
 
         # Persistent handles from previous messages
         _emit_entries("r")
