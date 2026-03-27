@@ -23,9 +23,8 @@ class PrimersInput(BaseModel):
 
 class PrimersTool(Tool):
     name = "primers"
-    description = "Show primer binding sites on a sequence."
+    description = ("primer sites", "Show primer binding sites on a sequence.")
     tags = {"analysis"}
-    guidelines = "Show primer binding sites on a sequence. Use sid:N or pid:N."
 
     def __init__(self, **_):
         pass

@@ -21,12 +21,8 @@ class TranslateInput(BaseModel):
 
 class TranslateTool(Tool):
     name = "translate"
-    description = "Translate a DNA or RNA sequence to protein."
+    description = ("DNA to protein", "Translate a DNA or RNA sequence to protein.")
     tags = {"analysis"}
-    guidelines = (
-        "Translate DNA/RNA to protein. Accepts sequence, sid:N, or pid:N."
-        " table=1 standard, table=11 bacterial."
-    )
 
     def __init__(self, **_):
         pass

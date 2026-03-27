@@ -23,9 +23,8 @@ class HistoryInput(BaseModel):
 
 class HistoryTool(Tool):
     name = "history"
-    description = "Show the cloning history of a sequence -- assembly steps, primers, enzymes used."
+    description = ("cloning history", "Show the cloning history of a sequence -- assembly steps, primers, enzymes used.")
     tags = {"info"}
-    guidelines = "Show cloning history tree of a sequence. Use sid (from search results)."
 
     def __init__(self, **_):
         pass
@@ -66,6 +65,7 @@ class HistoryTool(Tool):
                 sid=inp.sid,
                 name=inp.name,
                 load_file=True,
+                load_parts=True,
             )
             if not seq:
                 return {"error": f"Sequence not found: {inp.sid or inp.name}"}
@@ -100,6 +100,21 @@ class HistoryTool(Tool):
 
             # Map to CloningNode format for hatchlings CloningHistoryViewer
             root_node = _to_cloning_node(root_step, children_map)
+
+            # Override root node parts with actual PartInstance data from DB
+            if seq.part_instances:
+                root_node["parts"] = [
+                    {
+                        "pid": pi.part.id,
+                        "name": pi.part.names[0].name if pi.part.names else "",
+                        "type": pi.annotation_type,
+                        "start": pi.start,
+                        "end": pi.end,
+                        "strand": pi.strand or 1,
+                    }
+                    for pi in seq.part_instances
+                    if pi.annotation_type != "primer_bind"
+                ]
 
             return {
                 "root": root_node,

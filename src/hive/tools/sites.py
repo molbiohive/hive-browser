@@ -29,11 +29,8 @@ class SitesInput(BaseModel):
 
 class SitesTool(Tool):
     name = "sites"
-    description = "Find all restriction enzymes that cut a sequence."
+    description = ("restriction sites", "Find all restriction enzymes that cut a sequence.")
     tags = {"analysis"}
-    guidelines = (
-        "Find all restriction enzymes that cut a sequence. Use max_cuts=1 for unique cutters."
-    )
 
     def __init__(self, **_):
         pass

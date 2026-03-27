@@ -25,9 +25,8 @@ class ExtractInput(BaseModel):
 
 class ExtractTool(Tool):
     name = "extract"
-    description = "Extract a subsequence by feature name, primer name, or region from a sequence."
+    description = ("extract subsequence", "Extract a subsequence by feature name, primer name, or region.")
     tags = {"analysis"}
-    guidelines = "Extract subsequence by feature, primer, or region from a sequence."
 
     def __init__(self, **_):
         pass

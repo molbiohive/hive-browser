@@ -16,16 +16,16 @@ class Tool(ABC):
 
     Subclass attributes:
         name:        Tool identifier (used as registry key + LLM function name).
-        description: Shown in help, command palette, and LLM prompts.
+        description: Tuple of (short_label, long_description).
+                     short_label: 1-3 words for Available commands section.
+                     long_description: full text for help, palette, forms.
         tags:        Group identifiers for UI categorization (e.g. "search", "analysis", "info").
-        guidelines:  Concise LLM-facing description (used in tool schema if set).
         params:      Declarative param definitions for external tools (dict → JSON Schema).
     """
 
     name: str
-    description: str
+    description: tuple[str, str]
     tags: set[str] = set()
-    guidelines: str = ""
     params: dict | None = None
 
     # Injected by factory for external tools
@@ -80,11 +80,21 @@ class Tool(ABC):
             return f"Error: {error}"
         return ""
 
+    @property
+    def short_desc(self) -> str:
+        """Short label (1-3 words). Falls back to full description for plain strings."""
+        return self.description[0] if isinstance(self.description, tuple) else self.description
+
+    @property
+    def long_desc(self) -> str:
+        """Full description text. Falls back to full description for plain strings."""
+        return self.description[1] if isinstance(self.description, tuple) else self.description
+
     def schema(self) -> dict:
         """Full tool schema for LLM function calling."""
         return {
             "name": self.name,
-            "description": self.description,
+            "description": self.long_desc,
             "parameters": self.input_schema(),
         }
 
@@ -92,7 +102,7 @@ class Tool(ABC):
         """Metadata sent to the frontend on connect."""
         return {
             "name": self.name,
-            "description": self.description,
+            "description": self.long_desc,
             "tags": sorted(self.tags),
         }
 

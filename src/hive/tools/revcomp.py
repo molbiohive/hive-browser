@@ -20,9 +20,8 @@ class RevCompInput(BaseModel):
 
 class RevCompTool(Tool):
     name = "revcomp"
-    description = "Get the reverse complement of a DNA sequence."
+    description = ("reverse complement", "Get the reverse complement of a DNA sequence.")
     tags = {"analysis"}
-    guidelines = "Reverse complement. Accepts sequence, sid:N, or pid:N."
 
     def __init__(self, **_):
         pass

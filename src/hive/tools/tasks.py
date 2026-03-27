@@ -25,9 +25,8 @@ class TasksInput(BaseModel):
 
 class TasksTool(Tool):
     name = "tasks"
-    description = "Manage the chat task list."
+    description = ("task list", "Manage the chat task list.")
     tags = set()
-    guidelines = "Add, toggle, remove, or list tasks for the current chat."
 
     def __init__(self, **_):
         pass

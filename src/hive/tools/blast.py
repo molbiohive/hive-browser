@@ -75,17 +75,11 @@ class BlastInput(BaseModel):
 class BlastTool(Tool):
     name = "blast"
     description = (
+        "similarity search",
         "Find similar sequences using BLAST+ alignment. "
-        "Supports blastn, blastp, blastx, tblastn, tblastx."
+        "Supports blastn, blastp, blastx, tblastn, tblastx.",
     )
     tags = {"search"}
-    guidelines = (
-        "Sequence similarity search using BLAST+. Supports blastn "
-        "(nucl vs nucl), blastp (prot vs prot), blastx (nucl query "
-        "vs prot db), tblastn, tblastx. Set program='auto' to detect "
-        "from sequence type. Use SID (integer from search results) or "
-        "pid:N (Part ID) to search with a database sequence."
-    )
 
     def __init__(self, config=None, **_):
         if not config:

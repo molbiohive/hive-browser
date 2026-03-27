@@ -20,9 +20,8 @@ class TranscribeInput(BaseModel):
 
 class TranscribeTool(Tool):
     name = "transcribe"
-    description = "Transcribe a DNA sequence to mRNA (T→U on coding strand)."
+    description = ("DNA to mRNA", "Transcribe a DNA sequence to mRNA.")
     tags = {"analysis"}
-    guidelines = "DNA to mRNA transcription (T to U). Accepts sequence, sid:N, or pid:N."
 
     def __init__(self, **_):
         pass

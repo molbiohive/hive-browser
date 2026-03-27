@@ -19,9 +19,8 @@ class GCInput(BaseModel):
 
 class GCTool(Tool):
     name = "gc"
-    description = "Calculate GC content and nucleotide composition of a DNA sequence."
+    description = ("GC content", "Calculate GC content and nucleotide composition of a DNA sequence.")
     tags = {"analysis"}
-    guidelines = "GC content and nucleotide composition. Accepts sequence, sid:N, or pid:N."
 
     def __init__(self, **_):
         pass

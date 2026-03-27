@@ -37,12 +37,8 @@ class AlignInput(BaseModel):
 
 class AlignTool(Tool):
     name = "align"
-    description = "Align multiple sequences using MAFFT."
+    description = ("sequence alignment", "Align multiple sequences using MAFFT.")
     tags = {"analysis"}
-    guidelines = (
-        "Multiple sequence alignment using MAFFT. Provide SIDs "
-        "and/or PIDs for 2+ sequences to align."
-    )
 
     def __init__(self, config=None, **_):
         self._dep = None

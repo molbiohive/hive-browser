@@ -25,14 +25,11 @@ class ProfileInput(BaseModel):
 class ProfileTool(Tool):
     name = "profile"
     description = (
+        "sequence detail",
         "Full details and visual inspection of a specific sequence: "
-        "plasmid map, annotated viewer, metadata, features, primers, cut sites."
+        "plasmid map, annotated viewer, metadata, features, primers, cut sites.",
     )
     tags = {"info"}
-    guidelines = (
-        "Full sequence details and close-up visual inspection. "
-        "Use sid (from search results) or name."
-    )
 
     def __init__(self, **_):
         pass
@@ -264,6 +261,7 @@ class ProfileTool(Tool):
                     "topology": seq.topology,
                     "molecule": seq.molecule,
                     "description": seq.description,
+                    "has_history": seq.has_history,
                     "meta": seq.meta,
                     "sequence_data": seq.sequence,
                 },

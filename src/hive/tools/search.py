@@ -66,21 +66,18 @@ class SearchResultItem(BaseModel):
     topology: str
     features: list[str]
     tags: list[str] = []
+    has_history: bool = False
     file_path: str
     score: float
 
 
 class SearchTool(Tool):
     name = "search"
-    description = "Search sequences by name, features, tags (directory context), and metadata."
-    tags = {"search"}
-    guidelines = (
-        "Search sequences and parts by keyword. Returns matching sequences (SIDs) "
-        "and parts (PIDs with instance counts). "
-        "Use && for AND: 'KanR && circular'. Use || for OR: 'GFP || RFP'. "
-        "Use * to list all. Put directory/project context in tags parameter. "
-        "Use PIDs from parts section for follow-up tools."
+    description = (
+        "fuzzy search",
+        "Search sequences by name, features, tags (directory context), and metadata.",
     )
+    tags = {"search"}
 
     def __init__(self, **_):
         pass
@@ -187,6 +184,7 @@ class SearchTool(Tool):
                             topology=seq.topology,
                             features=part_names,
                             tags=meta.get("tags", []),
+                            has_history=seq.has_history,
                             file_path=display_file_path(file_path),
                             score=round(float(score), 3),
                         ).model_dump()
@@ -252,6 +250,7 @@ class SearchTool(Tool):
                         topology=seq.topology,
                         features=part_names,
                         tags=meta.get("tags", []),
+                        has_history=seq.has_history,
                         file_path=display_file_path(file_path),
                         score=1.0,
                     ).model_dump()
