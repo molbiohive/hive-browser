@@ -65,7 +65,7 @@ async def route_input(
 
         # No args → always show form (all visible tools must have one)
         if not args_text:
-            return _form_response(tool_name, tool.description, tool.input_schema())
+            return _form_response(tool_name, tool.long_desc, tool.input_schema())
 
         params = _parse_args(args_text)
         result = await tool.execute(params)
@@ -82,7 +82,7 @@ async def route_input(
         if not llm_client:
             # No LLM — execute directly
             if not text:
-                return _form_response(tool_name, tool.description, tool.input_schema())
+                return _form_response(tool_name, tool.long_desc, tool.input_schema())
 
             params = _parse_args(text)
             result = await tool.execute(params)
@@ -147,22 +147,19 @@ async def _unified_loop(
     Flat context: messages are rebuilt from scratch each turn. A compact
     turn_log replaces accumulated assistant+tool message pairs.
 
-    LLM sees exactly 2 tools: search (function-calling) + python (sandbox).
-    All other tools are callable from python code.
+    LLM sees exactly 2 tools: tasks (function-calling) + python (sandbox).
+    All other tools (search, blast, profile, ...) are callable from python code.
     """
 
-    # All tools available for direct execution and workspace auto-fill
-    tool_map = {t.name: t for t in registry.tools()}
-
-    # Build search schema once — only search gets a function-calling schema
-    search = registry.get("search")
-    assert search, "search tool must be registered"
-    search_schema = {
+    # Build tasks schema once — only tasks gets a function-calling schema
+    tasks = registry.get("tasks")
+    assert tasks, "tasks tool must be registered"
+    tasks_schema = {
         "type": "function",
         "function": {
-            "name": "search",
-            "description": search.guidelines or search.description,
-            "parameters": search.llm_schema(),
+            "name": "tasks",
+            "description": tasks.short_desc,
+            "parameters": tasks.llm_schema(),
         },
     }
 
@@ -253,8 +250,8 @@ async def _unified_loop(
         # Rebuild messages from scratch — no accumulated pairs
         messages = _build_messages()
 
-        # search + python always available
-        turn_tools = [search_schema, sandbox.tool_schema()]
+        # tasks + python always available
+        turn_tools = [tasks_schema, sandbox.tool_schema()]
 
         # Log payload sizes for token debugging
         msg_chars = sum(len(str(m.get("content", ""))) for m in messages)
@@ -393,13 +390,17 @@ async def _unified_loop(
                 # Record step + chain
                 if sb_result["status"] != "ok":
                     err_text = sb_result.get("error", "unknown")
-                    workspace.add_step("python", err_text, code=code, error=err_text)
+                    hint = _error_hint(err_text, workspace, sandbox)
+                    workspace.add_step(
+                        "python", err_text, code=code, error=err_text, hint=hint,
+                    )
                     display_summary = f"Error: {err_text}"
                 else:
-                    desc = str(sb_result.get("feedback", ""))[:100]
-                    last_feedback = desc
-                    workspace.add_step("python", desc, code=code)
-                    display_summary = desc
+                    fb = str(sb_result.get("feedback", ""))[:100]
+                    last_feedback = fb
+                    produced = _build_produced(workspace, sandbox)
+                    workspace.add_step("python", fb, code=code, produced=produced)
+                    display_summary = fb
 
                 chain.append(
                     {
@@ -413,22 +414,9 @@ async def _unified_loop(
                 await _emit("thinking")
                 continue
 
-            tool = tool_map.get(tool_name)
-
-            if not tool:
-                messages.append(
-                    {
-                        "role": "tool",
-                        "tool_call_id": tc["id"],
-                        "content": f"Error: unknown tool '{tool_name}'",
-                    }
-                )
-                workspace.add_step(tool_name, f"unknown tool '{tool_name}'", error=f"unknown tool '{tool_name}'")
-                continue
-
-            # Only search is exposed as a function-calling tool.
-            # Other tools are callable from python — reject hallucinated direct calls.
-            if tool_name != "search":
+            # Only tasks is exposed as a function-calling tool.
+            # All other tools are callable from python — reject hallucinated direct calls.
+            if tool_name != "tasks":
                 err = f"'{tool_name}' is callable from python: {tool_name}(param=value)"
                 messages.append(
                     {"role": "tool", "tool_call_id": tc["id"], "content": err}
@@ -436,51 +424,14 @@ async def _unified_loop(
                 workspace.add_step(tool_name, err, error=err)
                 continue
 
-            # Auto-fill from workspace: inject stored values into matching params
-            # Override if param is missing, empty, or shorter than the stored value
-            schema_props = tool.input_schema().get("properties", {})
-            for key in schema_props:
-                provided = params.get(key)
-                if not provided or (isinstance(provided, str) and len(provided) < pipe_min_length):
-                    cached = workspace.find_by_field(key, pipe_min_length)
-                    if cached is not None:
-                        params[key] = cached
-                        logger.info("Workspace inject: %s (%d chars)", key, len(str(cached)))
-
-            await _emit("tool", tool_name)
-
-            result = await tool.execute(params)
-
-            # Store full result in workspace (error results bypass)
-            if "error" not in result:
-                workspace.store_result(result, tool_name, params)
-                compact = f"{tool_name}: done."
-            else:
-                compact = f"Error: {result['error']}"
-
+            result = await tasks.execute(params)
+            compact = tasks.format_result(result)
             messages.append(
-                {
-                    "role": "tool",
-                    "tool_call_id": tc["id"],
-                    "content": compact,
-                }
+                {"role": "tool", "tool_call_id": tc["id"], "content": compact}
             )
-
-            summary = tool.format_result(result)
-            workspace.add_step(tool_name, summary)
-
-            chain.append(
-                {
-                    "tool": tool_name,
-                    "params": params,
-                    "summary": summary,
-                }
-            )
-            logger.info("Unified turn %d: %s(%s)", turn + 1, tool_name, json.dumps(params))
-
-            last_result = result
-            last_tool = tool_name
-            last_params = params
+            workspace.add_step("tasks", compact)
+            chain.append({"tool": "tasks", "params": params, "summary": compact})
+            logger.info("Unified turn %d: tasks(%s)", turn + 1, json.dumps(params))
             await _emit("thinking")
 
     else:
@@ -646,10 +597,54 @@ def _help_response(registry: ToolRegistry) -> dict:
     """Build a help message listing all available commands."""
     lines = ["**Available commands:**\n"]
     for tool in registry.tools():
-        lines.append(f"- **/{tool.name}** — {tool.description}")
+        lines.append(f"- **/{tool.name}** — {tool.long_desc}")
     lines.append("\nPrefix with `//` for direct execution (no LLM), e.g. `//search ampicillin`.")
     return {"type": "message", "content": "\n".join(lines)}
 
 
 def _error(msg: str) -> dict:
     return {"type": "message", "content": msg}
+
+
+def _error_hint(err_text: str, workspace: Workspace, sandbox: SandboxRunner) -> str | None:
+    """Build actionable hint for common sandbox errors."""
+    import re as _re
+
+    # KeyError 'foo' → show available keys
+    m = _re.search(r"KeyError:?\s*['\"](\w+)['\"]", err_text)
+    if m:
+        # Try to find a list[dict] in workspace to show its keys
+        for e in reversed(workspace._entries):
+            if isinstance(e.value, list) and e.value and isinstance(e.value[0], dict):
+                keys = ", ".join(list(e.value[0].keys())[:8])
+                return f"keys: {{{keys}}}"
+        return None
+
+    # NameError 'bar' → show available names
+    m = _re.search(r"NameError:?\s*.*?'(\w+)'", err_text)
+    if m:
+        ns = list(workspace.namespace().keys())
+        uv = list(workspace.user_vars.keys())
+        available = ns + uv + list(sandbox.report.keys())
+        if available:
+            return f"available: {', '.join(available[:10])}"
+    return None
+
+
+def _build_produced(workspace: Workspace, sandbox: SandboxRunner) -> str | None:
+    """Summarize what a successful sandbox call produced."""
+    parts: list[str] = []
+
+    # New report keys
+    if sandbox.report:
+        rkeys = list(sandbox.report.keys())
+        if rkeys:
+            parts.append(f"report[{', '.join(repr(k) for k in rkeys[-2:])}]")
+
+    # Count user vars
+    uv = workspace.user_vars
+    if uv:
+        names = list(uv.keys())[-3:]
+        parts.append(", ".join(names))
+
+    return ", ".join(parts) if parts else None
