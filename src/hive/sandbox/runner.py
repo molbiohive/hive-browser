@@ -8,7 +8,7 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 from hive.sandbox.exec import safe_exec
-from hive.sandbox.workspace import Workspace
+from hive.sandbox.workspace import Workspace, detailed_describe
 
 if TYPE_CHECKING:
     from hive.tools.base import ToolRegistry
@@ -37,6 +37,7 @@ class SandboxRunner:
         if not self._registry:
             return {}
         callables: dict[str, Any] = {}
+        ws = self.workspace
         budget = self._tool_call_budget
         call_count = [0]
 
@@ -50,32 +51,59 @@ class SandboxRunner:
                     _tool.execute(dict(kwargs)),
                     loop,
                 )
-                return future.result(timeout=30)
+                result = future.result(timeout=30)
+                # Build provenance call_repr and auto-store in workspace
+                args_str = ", ".join(
+                    f'{k}="{v}"' if isinstance(v, str) else f"{k}={v}"
+                    for k, v in kwargs.items()
+                )
+                call_repr = f"{_tool.name}({args_str})"
+                if isinstance(result, dict):
+                    ws.store_result(result, _tool.name, dict(kwargs), call_repr=call_repr)
+                return result
 
             callables[tool.name] = wrapper
         return callables
 
-    def _tool_signatures(self) -> str:
-        """Callable tools listing: name(params)."""
-        if not self._registry:
-            return ""
-        tools = self._registry.tools()
-        if not tools:
-            return ""
-        lines = ["Callable tools (use keyword args):"]
-        for tool in tools:
-            schema = tool.input_schema()
-            props = schema.get("properties", {})
-            params = ", ".join(props.keys())
-            lines.append(f"  {tool.name}({params})")
-        return "\n".join(lines)
+    def _make_desc_fn(self) -> Any:
+        """Build desc() — detailed inspection, results shown in workspace."""
+        ws = self.workspace
+
+        def desc(var, name="?"):
+            detail = detailed_describe(var)
+            ws.add_desc_result(name, detail)
+            return detail
+
+        return desc
+
+    def _tool_signatures(self) -> list[str]:
+        """One-per-line typed tool listing for describe() Available section."""
+        lines: list[str] = []
+        if self._registry:
+            for tool in self._registry.tools():
+                schema = tool.llm_schema()
+                props = schema.get("properties", {})
+                required = set(schema.get("required", []))
+                req_parts = []
+                opt_parts = []
+                for name, spec in props.items():
+                    typ = spec.get("type", "any")
+                    typed = f"{name}:{typ}"
+                    if name in required:
+                        req_parts.append(typed)
+                    else:
+                        opt_parts.append(typed)
+                params = ", ".join(req_parts)
+                if opt_parts:
+                    params += f" [{', '.join(opt_parts)}]" if params else f"[{', '.join(opt_parts)}]"
+                lines.append(f"{tool.name}({params}) -- {tool.short_desc}")
+        lines.append("desc(var) -- inspect variable")
+        return lines
 
     def tool_schema(self) -> dict:
         """OpenAI-format function schema with dynamic workspace description."""
-        desc = self.workspace.describe(report=self.report)
         sigs = self._tool_signatures()
-        if sigs:
-            desc += f"\n{sigs}"
+        desc = self.workspace.describe(report=self.report, tool_signatures=sigs)
         return {
             "type": "function",
             "function": {
@@ -95,11 +123,12 @@ class SandboxRunner:
         }
 
     async def execute(self, code: str) -> dict[str, Any]:
-        """Run *code* with workspace handles + report dict + persisted vars + tool callables."""
+        """Run *code* with workspace handles + report dict + persisted vars + tool callables + desc()."""
         loop = asyncio.get_running_loop()
         variables = dict(self.workspace.user_vars)
         variables.update(self.workspace.namespace())
         variables["report"] = self.report
+        variables["desc"] = self._make_desc_fn()
         if self._registry:
             variables.update(self._make_tool_callables(loop))
         result = await asyncio.to_thread(safe_exec, code, variables)
