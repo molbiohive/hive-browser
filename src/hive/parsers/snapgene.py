@@ -18,7 +18,7 @@ def _parse_strand(strand) -> int:
     return _STRAND_MAP.get(str(strand), 0)
 
 
-def _serialize_history_tree(node, history) -> list[dict]:
+def _serialize_history_tree(node, history, main_features=None) -> list[dict]:
     """Flatten history tree to list of node dicts for DB ingestion."""
     result = []
 
@@ -34,6 +34,21 @@ def _serialize_history_tree(node, history) -> list[dict]:
         content = history.get_node(n.id)
         if content:
             for f in content.features:
+                features.append(
+                    {
+                        "name": getattr(f, "name", ""),
+                        "type": getattr(f, "type", "misc_feature"),
+                        "start": getattr(f, "start", 0),
+                        "end": getattr(f, "end", 0),
+                        "strand": _parse_strand(getattr(f, "strand", ".")),
+                        "qualifiers": dict(f.qualifiers) if hasattr(f, "qualifiers") else {},
+                    }
+                )
+
+        # Root node fallback: sgffp stores root features as main sequence
+        # features (block 11), not in history content — use main_features.
+        if not features and parent_id is None and main_features:
+            for f in main_features:
                 features.append(
                     {
                         "name": getattr(f, "name", ""),
@@ -183,7 +198,9 @@ def parse_snapgene(filepath: Path, extract: list[str] | None = None) -> ParseRes
     # Extract cloning history tree
     if extract is None or "history" in extract:
         if hasattr(sgff, "has_history") and sgff.has_history and sgff.history.tree:
-            meta["history"] = _serialize_history_tree(sgff.history.tree.root, sgff.history)
+            meta["history"] = _serialize_history_tree(
+                sgff.history.tree.root, sgff.history, main_features=sgff.features
+            )
             # Build searchable keywords for BM25 matching
             meta["history_keywords"] = _history_keywords(meta["history"])
 

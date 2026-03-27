@@ -251,6 +251,7 @@ async def ingest_file(
         seq.molecule = result.molecule
         seq.description = result.description
         seq.search_text = search_text
+        seq.has_history = bool(meta.get("history"))
         seq.meta = meta or None
         # Delete child rows that will be recreated below
         await session.execute(delete(PartInstance).where(PartInstance.seq_id == seq.id))
@@ -267,6 +268,7 @@ async def ingest_file(
             molecule=result.molecule,
             description=result.description,
             search_text=search_text,
+            has_history=bool(meta.get("history")),
             meta=meta or None,
         )
         session.add(seq)
