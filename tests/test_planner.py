@@ -17,7 +17,7 @@ class FakeTool(Tool):
 
     tags = set()
 
-    def __init__(self, name: str, description: str, **_):
+    def __init__(self, name: str, description: tuple[str, str], **_):
         self.name = name
         self.description = description
 
@@ -28,17 +28,17 @@ class FakeTool(Tool):
 @pytest.fixture()
 def tools():
     return [
-        FakeTool("search", "Search sequences by name, features, and metadata."),
-        FakeTool("blast", "Find similar sequences using BLAST+ alignment."),
-        FakeTool("translate", "Translate a DNA or RNA sequence to protein."),
-        FakeTool("extract", "Extract a subsequence by feature or region."),
-        FakeTool("profile", "Show full details of a specific sequence."),
-        FakeTool("digest", "Find restriction enzyme cut sites and fragment sizes."),
-        FakeTool("gc", "Calculate GC content and nucleotide composition."),
-        FakeTool("revcomp", "Get the reverse complement of a DNA sequence."),
-        FakeTool("transcribe", "Transcribe DNA to mRNA."),
-        FakeTool("align", "Align multiple sequences using MAFFT."),
-        FakeTool("parts", "Look up a part by PID, or list parts on a sequence."),
+        FakeTool("search", ("fuzzy search", "Search sequences by name, features, and metadata.")),
+        FakeTool("blast", ("similarity search", "Find similar sequences using BLAST+ alignment.")),
+        FakeTool("translate", ("DNA to protein", "Translate a DNA or RNA sequence to protein.")),
+        FakeTool("extract", ("extract subsequence", "Extract a subsequence by feature or region.")),
+        FakeTool("profile", ("sequence detail", "Show full details of a specific sequence.")),
+        FakeTool("digest", ("restriction digest", "Find restriction enzyme cut sites and fragment sizes.")),
+        FakeTool("gc", ("GC content", "Calculate GC content and nucleotide composition.")),
+        FakeTool("revcomp", ("reverse complement", "Get the reverse complement of a DNA sequence.")),
+        FakeTool("transcribe", ("DNA to mRNA", "Transcribe DNA to mRNA.")),
+        FakeTool("align", ("sequence alignment", "Align multiple sequences using MAFFT.")),
+        FakeTool("parts", ("part lookup", "Look up a part by PID, or list parts on a sequence.")),
     ]
 
 
@@ -59,11 +59,11 @@ class TestCatalog:
             assert line.startswith("- ")
             assert ": " in line
 
-    def test_catalog_uses_description(self, tools):
-        """Catalog should use short description, not guidelines."""
+    def test_catalog_uses_short_description(self, tools):
+        """Catalog should use short label from description[0]."""
         catalog = build_tool_catalog(tools)
-        assert "Search sequences by name" in catalog
-        assert "BLAST+" in catalog
+        assert "fuzzy search" in catalog
+        assert "similarity search" in catalog
 
 
 # ── Planning ──

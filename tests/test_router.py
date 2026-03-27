@@ -25,9 +25,8 @@ class SearchStubTool(Tool):
     """Minimal search tool stub required by the agentic loop."""
 
     name = "search"
-    description = "Search sequences"
+    description = ("fuzzy search", "Search sequences")
     tags = {"search"}
-    guidelines = "Search tool for testing."
 
     def __init__(self, **_):
         pass
@@ -47,9 +46,8 @@ class EchoTool(Tool):
     """Minimal tool that echoes params back."""
 
     name = "echo"
-    description = "Echoes params"
+    description = ("echo", "Echoes params")
     tags = {"test"}
-    guidelines = "Echo tool for testing."
 
     def __init__(self, **_):
         pass
@@ -62,7 +60,7 @@ class RequiredTool(Tool):
     """Tool with required params (triggers form mode)."""
 
     name = "required"
-    description = "Needs query param"
+    description = ("required", "Needs query param")
     tags = {"test"}
     params = {"query": {"type": "string", "description": "Search text", "required": True}}
 
@@ -73,11 +71,35 @@ class RequiredTool(Tool):
         return {"result": params.get("query", "")}
 
 
+class TasksStubTool(Tool):
+    """Minimal tasks tool stub required by the agentic loop."""
+
+    name = "tasks"
+    description = ("task list", "Manage tasks")
+    tags = set()
+
+    def __init__(self, **_):
+        pass
+
+    def llm_schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "action": {"type": "string"},
+                "text": {"type": "string"},
+            },
+            "required": ["action"],
+        }
+
+    async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
+        return {"ok": True, "action": params.get("action", "")}
+
+
 class DirectOnlyTool(Tool):
     """Tool for direct-only testing."""
 
     name = "direct"
-    description = "Direct only"
+    description = ("direct", "Direct only")
     tags = {"info"}
 
     def __init__(self, **_):
@@ -91,6 +113,7 @@ class DirectOnlyTool(Tool):
 def registry():
     reg = ToolRegistry()
     reg.register(SearchStubTool())
+    reg.register(TasksStubTool())
     reg.register(EchoTool())
     reg.register(RequiredTool())
     reg.register(DirectOnlyTool())
@@ -292,32 +315,30 @@ class TestAgenticLoop:
         assert "Hello" in resp["content"]
 
     async def test_single_tool_call(self, registry):
-        """LLM calls search tool, then summarizes."""
+        """LLM calls tasks tool, then summarizes."""
         llm = self._mock_llm(
             [
-                self._tool_call_response("search", {"query": "test"}),
-                self._text_response("Here are your search results."),
+                self._tool_call_response("tasks", {"action": "list"}),
+                self._text_response("Here are your tasks."),
             ]
         )
-        resp = await route_input("find test", registry, llm_client=llm)
-        assert resp["type"] == "tool_result"
-        assert resp["tool"] == "search"
-        assert "search results" in resp["content"]
+        resp = await route_input("show tasks", registry, llm_client=llm)
+        assert resp["type"] == "message"
+        assert "tasks" in resp["content"].lower()
 
     async def test_multi_tool_chain(self, registry):
-        """LLM chains two search calls before summarizing."""
+        """LLM chains two tasks calls before summarizing."""
         llm = self._mock_llm(
             [
-                self._tool_call_response("search", {"query": "step1"}, call_id="c1"),
-                self._tool_call_response("search", {"query": "step2"}, call_id="c2"),
+                self._tool_call_response("tasks", {"action": "add", "text": "step1"}, call_id="c1"),
+                self._tool_call_response("tasks", {"action": "add", "text": "step2"}, call_id="c2"),
                 self._text_response("Done with both steps."),
             ]
         )
-        resp = await route_input("do two things", registry, llm_client=llm)
-        assert resp["type"] == "tool_result"
+        resp = await route_input("add two tasks", registry, llm_client=llm)
         assert len(resp["chain"]) == 2
-        assert resp["chain"][0]["tool"] == "search"
-        assert resp["chain"][1]["tool"] == "search"
+        assert resp["chain"][0]["tool"] == "tasks"
+        assert resp["chain"][1]["tool"] == "tasks"
 
     async def test_unknown_tool_from_llm(self, registry):
         """LLM hallucinates a tool name → error message sent back, then text."""
@@ -335,8 +356,8 @@ class TestAgenticLoop:
         """Loop hits max turns → returns last result with summary attempt."""
         llm = self._mock_llm(
             [
-                self._tool_call_response("search", {"query": "t1"}, call_id="c1"),
-                self._tool_call_response("search", {"query": "t2"}, call_id="c2"),
+                self._tool_call_response("tasks", {"action": "add", "text": "t1"}, call_id="c1"),
+                self._tool_call_response("tasks", {"action": "add", "text": "t2"}, call_id="c2"),
                 # 3rd call: _final_summary (no tools) → text response
                 self._text_response("Here is a summary of results."),
             ]
@@ -346,7 +367,7 @@ class TestAgenticLoop:
         assert "summary of results" in resp["content"]
 
     async def test_progress_callback(self, registry):
-        """on_progress is called with thinking and tool phases."""
+        """on_progress is called with thinking phases."""
         events = []
 
         async def on_progress(data):
@@ -354,25 +375,23 @@ class TestAgenticLoop:
 
         llm = self._mock_llm(
             [
-                self._tool_call_response("search", {"query": "x"}),
+                self._tool_call_response("tasks", {"action": "list"}),
                 self._text_response("Done."),
             ]
         )
         await route_input("test progress", registry, llm_client=llm, on_progress=on_progress)
         phases = [e["phase"] for e in events]
-        assert phases[0] == "thinking"  # initial
-        assert "tool" in phases  # before execute
-        assert phases[-1] == "thinking"  # after execute
+        assert phases[0] == "thinking"
 
-    async def test_non_search_tool_rejected(self, registry):
-        """Non-search tool called via function calling → error pointing to sandbox."""
+    async def test_non_tasks_tool_rejected(self, registry):
+        """Non-tasks tool called via function calling → error pointing to sandbox."""
         llm = self._mock_llm(
             [
-                self._tool_call_response("echo", {"query": "test"}),
+                self._tool_call_response("search", {"query": "test"}),
                 self._text_response("Let me use python instead."),
             ]
         )
-        resp = await route_input("echo test", registry, llm_client=llm)
+        resp = await route_input("search test", registry, llm_client=llm)
         assert resp["type"] == "message"
         assert "python" in resp["content"].lower() or "Let me" in resp["content"]
 
@@ -380,13 +399,11 @@ class TestAgenticLoop:
         """Guided mode with LLM delegates to unified loop."""
         llm = self._mock_llm(
             [
-                self._tool_call_response("search", {"query": "guided"}),
                 self._text_response("Guided search result."),
             ]
         )
         resp = await route_input("/search test guided", registry, llm_client=llm)
-        assert resp["type"] == "tool_result"
-        assert resp["tool"] == "search"
+        assert resp["type"] == "message"
 
     async def test_llm_error_graceful(self, registry):
         """LLM raises exception -> loop breaks gracefully with sanitized error."""
@@ -607,24 +624,24 @@ class TestSandboxIntegration:
             "usage": usage or {"prompt_tokens": 100, "completion_tokens": 20},
         }
 
+    def _make_registry(self, *extra_tools):
+        """Create a registry with tasks (required) + any extra tools."""
+        reg = ToolRegistry()
+        reg.register(TasksStubTool())
+        for t in extra_tools:
+            reg.register(t)
+        return reg
+
     async def test_auto_cache_list_dict(self):
-        """Tool results with list[dict] fields are auto-cached."""
+        """Search called from python produces workspace handles."""
 
         class SearchTool(Tool):
             name = "search"
-            description = "Search sequences"
+            description = ("fuzzy search", "Search sequences")
             tags = {"search"}
-            guidelines = "Search tool."
 
             def __init__(self, **_):
                 pass
-
-            def llm_schema(self) -> dict:
-                return {
-                    "type": "object",
-                    "properties": {"query": {"type": "string"}},
-                    "required": ["query"],
-                }
 
             async def execute(self, params):
                 return {
@@ -635,44 +652,38 @@ class TestSandboxIntegration:
                     "query": "test",
                 }
 
-        reg = ToolRegistry()
-        reg.register(SearchTool())
-
+        reg = self._make_registry(SearchTool())
         llm = self._mock_llm(
             [
-                self._tool_call_response("search", {"query": "test"}, call_id="c1"),
+                self._tool_call_response(
+                    "python",
+                    {"code": 'r = search(query="test"); feedback = f"found {len(r[\"results\"])} results"'},
+                    call_id="c1",
+                ),
                 self._text_response("Found 2 results."),
             ]
         )
         resp = await route_input("find test", reg, llm_client=llm)
-        assert resp["type"] == "tool_result"
-        assert resp["tool"] == "search"
-        # Verify search summary appears in status (flat context rebuild)
+        assert "Found 2 results" in resp["content"]
+        # Verify python step appears in status (flat context rebuild)
         last_msgs = llm.chat.call_args_list[-1][0][0]
         status_msg = [
             m
             for m in last_msgs
-            if isinstance(m, dict) and m.get("role") == "assistant"
+            if isinstance(m, dict)
+            and m.get("role") == "assistant"
             and "Done so far:" in m.get("content", "")
         ]
         assert status_msg, "Status summary should appear in rebuilt messages"
-        assert "search:" in status_msg[0]["content"]
+        assert "# ok: python" in status_msg[0]["content"]
 
     async def test_python_dispatched_to_sandbox(self):
-        """python tool calls go to sandbox, not ToolRegistry."""
+        """python tool calls execute in sandbox with tools callable."""
 
         class SearchTool(Tool):
             name = "search"
-            description = "Search"
+            description = ("search", "Search")
             tags = {"search"}
-            guidelines = "Search."
-
-            def llm_schema(self) -> dict:
-                return {
-                    "type": "object",
-                    "properties": {"query": {"type": "string"}},
-                    "required": ["query"],
-                }
 
             def __init__(self, **_):
                 pass
@@ -685,111 +696,53 @@ class TestSandboxIntegration:
                     ],
                 }
 
-        reg = ToolRegistry()
-        reg.register(SearchTool())
-
+        reg = self._make_registry(SearchTool())
         llm = self._mock_llm(
             [
-                self._tool_call_response("search", {"query": "GFP"}, call_id="c1"),
                 self._tool_call_response(
                     "python",
-                    {"code": 'feedback = [r["sid"] for r in r1]'},
-                    call_id="c2",
+                    {"code": 'r = search(query="GFP"); feedback = str([x["sid"] for x in r["results"]])'},
+                    call_id="c1",
                 ),
                 self._text_response("SIDs are 1 and 2."),
             ]
         )
         resp = await route_input("find GFP sids", reg, llm_client=llm)
-        # Scalar sandbox keeps previous tool's widget visible
-        assert resp["type"] == "tool_result"
-        assert resp["tool"] == "search"
         assert "SIDs are 1 and 2" in resp["content"]
-        assert len(resp["chain"]) == 2
-        assert resp["chain"][0]["tool"] == "search"
-        assert resp["chain"][1]["tool"] == "python"
+        assert len(resp["chain"]) == 1
+        assert resp["chain"][0]["tool"] == "python"
 
     async def test_python_schema_always_available(self):
         """python schema is available from turn 0 (always offered)."""
-
-        class SearchTool(Tool):
-            name = "search"
-            description = "Search"
-            tags = {"search"}
-            guidelines = "Search."
-
-            def llm_schema(self) -> dict:
-                return {
-                    "type": "object",
-                    "properties": {"query": {"type": "string"}},
-                    "required": ["query"],
-                }
-
-            def __init__(self, **_):
-                pass
-
-            async def execute(self, params):
-                return {"results": [{"sid": 1}]}
-
-        reg = ToolRegistry()
-        reg.register(SearchTool())
-
-        llm = self._mock_llm(
-            [
-                self._tool_call_response("search", {"query": "x"}, call_id="c1"),
-                self._text_response("Done."),
-            ]
-        )
+        reg = self._make_registry(SearchStubTool())
+        llm = self._mock_llm([self._text_response("Done.")])
         await route_input("test", reg, llm_client=llm)
 
-        # First LLM call (turn 0): python schema present from the start
         first_call_tools = llm.chat.call_args_list[0][1].get("tools", [])
         tool_names_t0 = [t["function"]["name"] for t in first_call_tools]
         assert "python" in tool_names_t0
+        assert "tasks" in tool_names_t0
 
     async def test_python_schema_always_present_despite_errors(self):
         """Python schema is never dropped, even after consecutive errors."""
-
-        class SearchTool(Tool):
-            name = "search"
-            description = "Search"
-            tags = {"search"}
-            guidelines = "Search."
-
-            def llm_schema(self) -> dict:
-                return {
-                    "type": "object",
-                    "properties": {"query": {"type": "string"}},
-                    "required": ["query"],
-                }
-
-            def __init__(self, **_):
-                pass
-
-            async def execute(self, params):
-                return {"results": [{"sid": 1, "name": "GFP"}]}
-
-        reg = ToolRegistry()
-        reg.register(SearchTool())
-
+        reg = self._make_registry(SearchStubTool())
         llm = self._mock_llm(
             [
-                self._tool_call_response("search", {"query": "x"}, call_id="c1"),
                 self._tool_call_response(
                     "python",
                     {"code": "feedback = undefined_var_1"},
-                    call_id="c2",
+                    call_id="c1",
                 ),
                 self._tool_call_response(
                     "python",
                     {"code": "feedback = undefined_var_2"},
-                    call_id="c3",
+                    call_id="c2",
                 ),
                 self._text_response("Could not process the data."),
             ]
         )
         await route_input("process data", reg, llm_client=llm, max_turns=10)
 
-        # Python schema should still be present on the last LLM call
         last_call_tools = llm.chat.call_args_list[-1][1].get("tools", [])
         tool_names = [t["function"]["name"] for t in last_call_tools]
         assert "python" in tool_names

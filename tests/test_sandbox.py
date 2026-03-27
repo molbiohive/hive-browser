@@ -32,27 +32,23 @@ class TestWorkspace:
         ws = Workspace()
         ws.store("results", [{"sid": 1, "name": "GFP", "size": 720}], "search", {"query": "GFP"})
         desc = ws.describe()
-        assert "p0:" in desc
-        assert "results" in desc
-        assert "list[dict]" in desc
+        assert "# p0" in desc
         assert "1 rows" in desc
-        assert "search" in desc
         assert "sid" in desc
+        # Example row shown on next line
+        assert "p0[0]" in desc
 
     def test_describe_string(self):
         ws = Workspace()
         ws.store("sequence_data", "ATGC" * 100, "profile")
         desc = ws.describe()
-        assert "str" in desc
-        assert "400 chars" in desc
-        assert "profile" in desc
+        assert "str(400)" in desc
 
     def test_describe_list_int(self):
         ws = Workspace()
         ws.store("fragments", [4521, 2100, 800], "digest")
         desc = ws.describe()
-        assert "list[int]" in desc
-        assert "3 items" in desc
+        assert "list(3)" in desc
 
     def test_describe_dict(self):
         ws = Workspace()
@@ -66,9 +62,8 @@ class TestWorkspace:
         ws.store("results", [{"a": 1}], "search")
         ws.store("sequence_data", "ATGC" * 100, "profile")
         text = ws.describe()
-        assert "p0:" in text
-        assert "p1:" in text
-        assert text.count("\n") == 1  # two lines, one newline
+        assert "# p0" in text
+        assert "# p1" in text
 
     def test_namespace(self):
         ws = Workspace()
@@ -256,8 +251,8 @@ class TestSandboxRunner:
         schema = runner.tool_schema()
         assert schema["type"] == "function"
         assert schema["function"]["name"] == "python"
-        assert "p0:" in schema["function"]["description"]
-        assert "search" in schema["function"]["description"]
+        assert "# p0" in schema["function"]["description"]
+        assert "sid" in schema["function"]["description"]
 
     async def test_execute_dispatches(self):
         ws = Workspace()
@@ -313,8 +308,9 @@ class TestSandboxRunner:
         runner = SandboxRunner(ws)
         schema = runner.tool_schema()
         assert schema["function"]["name"] == "python"
-        # Description still valid, just no workspace entries listed
-        assert "Empty." in schema["function"]["description"]
+        # Empty workspace still shows available commands
+        desc = schema["function"]["description"]
+        assert "desc(var)" in desc
 
     async def test_report_dict_persists_across_calls(self):
         """Report dict accumulates data across multiple sandbox calls."""
@@ -380,7 +376,7 @@ class TestToolCallables:
 
         class GcTool(Tool):
             name = "gc"
-            description = "Calculate GC content"
+            description = ("GC content", "Calculate GC content")
             tags = {"analysis"}
             params = {"sequence": {"type": "string", "description": "DNA sequence"}}
 
@@ -397,8 +393,10 @@ class TestToolCallables:
         runner = SandboxRunner(ws, registry=reg)
         schema = runner.tool_schema()
         desc = schema["function"]["description"]
-        assert "Callable tools" in desc
-        assert "gc(sequence)" in desc
+        assert "gc(" in desc
+        assert "sequence:string" in desc
+        assert "-- GC content" in desc
+        assert "desc(var) -- inspect" in desc
 
     async def test_callable_from_sandbox(self):
         """Tools can be called as functions inside sandbox code."""
@@ -406,7 +404,7 @@ class TestToolCallables:
 
         class GcTool(Tool):
             name = "gc"
-            description = "GC content"
+            description = ("GC content", "Calculate GC content")
             tags = {"analysis"}
             params = {"sequence": {"type": "string", "description": "DNA"}}
 
@@ -433,7 +431,7 @@ class TestToolCallables:
 
         class GcTool(Tool):
             name = "gc"
-            description = "GC content"
+            description = ("GC content", "Calculate GC content")
             tags = {"analysis"}
             params = {"sequence": {"type": "string", "description": "DNA"}}
 
@@ -454,13 +452,13 @@ class TestToolCallables:
         assert result["status"] == "error"
         assert "budget exceeded" in result["error"]
 
-    async def test_tool_results_available_in_code(self):
-        """Tool calls from sandbox return results to code, not auto-stored."""
+    async def test_tool_results_auto_stored_with_provenance(self):
+        """Tool calls from sandbox auto-store results with call_repr."""
         from hive.tools.base import Tool, ToolRegistry
 
         class GcTool(Tool):
             name = "gc"
-            description = "GC content"
+            description = ("GC content", "Calculate GC content")
             tags = {"analysis"}
             params = {"sequence": {"type": "string", "description": "DNA"}}
 
@@ -478,64 +476,139 @@ class TestToolCallables:
         result = await runner.execute('r = gc(sequence="ATGC")\nfeedback = r["gc_percent"]')
         assert result["status"] == "ok"
         assert result["feedback"] == 50.0
-        # Sandbox tool calls no longer auto-store in workspace
-        assert len(ws) == 0
+        # Tool calls now auto-store with provenance
+        assert len(ws) >= 1
+        entry = ws._entries[0]
+        assert 'gc(sequence="ATGC")' in entry.call_repr
+
+
+class TestDescribeFormat:
+    """Tests for the new Python-comment style describe() format."""
+
+    def test_call_repr_shown(self):
+        ws = Workspace()
+        ws.store("results", [{"sid": 1}], "search", call_repr='search(query="GFP")')
+        desc = ws.describe()
+        assert '# p0 = search(query="GFP") -> 1 rows' in desc
+
+    def test_example_row_for_list_dict(self):
+        ws = Workspace()
+        ws.store("results", [{"sid": 42, "name": "pET-28a"}], "search")
+        desc = ws.describe()
+        assert "p0[0]" in desc
+        assert "sid: 42" in desc
+        assert "name: 'pET-28a'" in desc
+
+    def test_no_example_row_for_scalar(self):
+        ws = Workspace()
+        ws.store("count", 42, "tool")
+        desc = ws.describe()
+        assert "[0]" not in desc
+
+    def test_user_vars_shown(self):
+        ws = Workspace()
+        ws.update_vars({"filtered": [1, 2, 3]})
+        desc = ws.describe()
+        assert "# filtered" in desc
+
+    def test_report_entries_shown(self):
+        ws = Workspace()
+        desc = ws.describe(report={"overview": [{"a": 1}]})
+        assert 'report["overview"]' in desc
+
+    def test_available_commands_shown(self):
+        ws = Workspace()
+        desc = ws.describe(tool_signatures=["search(query)", "desc(var) -- inspect"])
+        assert "# search(query)" in desc
+        assert "# desc(var)" in desc
+
+    def test_desc_results_shown_and_cleared(self):
+        ws = Workspace()
+        ws.add_desc_result("p0", "3 rows -- {sid: int, name: str}")
+        desc = ws.describe()
+        assert "desc(p0):" in desc
+        assert "3 rows" in desc
+        # Second call should have no desc results
+        desc2 = ws.describe()
+        assert "desc(" not in desc2
+
+
+class TestHistoryFormat:
+    """Tests for the new ok/x prefixed history() format."""
+
+    def test_ok_with_produced(self):
+        ws = Workspace()
+        ws.add_step("python", "done", produced="p0 (56 rows)")
+        h = ws.history()
+        assert "# ok: python -> p0 (56 rows)" in h
+
+    def test_ok_without_produced(self):
+        ws = Workspace()
+        ws.add_step("python", "filtered 3 items", code="x = 1")
+        h = ws.history()
+        assert "# ok: python -> filtered 3 items" in h
+
+    def test_error_with_hint(self):
+        ws = Workspace()
+        ws.add_step("python", "err", error="KeyError: 'gc'", hint="keys: {sid, name}")
+        h = ws.history()
+        assert "# x: python KeyError: 'gc' -- keys: {sid, name}" in h
+
+    def test_error_without_hint(self):
+        ws = Workspace()
+        ws.add_step("python", "err", error="ZeroDivisionError")
+        h = ws.history()
+        assert "# x: python ZeroDivisionError" in h
+        assert "--" not in h
+
+    def test_max_steps(self):
+        ws = Workspace()
+        for i in range(8):
+            ws.add_step("python", f"step {i}")
+        h = ws.history(max_steps=3)
+        assert "earlier steps omitted" in h
+        assert h.count("# ok:") == 3
+
+
+class TestDescBuiltin:
+    """Tests for desc() sandbox builtin."""
+
+    async def test_desc_in_sandbox(self):
+        ws = Workspace()
+        ws.store("results", [{"sid": 1, "name": "GFP"}], "search")
+        runner = SandboxRunner(ws)
+        result = await runner.execute('feedback = desc(p0, name="p0")')
+        assert result["status"] == "ok"
+        assert "sid" in result["feedback"]
+        # desc result recorded in workspace
+        assert len(ws._desc_results) == 1
+        assert ws._desc_results[0][0] == "p0"
+
+    async def test_desc_shown_in_describe(self):
+        ws = Workspace()
+        ws.add_desc_result("p0", "2 rows -- {sid: int, name: str}")
+        desc = ws.describe()
+        assert "desc(p0):" in desc
+        assert "2 rows" in desc
 
 
 class TestStoreResult:
     """Tests for Workspace.store_result()."""
 
-    def test_all_scalars_only_result(self):
-        """All-scalar dict stores only _result."""
+    def test_single_handle(self):
+        """store_result creates exactly one handle."""
         ws = Workspace()
-        data = {"a": 1, "b": 2.0, "c": True}
-        handles = ws.store_result(data, "tool")
+        data = {"results": [{"x": 1}], "count": 1}
+        handle = ws.store_result(data, "tool")
+        assert handle == "p0"
         assert len(ws) == 1
         assert ws.get("p0") is data
-        assert handles == ["p0"]
 
-    def test_list_broken_out(self):
-        """Non-empty lists are stored as separate entries."""
+    def test_call_repr_stored(self):
         ws = Workspace()
-        items = [{"x": 1}]
-        data = {"items": items, "count": 1}
-        handles = ws.store_result(data, "tool")
-        assert len(ws) == 2  # _result + items
-        assert ws.get("p1") is items
-        assert handles == ["p0", "p1"]
-
-    def test_long_string_broken_out(self):
-        """Strings >= 200 chars are stored as separate entries."""
-        ws = Workspace()
-        seq = "A" * 200
-        data = {"sequence": seq, "length": 200}
-        ws.store_result(data, "tool")
-        assert len(ws) == 2  # _result + sequence
-        assert ws.get("p1") is seq
-
-    def test_dict_gt2_keys_broken_out(self):
-        """Dicts with >2 keys are stored as separate entries."""
-        ws = Workspace()
-        info = {"a": 1, "b": 2, "c": 3}
-        data = {"info": info, "x": 1}
-        ws.store_result(data, "tool")
-        assert len(ws) == 2
-        assert ws.get("p1") is info
-
-    def test_error_key_skipped(self):
-        """Error key is not stored as sub-entry."""
-        ws = Workspace()
-        data = {"error": "not found", "items": [1, 2]}
-        ws.store_result(data, "tool")
-        # _result + items (error skipped)
-        assert len(ws) == 2
-
-    def test_empty_list_not_broken_out(self):
-        """Empty lists are not stored as separate entries."""
-        ws = Workspace()
-        data = {"items": [], "count": 0}
-        ws.store_result(data, "tool")
-        assert len(ws) == 1
+        ws.store_result({"a": 1}, "search", call_repr='search(query="x")')
+        entry = ws._entries[0]
+        assert entry.call_repr == 'search(query="x")'
 
     def test_describe_shows_all_handles(self):
         """describe() shows all pipeline handles."""
@@ -543,6 +616,6 @@ class TestStoreResult:
         ws.store("results", [{"a": 1}], "search")
         ws.store("sequence", "ATGC" * 100, "profile")
         desc = ws.describe()
-        assert "p0:" in desc
-        assert "p1:" in desc
+        assert "# p0" in desc
+        assert "# p1" in desc
 

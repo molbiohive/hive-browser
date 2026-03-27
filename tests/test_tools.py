@@ -12,9 +12,8 @@ from hive.tools.factory import ToolFactory, _is_forbidden, _validate_imports
 
 class DummyTool(Tool):
     name = "dummy"
-    description = "A test tool"
+    description = ("test", "A test tool")
     tags = {"test"}
-    guidelines = "Use for testing."
 
     def __init__(self, **_):
         pass
@@ -27,7 +26,7 @@ class ParamsTool(Tool):
     """Tool using declarative params instead of Pydantic."""
 
     name = "paramtool"
-    description = "Declarative params tool"
+    description = ("params test", "Declarative params tool")
     params = {
         "query": {"type": "string", "description": "Search text", "required": True},
         "limit": {"type": "integer", "description": "Max results", "default": 10},
@@ -49,7 +48,7 @@ class TestToolMetadata:
         t = DummyTool()
         meta = t.metadata()
         assert meta["name"] == "dummy"
-        assert meta["description"] == "A test tool"
+        assert meta["description"] == "A test tool"  # long_desc used in metadata
         assert "widget" not in meta
         assert sorted(meta["tags"]) == ["test"]
 
