@@ -6,11 +6,6 @@ Tool names and schemas are provided via the OpenAI `tools` parameter.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from hive.tools import Tool
-
 _SYSTEM = """\
 You are Hive Browser, a lab sequence search assistant. Be FAST and DIRECT.
 
@@ -74,11 +69,6 @@ IDs/names/values from the conversation.
 - For greetings/chat/general questions: just write "respond conversationally".
 - Keep it concise (2-4 sentences). Only include context the worker actually needs.
 - NEVER fabricate data, IDs, or results."""
-
-
-def build_tool_catalog(tools: list[Tool]) -> str:
-    """One-liner-per-tool catalog for the planning prompt (~20 tokens/tool)."""
-    return "\n".join(f"- {t.name}: {t.short_desc}" for t in tools)
 
 
 def build_plan_messages(

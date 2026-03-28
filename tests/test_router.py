@@ -470,7 +470,7 @@ class TestPlannerIntegration:
         """Planner ON always runs agent loop -- no ANSWER shortcut."""
         from hive.llm.planner import Planner
 
-        planner = Planner(tools=registry.tools())
+        planner = Planner(registry=registry)
 
         llm = self._mock_llm(
             [
@@ -496,7 +496,7 @@ class TestPlannerIntegration:
         """Planner produces task description, agent sees plan in user message."""
         from hive.llm.planner import Planner
 
-        planner = Planner(tools=registry.tools())
+        planner = Planner(registry=registry)
 
         llm = self._mock_llm(
             [
@@ -526,7 +526,7 @@ class TestPlannerIntegration:
         """If planning call fails, agent continues without plan."""
         from hive.llm.planner import Planner
 
-        planner = Planner(tools=registry.tools())
+        planner = Planner(registry=registry)
 
         llm = self._mock_llm(
             [
@@ -550,7 +550,7 @@ class TestPlannerIntegration:
         """Planner OFF: no plan() call, agent runs directly."""
         from hive.llm.planner import Planner
 
-        planner = Planner(tools=registry.tools())
+        planner = Planner(registry=registry)
         planner.plan = AsyncMock()  # spy -- should NOT be called
 
         llm = self._mock_llm([self._text_response("Done.")])
@@ -568,7 +568,7 @@ class TestPlannerIntegration:
         """Planner OFF: agent loop receives raw user input, not plan."""
         from hive.llm.planner import Planner
 
-        planner = Planner(tools=registry.tools())
+        planner = Planner(registry=registry)
 
         llm = self._mock_llm([self._text_response("Hello.")])
         await route_input(

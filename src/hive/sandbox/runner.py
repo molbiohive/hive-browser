@@ -76,33 +76,10 @@ class SandboxRunner:
 
         return desc
 
-    def _tool_signatures(self) -> list[str]:
-        """One-per-line typed tool listing for describe() Available section."""
-        lines: list[str] = []
-        if self._registry:
-            for tool in self._registry.tools():
-                schema = tool.llm_schema()
-                props = schema.get("properties", {})
-                required = set(schema.get("required", []))
-                req_parts = []
-                opt_parts = []
-                for name, spec in props.items():
-                    typ = spec.get("type", "any")
-                    typed = f"{name}:{typ}"
-                    if name in required:
-                        req_parts.append(typed)
-                    else:
-                        opt_parts.append(typed)
-                params = ", ".join(req_parts)
-                if opt_parts:
-                    params += f" [{', '.join(opt_parts)}]" if params else f"[{', '.join(opt_parts)}]"
-                lines.append(f"{tool.name}({params}) -- {tool.short_desc}")
-        lines.append("desc(var) -- inspect variable")
-        return lines
-
     def tool_schema(self) -> dict:
         """OpenAI-format function schema with dynamic workspace description."""
-        sigs = self._tool_signatures()
+        sigs = self._registry.signatures() if self._registry else []
+        sigs.append("desc(var) -- inspect variable")
         desc = self.workspace.describe(report=self.report, tool_signatures=sigs)
         return {
             "type": "function",

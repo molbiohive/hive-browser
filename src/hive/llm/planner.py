@@ -1,28 +1,25 @@
-"""Planner -- cheap LLM call to produce a task description for the agent."""
+"""Planner -- cheap LLM call to produce a task brief for the agent."""
 
 from __future__ import annotations
 
 import logging
 from typing import TYPE_CHECKING
 
-from hive.llm.prompts import build_plan_messages, build_tool_catalog
+from hive.llm.prompts import build_plan_messages
 
 if TYPE_CHECKING:
     from hive.llm.client import LLMClient
-    from hive.tools import Tool
+    from hive.tools import ToolRegistry
 
 logger = logging.getLogger(__name__)
 
 
 class Planner:
-    """Produces a task description from user input via a cheap LLM call.
+    """Produces a task brief from user input via a cheap LLM call."""
 
-    The plan text is injected into the agent's user message so it has
-    context about what operations to perform.
-    """
-
-    def __init__(self, tools: list[Tool]):
-        self._catalog = build_tool_catalog(tools)
+    def __init__(self, registry: ToolRegistry):
+        sigs = registry.signatures(detailed=True)
+        self._catalog = "\n".join(f"- {s}" for s in sigs)
 
     async def plan(
         self,

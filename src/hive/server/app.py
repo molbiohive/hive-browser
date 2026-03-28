@@ -79,14 +79,13 @@ async def lifespan(app: FastAPI):
     app.state.tool_registry = ToolFactory.discover(config)
     logger.info("Tool registry: %d tools", len(app.state.tool_registry.tools()))
 
-    # --- Planner (cheap LLM call for task description) ---
+    # --- Planner (cheap LLM call for task brief) ---
     app.state.planner = None
     if config.llm.use_planner:
         from hive.llm import Planner
 
-        all_tools = app.state.tool_registry.tools()
-        if all_tools:
-            app.state.planner = Planner(tools=all_tools)
+        if app.state.tool_registry.tools():
+            app.state.planner = Planner(registry=app.state.tool_registry)
 
     # --- Process registry ---
     from hive.ps import (

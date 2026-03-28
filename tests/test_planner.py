@@ -1,4 +1,4 @@
-"""Tests for Planner: catalog building and planning call."""
+"""Tests for Planner: tool signatures and planning call."""
 
 from typing import Any
 from unittest.mock import AsyncMock
@@ -6,8 +6,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from hive.llm.planner import Planner
-from hive.llm.prompts import build_tool_catalog
-from hive.tools.base import Tool
+from hive.tools.base import Tool, ToolRegistry
 
 # -- Fixtures --
 
@@ -17,9 +16,13 @@ class FakeTool(Tool):
 
     tags = set()
 
-    def __init__(self, name: str, description: tuple[str, str], **_):
+    def __init__(self, name: str, description: tuple[str, str], schema: dict | None = None, **_):
         self.name = name
         self.description = description
+        self._schema = schema or {"type": "object", "properties": {}}
+
+    def llm_schema(self) -> dict:
+        return self._schema
 
     async def execute(self, params: dict[str, Any], **kw) -> dict[str, Any]:
         return {"ok": True}
@@ -28,11 +31,38 @@ class FakeTool(Tool):
 @pytest.fixture()
 def tools():
     return [
-        FakeTool("search", ("fuzzy search", "Search sequences by name, features, and metadata.")),
-        FakeTool("blast", ("similarity search", "Find similar sequences using BLAST+ alignment.")),
+        FakeTool(
+            "search",
+            ("fuzzy search", "Search sequences by name, features, and metadata."),
+            schema={
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search text"},
+                    "tags": {"type": "string", "description": "Comma-separated tags"},
+                },
+                "required": ["query"],
+            },
+        ),
+        FakeTool(
+            "blast",
+            ("similarity search", "Find similar sequences using BLAST+ alignment."),
+            schema={
+                "type": "object",
+                "properties": {"sequence": {"type": "string"}},
+                "required": ["sequence"],
+            },
+        ),
         FakeTool("translate", ("DNA to protein", "Translate a DNA or RNA sequence to protein.")),
         FakeTool("extract", ("extract subsequence", "Extract a subsequence by feature or region.")),
-        FakeTool("profile", ("sequence detail", "Show full details of a specific sequence.")),
+        FakeTool(
+            "profile",
+            ("sequence detail", "Show full details of a specific sequence."),
+            schema={
+                "type": "object",
+                "properties": {"sid": {"type": "integer"}},
+                "required": ["sid"],
+            },
+        ),
         FakeTool("digest", ("restriction digest", "Find restriction enzyme cut sites and fragment sizes.")),
         FakeTool("gc", ("GC content", "Calculate GC content and nucleotide composition.")),
         FakeTool("revcomp", ("reverse complement", "Get the reverse complement of a DNA sequence.")),
@@ -43,27 +73,46 @@ def tools():
 
 
 @pytest.fixture()
-def planner(tools):
-    return Planner(tools=tools)
+def registry(tools):
+    reg = ToolRegistry()
+    for t in tools:
+        reg.register(t)
+    return reg
 
 
-# -- Catalog --
+@pytest.fixture()
+def planner(registry):
+    return Planner(registry=registry)
 
 
-class TestCatalog:
-    def test_catalog_format(self, tools):
-        catalog = build_tool_catalog(tools)
-        lines = catalog.strip().split("\n")
-        assert len(lines) == len(tools)
-        for line in lines:
-            assert line.startswith("- ")
-            assert ": " in line
+# -- Signatures --
 
-    def test_catalog_uses_short_description(self, tools):
-        """Catalog should use short label from description[0]."""
-        catalog = build_tool_catalog(tools)
-        assert "fuzzy search" in catalog
-        assert "similarity search" in catalog
+
+class TestSignatures:
+    def test_short_format(self, registry):
+        sigs = registry.signatures()
+        assert len(sigs) == len(registry.tools())
+        for sig in sigs:
+            assert " -- " in sig
+
+    def test_typed_params(self, registry):
+        sigs = registry.signatures()
+        text = "\n".join(sigs)
+        assert "search(query:string, tags:string?)" in text
+        assert "blast(sequence:string)" in text
+        assert "profile(sid:integer)" in text
+
+    def test_short_description(self, registry):
+        sigs = registry.signatures()
+        text = "\n".join(sigs)
+        assert "fuzzy search" in text
+        assert "similarity search" in text
+
+    def test_detailed_includes_param_descriptions(self, registry):
+        sigs = registry.signatures(detailed=True)
+        text = "\n".join(sigs)
+        assert "query: Search text" in text
+        assert "tags: Comma-separated tags" in text
 
 
 # -- Planning --
@@ -99,3 +148,12 @@ class TestPlan:
         call_args = llm.chat.call_args[0][0]
         # system + 2 history + user = 4 messages
         assert len(call_args) == 4
+
+    async def test_catalog_has_typed_signatures(self, planner):
+        """Planner catalog uses detailed signatures from registry."""
+        llm = self._mock_llm("plan text")
+        await planner.plan("test", llm)
+        messages = llm.chat.call_args[0][0]
+        system_msg = messages[0]["content"]
+        assert "search(query:string, tags:string?)" in system_msg
+        assert "query: Search text" in system_msg
