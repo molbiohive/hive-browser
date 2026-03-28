@@ -78,13 +78,8 @@ async def lifespan(app: FastAPI):
     dep_registry.register(MafftDep(config.deps.mafft.bin_dir))
     app.state.dep_registry = dep_registry
 
-    # --- Tool registry (with quarantine for external tools) ---
-    approved_files: set[str] = set()
-    if app.state.db_ready:
-        from hive.tools.quarantine import sync_quarantine
-
-        approved_files = await sync_quarantine(config.tools_dir)
-    app.state.tool_registry = ToolFactory.discover(config, approved_files=approved_files)
+    # --- Tool registry ---
+    app.state.tool_registry = ToolFactory.discover(config)
     logger.info("Tool registry: %d tools", len(app.state.tool_registry.tools()))
 
     # --- Planner (cheap LLM call for task description) ---
@@ -131,8 +126,6 @@ async def lifespan(app: FastAPI):
 
     # --- Shutdown ---
     await ps.stop_all()
-
-    # ModelPool clients are stateless (litellm manages connections)
 
 
 def create_app(config: Settings) -> FastAPI:
