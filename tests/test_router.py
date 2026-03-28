@@ -419,30 +419,30 @@ class TestAgenticLoop:
 
 class TestErrorSanitization:
     def test_rate_limit(self):
-        from hive.agent import _sanitize_llm_error
+        from hive.llm.base import LLMAgent
 
-        assert _sanitize_llm_error("Rate limit exceeded: 429") == "Rate limit reached"
+        assert LLMAgent._sanitize_error("Rate limit exceeded: 429") == "Rate limit reached"
 
     def test_auth_error(self):
-        from hive.agent import _sanitize_llm_error
+        from hive.llm.base import LLMAgent
 
-        assert _sanitize_llm_error("AuthenticationError: invalid key") == "LLM auth failed"
+        assert LLMAgent._sanitize_error("AuthenticationError: invalid key") == "LLM auth failed"
 
     def test_timeout(self):
-        from hive.agent import _sanitize_llm_error
+        from hive.llm.base import LLMAgent
 
-        assert _sanitize_llm_error("Request timeout after 30s") == "LLM request timed out"
+        assert LLMAgent._sanitize_error("Request timeout after 30s") == "LLM request timed out"
 
     def test_connection_error(self):
-        from hive.agent import _sanitize_llm_error
+        from hive.llm.base import LLMAgent
 
-        assert _sanitize_llm_error("ConnectionError: refused") == "Could not connect to LLM"
+        assert LLMAgent._sanitize_error("ConnectionError: refused") == "Could not connect to LLM"
 
     def test_unknown_capped(self):
-        from hive.agent import _sanitize_llm_error
+        from hive.llm.base import LLMAgent
 
         long_msg = "x" * 200
-        result = _sanitize_llm_error(long_msg)
+        result = LLMAgent._sanitize_error(long_msg)
         assert len(result) <= 120
 
 
@@ -493,7 +493,7 @@ class TestPlannerIntegration:
         assert llm.chat.call_count == 2  # plan + agent
 
     async def test_planner_on_injects_plan_text(self, registry):
-        """Planner produces task description, agent sees plan in user message."""
+        """Planner produces task description, agent sees plan in system prompt."""
         from hive.llm.planner import Planner
 
         planner = Planner(registry=registry)
@@ -514,12 +514,12 @@ class TestPlannerIntegration:
         assert resp["type"] == "message"
         assert llm.chat.call_count == 2
 
-        # Agent loop (second call) should see both plan and original user input
+        # Agent loop (second call): plan in system prompt, user input separate
         agent_messages = llm.chat.call_args_list[1][0][0]
+        system_msg = [m for m in agent_messages if m.get("role") == "system"][0]
+        assert "## Plan" in system_msg["content"]
+        assert "Echo the input back." in system_msg["content"]
         user_msg = [m for m in agent_messages if m.get("role") == "user"][-1]
-        assert "[Plan]" in user_msg["content"]
-        assert "Echo the input back." in user_msg["content"]
-        assert "[User request]" in user_msg["content"]
         assert "echo test" in user_msg["content"]
 
     async def test_planner_on_failure_falls_through(self, registry):
@@ -547,11 +547,10 @@ class TestPlannerIntegration:
     # -- Planner OFF --
 
     async def test_planner_off_no_plan_call(self, registry):
-        """Planner OFF: no plan() call, agent runs directly."""
+        """Planner OFF: no planning call, agent runs directly."""
         from hive.llm.planner import Planner
 
         planner = Planner(registry=registry)
-        planner.plan = AsyncMock()  # spy -- should NOT be called
 
         llm = self._mock_llm([self._text_response("Done.")])
         resp = await route_input(
@@ -562,7 +561,8 @@ class TestPlannerIntegration:
             use_planner=False,
         )
         assert resp["type"] == "message"
-        planner.plan.assert_not_called()
+        # Only 1 LLM call (worker), no planning call
+        assert llm.chat.call_count == 1
 
     async def test_planner_off_agent_sees_user_input(self, registry):
         """Planner OFF: agent loop receives raw user input, not plan."""

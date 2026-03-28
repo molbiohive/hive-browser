@@ -131,28 +131,27 @@ class TestPlan:
 
     async def test_returns_plan_text_and_usage(self, planner):
         llm = self._mock_llm("Search the database for GFP sequences.")
-        plan_text, usage = await planner.plan("find GFP", llm)
+        plan_text, usage = await planner.prepare("find GFP").run(llm)
         assert "GFP" in plan_text
         assert usage["in"] == 50
         assert usage["out"] == 10
 
     async def test_conversational_plan(self, planner):
         llm = self._mock_llm("respond conversationally")
-        plan_text, _ = await planner.plan("hello", llm)
+        plan_text, _ = await planner.prepare("hello").run(llm)
         assert "conversationally" in plan_text
 
     async def test_plan_passes_history(self, planner):
         llm = self._mock_llm("Follow up on the previous search.")
         history = [{"role": "user", "content": "prev"}, {"role": "assistant", "content": "ok"}]
-        await planner.plan("follow up", llm, history=history)
+        await planner.prepare("follow up", history=history).run(llm)
         call_args = llm.chat.call_args[0][0]
         # system + 2 history + user = 4 messages
         assert len(call_args) == 4
 
     async def test_catalog_has_typed_signatures(self, planner):
-        """Planner catalog uses detailed signatures from registry."""
         llm = self._mock_llm("plan text")
-        await planner.plan("test", llm)
+        await planner.prepare("test").run(llm)
         messages = llm.chat.call_args[0][0]
         system_msg = messages[0]["content"]
         assert "search(query:string, tags:string?)" in system_msg

@@ -1,14 +1,15 @@
-"""LLM package -- client abstraction, planner, prompt construction, model pool."""
+"""LLM package -- agent base, planner, worker, client, model pool."""
 
+from hive.llm.base import LLMAgent
 from hive.llm.client import LLMClient
 from hive.llm.planner import Planner
 from hive.llm.pool import ModelPool
-from hive.llm.prompts import build_plan_messages, build_system_prompt
+from hive.llm.worker import Worker
 
 __all__ = [
+    "LLMAgent",
     "LLMClient",
     "ModelPool",
     "Planner",
-    "build_plan_messages",
-    "build_system_prompt",
+    "Worker",
 ]

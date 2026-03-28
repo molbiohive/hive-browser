@@ -160,9 +160,9 @@ class TestToolFactoryInternal:
 
 class TestPrompts:
     def test_system_prompt_content(self):
-        from hive.llm.prompts import build_system_prompt
+        from hive.llm.worker import system_prompt
 
-        prompt = build_system_prompt()
+        prompt = system_prompt()
 
         assert "Hive Browser" in prompt
         assert "fabricate" in prompt
