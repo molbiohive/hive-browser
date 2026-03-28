@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api")
 
 
-# ── User endpoints ────────────────────────────────────────
+# -- User endpoints ----------------------------------------
 
 
 @router.post("/users")
@@ -97,7 +97,7 @@ async def get_current_user(request: Request):
         }
 
 
-# ── Chat endpoints ────────────────────────────────────────
+# -- Chat endpoints ----------------------------------------
 
 
 async def _get_user_slug(request: Request) -> str | None:
@@ -181,7 +181,7 @@ async def _discover_ollama(base_url: str, configured: list[dict]) -> list[dict]:
     return []
 
 
-# ── Collections ───────────────────────────────────────────
+# -- Collections -------------------------------------------
 
 
 @router.get("/collections")
@@ -270,7 +270,7 @@ async def delete_collection_endpoint(collection_id: int):
         return {"deleted": deleted}
 
 
-# ── Enzyme / Primer item lists (for collection picker) ────
+# -- Enzyme / Primer item lists (for collection picker) ----
 
 
 @router.get("/enzymes")
@@ -322,7 +322,7 @@ async def list_primer_parts():
         ]
 
 
-# ── Search / BLAST endpoints (for search panel) ──────────
+# -- Search / BLAST endpoints (for search panel) ----------
 
 
 @router.get("/search")
@@ -377,7 +377,7 @@ async def health():
 
 @router.get("/status")
 async def status():
-    """System status — indexed files, DB health, LLM status."""
+    """System status -- indexed files, DB health, LLM status."""
     if not db.async_session_factory:
         return {
             "indexed_files": 0,

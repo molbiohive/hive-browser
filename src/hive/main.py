@@ -1,4 +1,4 @@
-"""Entry point — creates and runs the FastAPI application."""
+"""Entry point -- creates and runs the FastAPI application."""
 
 import logging
 from logging.handlers import RotatingFileHandler
@@ -32,12 +32,12 @@ def init_logging(config: Settings) -> None:
     console.setFormatter(logging.Formatter(fmt))
     root.addHandler(console)
 
-    # File — hive.log, 10MB x 5
+    # File -- hive.log, 10MB x 5
     fh = RotatingFileHandler(log_dir / "hive.log", maxBytes=10_000_000, backupCount=5)
     fh.setFormatter(logging.Formatter(fmt))
     root.addHandler(fh)
 
-    # LLM dump — llm.jsonl, 50MB x 3
+    # LLM dump -- llm.jsonl, 50MB x 3
     if config.logging.llm_dump:
         llm_logger = logging.getLogger("hive.llm.dump")
         llm_handler = RotatingFileHandler(log_dir / "llm.jsonl", maxBytes=50_000_000, backupCount=3)

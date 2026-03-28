@@ -1,4 +1,4 @@
-"""ProcessRegistry — centralized lifecycle management for background tasks."""
+"""ProcessRegistry -- centralized lifecycle management for background tasks."""
 
 from __future__ import annotations
 
@@ -91,7 +91,7 @@ class ProcessRegistry:
             info.finished_at = datetime.now(UTC)
 
     def pause(self, name: str) -> None:
-        """Pause a running process (cooperative — waits for next ctx.check())."""
+        """Pause a running process (cooperative -- waits for next ctx.check())."""
         if name not in self._processes:
             raise KeyError(f"Unknown process: {name}")
 

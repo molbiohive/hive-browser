@@ -1,4 +1,4 @@
-"""Admin token management — generate, save, load."""
+"""Admin token management -- generate, save, load."""
 
 import logging
 import secrets

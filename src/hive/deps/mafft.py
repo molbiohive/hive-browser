@@ -1,4 +1,4 @@
-"""MAFFT dependency — multiple sequence alignment."""
+"""MAFFT dependency -- multiple sequence alignment."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class MafftDep(Dep):
-    """MAFFT external dependency — multiple sequence alignment."""
+    """MAFFT external dependency -- multiple sequence alignment."""
 
     name = "mafft"
     needs_rebuild_on_ingest = False

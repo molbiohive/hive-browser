@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup/shutdown lifecycle — graceful when services unavailable."""
+    """Startup/shutdown lifecycle -- graceful when services unavailable."""
     config: Settings = app.state.config
     app.state.started_at = datetime.now(UTC)
     app.state.db_ready = False

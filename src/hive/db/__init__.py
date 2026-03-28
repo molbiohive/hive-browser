@@ -1,4 +1,4 @@
-"""Database package — async session management and ORM models."""
+"""Database package -- async session management and ORM models."""
 
 from hive.db.models import (
     Annotation,

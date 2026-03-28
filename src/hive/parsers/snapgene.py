@@ -5,10 +5,10 @@ from pathlib import Path
 from hive.cloning.primers import find_primer_sites
 from hive.parsers.base import ParsedFeature, ParsedPrimer, ParseResult
 
-# sgffp block IDs → molecule type
+# sgffp block IDs -> molecule type
 _BLOCK_MOLECULE_TYPE = {0: "DNA", 1: "DNA", 21: "protein", 32: "RNA"}
 
-# sgffp strand strings → integer (DB stores SmallInteger)
+# sgffp strand strings -> integer (DB stores SmallInteger)
 _STRAND_MAP = {"+": 1, "-": -1, ".": 0, "1": 1, "-1": -1}
 
 
@@ -29,7 +29,7 @@ def _serialize_history_tree(node, history, main_features=None) -> list[dict]:
                 enzymes.append({"name": name, "site_count": count})
 
         # Use block 11 content for properly parsed SgffFeature objects.
-        # Tree node .features is raw XML dicts — not usable directly.
+        # Tree node .features is raw XML dicts -- not usable directly.
         features = []
         content = history.get_node(n.id)
         if content:
@@ -46,7 +46,7 @@ def _serialize_history_tree(node, history, main_features=None) -> list[dict]:
                 )
 
         # Root node fallback: sgffp stores root features as main sequence
-        # features (block 11), not in history content — use main_features.
+        # features (block 11), not in history content -- use main_features.
         if not features and parent_id is None and main_features:
             for f in main_features:
                 features.append(

@@ -1,4 +1,4 @@
-"""File system watcher — startup scan + live monitoring."""
+"""File system watcher -- startup scan + live monitoring."""
 
 from __future__ import annotations
 

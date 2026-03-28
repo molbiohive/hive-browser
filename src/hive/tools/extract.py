@@ -1,4 +1,4 @@
-"""Extract tool — get subsequence by feature, primer, or region from a sequence."""
+"""Extract tool -- get subsequence by feature, primer, or region from a sequence."""
 
 from __future__ import annotations
 
@@ -77,7 +77,7 @@ class ExtractTool(Tool):
             parent_seq = seq_row.sequence
             topology = seq_row.topology
 
-            # Extract by primer name — query PartInstance + PartName
+            # Extract by primer name -- query PartInstance + PartName
             if inp.primer_name:
                 pi = await _find_part_instance(
                     session,
@@ -147,7 +147,7 @@ class ExtractTool(Tool):
                     "length": len(subseq),
                 }
 
-            # No feature/primer/region — return full sequence
+            # No feature/primer/region -- return full sequence
             return {
                 "sequence": parent_seq,
                 "name": seq_row.name,

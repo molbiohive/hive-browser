@@ -1,4 +1,4 @@
-"""Scan processes — initial scan, rescan, and reindex."""
+"""Scan processes -- initial scan, rescan, and reindex."""
 
 from __future__ import annotations
 

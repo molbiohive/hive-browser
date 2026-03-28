@@ -1,4 +1,4 @@
-"""Align tool — multiple sequence alignment using MAFFT."""
+"""Align tool -- multiple sequence alignment using MAFFT."""
 
 from __future__ import annotations
 

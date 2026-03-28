@@ -1,1 +1,1 @@
-"""Hive Browser — lab sequence search platform."""
+"""Hive Browser -- lab sequence search platform."""

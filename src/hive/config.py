@@ -1,4 +1,14 @@
-"""Application configuration — loads from env vars and hive_config.yaml."""
+"""Application configuration -- loads from env vars and hive_config.yaml.
+
+Module hierarchy (each layer may only import from layers above it):
+
+    config -> db -> parsers -> watcher
+                -> cloning -> libs
+                -> deps
+                -> tools -> llm -> sandbox -> agent -> server
+                -> ps
+                -> users -> chat -> admin
+"""
 
 import os
 from pathlib import Path
@@ -60,7 +70,7 @@ class LogConfig(BaseSettings):
 
 class ChatConfig(BaseSettings):
     max_history_pairs: int = 20
-    widget_data_threshold: int = 16384  # bytes — strip widget data above this size
+    widget_data_threshold: int = 16384  # bytes -- strip widget data above this size
     rerun_stale_widgets: int = 3  # auto-rerun on chat load: 0=none, N=last N, -1=all
 
 
@@ -112,7 +122,7 @@ class Settings(BaseSettings):
         return str(Path(self.data_root).expanduser() / "logs")
 
 
-# Set by load_config() — expanded watcher root for display path logic
+# Set by load_config() -- expanded watcher root for display path logic
 _watcher_root: str | None = None
 
 
@@ -134,7 +144,7 @@ def resolve_host_path(path: str) -> str:
 def display_file_path(path: str) -> str:
     """Convert absolute file path to display path relative to watcher root.
 
-    Returns ``root_name/relative/path/file.ext`` — e.g. ``sequences/project/file.dna``.
+    Returns ``root_name/relative/path/file.ext`` -- e.g. ``sequences/project/file.dna``.
     In Docker, host path translation is applied first.
     """
     path = resolve_host_path(path)

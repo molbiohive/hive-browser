@@ -6,7 +6,7 @@ from hive.config import Settings
 from hive.tools.base import Tool, ToolRegistry, _params_to_schema
 from hive.tools.factory import ToolFactory
 
-# ── Helpers ──
+# -- Helpers --
 
 
 class DummyTool(Tool):
@@ -39,7 +39,7 @@ class ParamsTool(Tool):
         return {"data": params}
 
 
-# ── Tool Base Class ──
+# -- Tool Base Class --
 
 
 class TestToolMetadata:
@@ -99,7 +99,7 @@ class TestParamsToSchema:
         assert schema["properties"]["limit"]["default"] == 10
 
 
-# ── Tool Registry ──
+# -- Tool Registry --
 
 
 class TestToolRegistry:
@@ -130,7 +130,7 @@ class TestToolRegistry:
         assert meta[0]["name"] == "dummy"
 
 
-# ── ToolFactory — Internal Discovery ──
+# -- ToolFactory -- Internal Discovery --
 
 
 class TestToolFactoryInternal:
@@ -155,7 +155,7 @@ class TestToolFactoryInternal:
         assert {"search", "blast", "profile", "digest"} <= all_names
 
 
-# ── Prompts ──
+# -- Prompts --
 
 
 class TestPrompts:

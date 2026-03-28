@@ -1,4 +1,4 @@
-"""Tools package — self-describing tool interface, registry, and factory."""
+"""Tools package -- self-describing tool interface, registry, and factory."""
 
 from hive.tools.base import Tool, ToolRegistry
 from hive.tools.factory import ToolFactory

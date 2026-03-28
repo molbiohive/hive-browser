@@ -1,4 +1,4 @@
-"""Search tool — BM25 full-text search using ParadeDB pg_search.
+"""Search tool -- BM25 full-text search using ParadeDB pg_search.
 
 Supports boolean queries: "KanR && circular" (AND), "GFP || RFP" (OR).
 """

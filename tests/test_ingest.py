@@ -1,4 +1,4 @@
-"""Tests for the ingestion pipeline — parse files and store in DB."""
+"""Tests for the ingestion pipeline -- parse files and store in DB."""
 
 from pathlib import Path
 

@@ -1,4 +1,4 @@
-"""GC content tool — calculate nucleotide composition."""
+"""GC content tool -- calculate nucleotide composition."""
 
 from __future__ import annotations
 

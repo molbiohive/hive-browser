@@ -1,4 +1,4 @@
-"""BLAST+ dependency — subprocess wrappers for all BLAST programs."""
+"""BLAST+ dependency -- subprocess wrappers for all BLAST programs."""
 
 from __future__ import annotations
 
@@ -47,7 +47,7 @@ DB_EXT = {"nucl": ".ndb", "prot": ".pdb"}
 
 
 class BlastDep(Dep):
-    """BLAST+ external dependency — index building and sequence search."""
+    """BLAST+ external dependency -- index building and sequence search."""
 
     name = "blast"
     needs_rebuild_on_ingest = True

@@ -13,7 +13,7 @@ from hive.admin.token import HIVE_HOME, load_token
 DEFAULT_URL = "http://localhost:8080"
 
 
-# ── HTTP helpers ──────────────────────────────────────────────────────
+# -- HTTP helpers ------------------------------------------------------
 
 
 def _client(args) -> tuple[httpx.Client, dict]:
@@ -74,7 +74,7 @@ def _pp(data):
     print(json.dumps(data, indent=2))
 
 
-# ── DB helper (direct commands, no server needed) ────────────────────
+# -- DB helper (direct commands, no server needed) --------------------
 
 
 def _db_url():
@@ -91,7 +91,7 @@ async def _run_db(coro_fn):
         await coro_fn(s)
 
 
-# ── Top-level commands ────────────────────────────────────────────────
+# -- Top-level commands ------------------------------------------------
 
 
 def cmd_status(args):
@@ -111,7 +111,7 @@ def cmd_token(args):
         sys.exit(1)
 
 
-# ── ps ────────────────────────────────────────────────────────────────
+# -- ps ----------------------------------------------------------------
 
 
 def cmd_ps_list(args):
@@ -145,7 +145,7 @@ def cmd_ps_resume(args):
     _pp(_post(args, f"/admin/ps/{args.name}/resume"))
 
 
-# ── db ────────────────────────────────────────────────────────────────
+# -- db ----------------------------------------------------------------
 
 
 def cmd_db_errors(args):
@@ -210,7 +210,7 @@ def cmd_db_prune(args):
         print(f"  [{d['id']}] {d['path']}")
 
 
-# ── users ─────────────────────────────────────────────────────────────
+# -- users -------------------------------------------------------------
 
 
 def cmd_users_list(args):
@@ -277,7 +277,7 @@ def cmd_users_edit(args):
     asyncio.run(_run_db(_edit))
 
 
-# ── feedback ──────────────────────────────────────────────────────────
+# -- feedback ----------------------------------------------------------
 
 
 def cmd_feedback_stats(args):
@@ -339,7 +339,7 @@ def cmd_feedback_report(args):
     asyncio.run(_run_db(_report))
 
 
-# ── lib ──────────────────────────────────────────────────────────────
+# -- lib --------------------------------------------------------------
 
 
 def cmd_lib_list(args):
@@ -416,7 +416,7 @@ def cmd_lib_export(args):
     asyncio.run(_run_db(_export))
 
 
-# ── Parser ────────────────────────────────────────────────────────────
+# -- Parser ------------------------------------------------------------
 
 
 def _add_group(sub, name, help_text, commands):

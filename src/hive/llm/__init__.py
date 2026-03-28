@@ -1,4 +1,4 @@
-"""LLM package — client abstraction, planner, prompt construction, model pool."""
+"""LLM package -- client abstraction, planner, prompt construction, model pool."""
 
 from hive.llm.client import LLMClient
 from hive.llm.planner import Planner

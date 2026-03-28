@@ -1,4 +1,4 @@
-"""Parser interface — common data structures for all parsers."""
+"""Parser interface -- common data structures for all parsers."""
 
 from dataclasses import dataclass, field
 

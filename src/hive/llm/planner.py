@@ -1,4 +1,4 @@
-"""Planner — cheap LLM call to produce a task description for the agent."""
+"""Planner -- cheap LLM call to produce a task description for the agent."""
 
 from __future__ import annotations
 

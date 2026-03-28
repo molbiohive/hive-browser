@@ -1,4 +1,4 @@
-"""Translate tool — DNA/RNA to protein translation."""
+"""Translate tool -- DNA/RNA to protein translation."""
 
 from __future__ import annotations
 

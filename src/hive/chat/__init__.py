@@ -1,4 +1,4 @@
-"""Chat persistence — JSON file-based chat history."""
+"""Chat persistence -- JSON file-based chat history."""
 
 from hive.chat.storage import ChatStorage
 

@@ -1,4 +1,4 @@
-"""Transcribe tool — DNA to RNA transcription."""
+"""Transcribe tool -- DNA to RNA transcription."""
 
 from __future__ import annotations
 

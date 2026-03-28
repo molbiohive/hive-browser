@@ -1,4 +1,4 @@
-"""External binary dependencies — BLAST+, MAFFT, and registry."""
+"""External binary dependencies -- BLAST+, MAFFT, and registry."""
 
 from hive.deps.base import Dep, DepRegistry
 from hive.deps.blast import BlastDep

@@ -1,4 +1,4 @@
-"""BLAST tool — sequence similarity search using all BLAST+ programs."""
+"""BLAST tool -- sequence similarity search using all BLAST+ programs."""
 
 from __future__ import annotations
 
@@ -237,7 +237,7 @@ def _is_protein(s: str) -> bool:
     if len(clean) < 4:
         return False
     # If it contains any protein-only characters, it's protein
-    # Otherwise ambiguous (e.g. "ACGT" valid as both) — default to nucl
+    # Otherwise ambiguous (e.g. "ACGT" valid as both) -- default to nucl
     return any(c in _PROT_ONLY for c in clean)
 
 

@@ -38,7 +38,7 @@ def validate_envelope(data: dict) -> tuple[str, int, list]:
     return typ, version, items
 
 
-# ── Import ───────────────────────────────────────────────────────────
+# -- Import -----------------------------------------------------------
 
 
 async def import_lib(session: AsyncSession, path: Path) -> dict:
@@ -150,7 +150,7 @@ async def import_lib(session: AsyncSession, path: Path) -> dict:
     }
 
 
-# ── Export ───────────────────────────────────────────────────────────
+# -- Export -----------------------------------------------------------
 
 
 async def export_lib(session: AsyncSession, name: str, path: Path):

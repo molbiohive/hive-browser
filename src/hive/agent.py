@@ -1,4 +1,4 @@
-"""Tool router — dispatches user input to the correct tool via LLM or direct invocation."""
+"""Tool router -- dispatches user input to the correct tool via LLM or direct invocation."""
 
 from __future__ import annotations
 
@@ -42,19 +42,19 @@ async def route_input(
     tool_call_budget: int = 100,
 ) -> dict[str, Any]:
     """
-    Route user input → tool execution → response.
+    Route user input -> tool execution -> response.
 
     Three modes:
-      //command args → direct tool execution, no LLM
-      /command args  → LLM extracts params for specified tool, then summarizes
-      free text      → unified agentic loop (LLM picks tools, chains, converses)
+      //command args -> direct tool execution, no LLM
+      /command args  -> LLM extracts params for specified tool, then summarizes
+      free text      -> unified agentic loop (LLM picks tools, chains, converses)
     """
 
-    # ── /help or //help — list available commands ──
+    # -- /help or //help -- list available commands --
     if user_input.strip().lstrip("/") == "help":
         return _help_response(registry)
 
-    # ── Mode 1: Direct — //command ──
+    # -- Mode 1: Direct -- //command --
     if match := DIRECT_PATTERN.match(user_input):
         tool_name = match.group(1)
         args_text = match.group(2).strip()
@@ -62,7 +62,7 @@ async def route_input(
         if not tool:
             return _error(f"Unknown tool: {tool_name}")
 
-        # No args → always show form (all visible tools must have one)
+        # No args -> always show form (all visible tools must have one)
         if not args_text:
             return _form_response(tool_name, tool.long_desc, tool.input_schema())
 
@@ -70,7 +70,7 @@ async def route_input(
         result = await tool.execute(params)
         return _tool_response(tool_name, result, params, tool.format_result(result))
 
-    # ── Mode 2: Guided — /command ──
+    # -- Mode 2: Guided -- /command --
     if match := GUIDED_PATTERN.match(user_input):
         tool_name = match.group(1)
         text = match.group(2).strip()
@@ -79,7 +79,7 @@ async def route_input(
             return _error(f"Unknown tool: {tool_name}")
 
         if not llm_client:
-            # No LLM — execute directly
+            # No LLM -- execute directly
             if not text:
                 return _form_response(tool_name, tool.long_desc, tool.input_schema())
 
@@ -104,7 +104,7 @@ async def route_input(
             tool_call_budget=tool_call_budget,
         )
 
-    # ── Mode 3: Natural language — unified agentic loop ──
+    # -- Mode 3: Natural language -- unified agentic loop --
     if not llm_client:
         return _error("LLM not available. Use /command or //command syntax.")
 
@@ -124,7 +124,7 @@ async def route_input(
     )
 
 
-# ── Unified Loop ──
+# -- Unified Loop --
 
 
 async def _unified_loop(
@@ -141,7 +141,7 @@ async def _unified_loop(
     workspace: Workspace | None = None,
     tool_call_budget: int = 100,
 ) -> dict[str, Any]:
-    """Unified agentic loop — LLM converses and chains tools as needed.
+    """Unified agentic loop -- LLM converses and chains tools as needed.
 
     Flat context: messages are rebuilt from scratch each turn. A compact
     turn_log replaces accumulated assistant+tool message pairs.
@@ -150,7 +150,7 @@ async def _unified_loop(
     All other tools (search, blast, profile, ...) are callable from python code.
     """
 
-    # Build tasks schema once — only tasks gets a function-calling schema
+    # Build tasks schema once -- only tasks gets a function-calling schema
     tasks = registry.get("tasks")
     assert tasks, "tasks tool must be registered"
     tasks_schema = {
@@ -189,7 +189,7 @@ async def _unified_loop(
 
     await _emit("thinking")
 
-    # ── Optional planner (produces task description for agent context) ──
+    # -- Optional planner (produces task description for agent context) --
     if planner and use_planner:
         try:
             plan_content, plan_usage = await planner.plan(
@@ -214,7 +214,7 @@ async def _unified_loop(
         task_ctx = "Current tasks:\n" + "\n".join(task_lines)
 
     def _build_messages() -> list[dict]:
-        """Rebuild messages from scratch each turn — flat context."""
+        """Rebuild messages from scratch each turn -- flat context."""
         msgs: list[dict] = [{"role": "system", "content": build_system_prompt()}]
 
         if task_ctx:
@@ -245,7 +245,7 @@ async def _unified_loop(
         return msgs
 
     for turn in range(max_turns):
-        # Rebuild messages from scratch — no accumulated pairs
+        # Rebuild messages from scratch -- no accumulated pairs
         messages = _build_messages()
 
         # tasks + python always available
@@ -310,7 +310,7 @@ async def _unified_loop(
                 "tokens": tokens,
             }
 
-        # LLM responded with text — done
+        # LLM responded with text -- done
         if not msg.get("tool_calls"):
             content = msg.get("content", "")
             logger.info(
@@ -319,7 +319,7 @@ async def _unified_loop(
                 [s["tool"] for s in chain],
             )
 
-            # Successful completion — flush report to r<N> handles
+            # Successful completion -- flush report to r<N> handles
             if sandbox.report:
                 sandbox.flush_report()
                 last_result = sandbox.report
@@ -411,7 +411,7 @@ async def _unified_loop(
                 continue
 
             # Only tasks is exposed as a function-calling tool.
-            # All other tools are callable from python — reject hallucinated direct calls.
+            # All other tools are callable from python -- reject hallucinated direct calls.
             if tool_name != "tasks":
                 err = f"'{tool_name}' is callable from python: {tool_name}(param=value)"
                 messages.append(
@@ -431,7 +431,7 @@ async def _unified_loop(
             await _emit("thinking")
 
     else:
-        # for-loop exhausted without break → max turns exceeded
+        # for-loop exhausted without break -> max turns exceeded
         logger.warning(
             "Unified loop hit max turns (%d): %s",
             max_turns,
@@ -450,7 +450,7 @@ async def _unified_loop(
             resp["plan"] = plan_text
         return resp
 
-    # ── Final summary round: ask LLM to review results (no tools) ──
+    # -- Final summary round: ask LLM to review results (no tools) --
     fallback = ""
     if chain and not error_msg:
         fallback = await _final_summary(
@@ -465,7 +465,7 @@ async def _unified_loop(
         else:
             fallback = chain[-1]["summary"] if chain else ""
 
-    # Flush report only when no LLM error — preserve workspace for retry
+    # Flush report only when no LLM error -- preserve workspace for retry
     if sandbox.report:
         if not error_msg:
             sandbox.flush_report()
@@ -493,7 +493,7 @@ async def _unified_loop(
     return resp
 
 
-# ── Final Summary ──
+# -- Final Summary --
 
 
 async def _final_summary(
@@ -519,7 +519,7 @@ async def _final_summary(
         prompt += f"Report sections ready: {', '.join(report_keys)}\n\n"
     prompt += (
         "Write a 1-3 sentence summary of what you found for the user. "
-        "Do NOT repeat table data — the user can see it in the widget. "
+        "Do NOT repeat table data -- the user can see it in the widget. "
         "Be concise and direct."
     )
 
@@ -540,7 +540,7 @@ async def _final_summary(
         return ""
 
 
-# ── Helpers ──
+# -- Helpers --
 
 
 def _sanitize_llm_error(raw: str) -> str:
@@ -592,7 +592,7 @@ def _help_response(registry: ToolRegistry) -> dict:
     """Build a help message listing all available commands."""
     lines = ["**Available commands:**\n"]
     for tool in registry.tools():
-        lines.append(f"- **/{tool.name}** — {tool.long_desc}")
+        lines.append(f"- **/{tool.name}** -- {tool.long_desc}")
     lines.append("\nPrefix with `//` for direct execution (no LLM), e.g. `//search ampicillin`.")
     return {"type": "message", "content": "\n".join(lines)}
 
@@ -605,7 +605,7 @@ def _error_hint(err_text: str, workspace: Workspace, sandbox: SandboxRunner) -> 
     """Build actionable hint for common sandbox errors."""
     import re as _re
 
-    # KeyError 'foo' → show available keys
+    # KeyError 'foo' -> show available keys
     m = _re.search(r"KeyError:?\s*['\"](\w+)['\"]", err_text)
     if m:
         # Try to find a list[dict] in workspace to show its keys
@@ -615,7 +615,7 @@ def _error_hint(err_text: str, workspace: Workspace, sandbox: SandboxRunner) -> 
                 return f"keys: {{{keys}}}"
         return None
 
-    # NameError 'bar' → show available names
+    # NameError 'bar' -> show available names
     m = _re.search(r"NameError:?\s*.*?'(\w+)'", err_text)
     if m:
         ns = list(workspace.namespace().keys())

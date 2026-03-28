@@ -3,7 +3,7 @@
 from hive.deps import Dep, DepRegistry
 from hive.deps.blast import BlastDep
 
-# ── Helpers ──
+# -- Helpers --
 
 
 class FakeDep(Dep):
@@ -32,7 +32,7 @@ class RebuildDep(Dep):
         return True
 
 
-# ── Dep ABC ──
+# -- Dep ABC --
 
 
 class TestDep:
@@ -47,7 +47,7 @@ class TestDep:
         assert result is True
 
 
-# ── DepRegistry ──
+# -- DepRegistry --
 
 
 class TestDepRegistry:
@@ -99,7 +99,7 @@ class TestDepRegistry:
         assert results["fake"]["version"] == "1.0"
 
 
-# ── BlastDep ──
+# -- BlastDep --
 
 
 class TestBlastDep:

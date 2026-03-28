@@ -66,7 +66,7 @@ class SandboxRunner:
         return callables
 
     def _make_desc_fn(self) -> Any:
-        """Build desc() — detailed inspection, results shown in workspace."""
+        """Build desc() -- detailed inspection, results shown in workspace."""
         ws = self.workspace
 
         def desc(var, name="?"):

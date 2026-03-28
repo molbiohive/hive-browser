@@ -1,4 +1,4 @@
-"""Process primitives — state, context, and abstract base class."""
+"""Process primitives -- state, context, and abstract base class."""
 
 from __future__ import annotations
 

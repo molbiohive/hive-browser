@@ -1,4 +1,4 @@
-"""File parsers — registry maps parser name to implementation."""
+"""File parsers -- registry maps parser name to implementation."""
 
 from hive.parsers.base import ParseResult
 from hive.parsers.fasta import parse_fasta

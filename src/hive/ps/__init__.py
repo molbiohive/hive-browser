@@ -1,4 +1,4 @@
-"""Process system — centralized registry for background tasks."""
+"""Process system -- centralized registry for background tasks."""
 
 from hive.ps.base import Process, ProcessContext, ProcessState, ProcessStoppedError
 from hive.ps.match import MatchProcess

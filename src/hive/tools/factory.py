@@ -1,4 +1,4 @@
-"""ToolFactory — discovers and registers internal tools."""
+"""ToolFactory -- discovers and registers internal tools."""
 
 from __future__ import annotations
 

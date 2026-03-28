@@ -1,4 +1,4 @@
-"""Server package — FastAPI app, REST routes, WebSocket handler."""
+"""Server package -- FastAPI app, REST routes, WebSocket handler."""
 
 from hive.server.app import create_app
 

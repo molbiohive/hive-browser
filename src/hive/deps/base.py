@@ -1,4 +1,4 @@
-"""Dep ABC and DepRegistry — unified interface for external binary dependencies."""
+"""Dep ABC and DepRegistry -- unified interface for external binary dependencies."""
 
 from __future__ import annotations
 

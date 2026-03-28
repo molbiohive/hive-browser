@@ -20,7 +20,7 @@ class Tool(ABC):
                      short_label: 1-3 words for Available commands section.
                      long_description: full text for help, palette, forms.
         tags:        Group identifiers for UI categorization (e.g. "search", "analysis", "info").
-        params:      Declarative param definitions for external tools (dict → JSON Schema).
+        params:      Declarative param definitions for external tools (dict -> JSON Schema).
     """
 
     name: str

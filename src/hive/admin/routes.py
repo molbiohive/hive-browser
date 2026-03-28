@@ -1,4 +1,4 @@
-"""Admin API endpoints — protected by bearer token."""
+"""Admin API endpoints -- protected by bearer token."""
 
 import logging
 from datetime import UTC, datetime
@@ -29,12 +29,12 @@ async def verify_token(
         raise HTTPException(status_code=401, detail="Invalid admin token")
 
 
-# ── Health & Status ──────────────────────────────────────────────────
+# -- Health & Status --------------------------------------------------
 
 
 @admin_router.get("/health", dependencies=[Depends(verify_token)])
 async def admin_health(request: Request):
-    """Detailed health check — DB connectivity, watcher state."""
+    """Detailed health check -- DB connectivity, watcher state."""
     db_ok = False
     db_latency = None
 
@@ -65,7 +65,7 @@ async def admin_health(request: Request):
 
 @admin_router.get("/status", dependencies=[Depends(verify_token)])
 async def admin_status(request: Request):
-    """Full system status — counts, watcher, config summary."""
+    """Full system status -- counts, watcher, config summary."""
     counts = {"indexed_files": 0, "sequences": 0, "parts": 0, "part_instances": 0}
 
     if db.async_session_factory:
@@ -102,7 +102,7 @@ async def admin_status(request: Request):
     }
 
 
-# ── Process Control ─────────────────────────────────────────────────
+# -- Process Control -------------------------------------------------
 
 
 def _get_ps(request: Request):
@@ -170,7 +170,7 @@ async def ps_resume(name: str, request: Request):
     return {"status": "resumed", "name": name}
 
 
-# ── Database ─────────────────────────────────────────────────────────
+# -- Database ---------------------------------------------------------
 
 
 @admin_router.get("/db/errors", dependencies=[Depends(verify_token)])
@@ -202,12 +202,12 @@ async def db_errors(request: Request):
     }
 
 
-# ── DB Audit/Cleanup ─────────────────────────────────────────────────
+# -- DB Audit/Cleanup -------------------------------------------------
 
 
 @admin_router.post("/db/audit", dependencies=[Depends(verify_token)])
 async def db_audit(request: Request, body: dict | None = None):
-    """Audit database integrity — counts, duplicates, orphans."""
+    """Audit database integrity -- counts, duplicates, orphans."""
     if not getattr(request.app.state, "db_ready", False):
         raise HTTPException(status_code=503, detail="Database not available")
 
@@ -257,7 +257,7 @@ async def db_prune(request: Request, body: dict | None = None):
         )
 
 
-# ── Libraries ────────────────────────────────────────────────────────
+# -- Libraries --------------------------------------------------------
 
 
 @admin_router.get("/libraries", dependencies=[Depends(verify_token)])
@@ -366,7 +366,7 @@ async def add_to_library(lib_id: int, body: dict):
         return {"status": "added", "library": lib.name, "pid": pid}
 
 
-# ── Helpers ──────────────────────────────────────────────────────────
+# -- Helpers ----------------------------------------------------------
 
 
 def _uptime(request: Request) -> float | None:

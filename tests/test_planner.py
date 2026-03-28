@@ -9,7 +9,7 @@ from hive.llm.planner import Planner
 from hive.llm.prompts import build_tool_catalog
 from hive.tools.base import Tool
 
-# ── Fixtures ──
+# -- Fixtures --
 
 
 class FakeTool(Tool):
@@ -47,7 +47,7 @@ def planner(tools):
     return Planner(tools=tools)
 
 
-# ── Catalog ──
+# -- Catalog --
 
 
 class TestCatalog:
@@ -66,7 +66,7 @@ class TestCatalog:
         assert "similarity search" in catalog
 
 
-# ── Planning ──
+# -- Planning --
 
 
 class TestPlan:

@@ -1,4 +1,4 @@
-"""Profile tool — full details of a single sequence."""
+"""Profile tool -- full details of a single sequence."""
 
 from __future__ import annotations
 
@@ -54,7 +54,7 @@ class ProfileTool(Tool):
         seq = result.get("sequence")
         if not seq:
             return "Sequence not found."
-        return f"{seq['name']} — {seq['size_bp']} bp, {seq['topology']}"
+        return f"{seq['name']} -- {seq['size_bp']} bp, {seq['topology']}"
 
     async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         """Fetch complete sequence profile from the database."""
@@ -231,7 +231,7 @@ class ProfileTool(Tool):
                 aa = quals.get("translation")
                 if not quals.get("translated") or not aa:
                     continue
-                # Multi-segment CDS: comma-separated AAs → concatenate
+                # Multi-segment CDS: comma-separated AAs -> concatenate
                 if "," in aa:
                     aa = aa.replace(",", "")
                 # Frame from codon_start (1-based) or reading_frame

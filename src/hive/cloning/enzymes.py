@@ -210,7 +210,7 @@ def find_all_cutters(
     return cutters
 
 
-# ── Bootstrap ────────────────────────────────────────────────────────
+# -- Bootstrap --------------------------------------------------------
 
 
 async def bootstrap_enzymes(session: AsyncSession) -> int:

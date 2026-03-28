@@ -1,4 +1,4 @@
-"""User management — registration, auth, preferences, feedback."""
+"""User management -- registration, auth, preferences, feedback."""
 
 from hive.users.service import (
     create_feedback,

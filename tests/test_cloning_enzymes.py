@@ -28,7 +28,7 @@ def _make_enzyme(**kwargs):
     return SimpleNamespace(**defaults)
 
 
-# ── Helper tests ─────────────────────────────────────────────────
+# -- Helper tests -------------------------------------------------
 
 
 class TestSiteToRegex:
@@ -60,7 +60,7 @@ class TestReverseComplement:
         assert reverse_complement("GANTC") == "GANTC"  # palindrome with N
 
 
-# ── Cut site scanner ─────────────────────────────────────────────
+# -- Cut site scanner ---------------------------------------------
 
 
 def _enzymes(*args) -> dict:

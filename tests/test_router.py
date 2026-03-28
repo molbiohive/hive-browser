@@ -18,7 +18,7 @@ from hive.agent import (
     route_input,
 )
 
-# ── Helpers ──
+# -- Helpers --
 
 
 class SearchStubTool(Tool):
@@ -120,7 +120,7 @@ def registry():
     return reg
 
 
-# ── Mode Detection Patterns ──
+# -- Mode Detection Patterns --
 
 
 class TestModePatterns:
@@ -146,7 +146,7 @@ class TestModePatterns:
 
 
 
-# ── Pure Helpers ──
+# -- Pure Helpers --
 
 
 class TestParseArgs:
@@ -196,7 +196,7 @@ class TestResponseHelpers:
         assert "/direct" in resp["content"]
 
 
-# ── Route Input: Direct Mode ──
+# -- Route Input: Direct Mode --
 
 
 class TestDirectMode:
@@ -227,7 +227,7 @@ class TestDirectMode:
         assert resp["tool"] == "echo"
 
 
-# ── Route Input: Help ──
+# -- Route Input: Help --
 
 
 class TestHelp:
@@ -238,7 +238,7 @@ class TestHelp:
 
 
 
-# ── Route Input: Guided Mode (no LLM) ──
+# -- Route Input: Guided Mode (no LLM) --
 
 
 class TestGuidedNoLLM:
@@ -259,7 +259,7 @@ class TestGuidedNoLLM:
         assert "Unknown tool" in resp["content"]
 
 
-# ── Route Input: Natural Language (no LLM) ──
+# -- Route Input: Natural Language (no LLM) --
 
 
 class TestNaturalNoLLM:
@@ -268,7 +268,7 @@ class TestNaturalNoLLM:
         assert "LLM not available" in resp["content"]
 
 
-# ── Unified Agentic Loop ──
+# -- Unified Agentic Loop --
 
 
 class TestAgenticLoop:
@@ -308,7 +308,7 @@ class TestAgenticLoop:
         }
 
     async def test_simple_conversation(self, registry):
-        """LLM responds with text, no tools → message response."""
+        """LLM responds with text, no tools -> message response."""
         llm = self._mock_llm([self._text_response("Hello! How can I help?")])
         resp = await route_input("hello", registry, llm_client=llm)
         assert resp["type"] == "message"
@@ -341,7 +341,7 @@ class TestAgenticLoop:
         assert resp["chain"][1]["tool"] == "tasks"
 
     async def test_unknown_tool_from_llm(self, registry):
-        """LLM hallucinates a tool name → error message sent back, then text."""
+        """LLM hallucinates a tool name -> error message sent back, then text."""
         llm = self._mock_llm(
             [
                 self._tool_call_response("imaginary_tool", {}, call_id="c1"),
@@ -353,12 +353,12 @@ class TestAgenticLoop:
         assert "Sorry" in resp["content"]
 
     async def test_max_turns_exceeded(self, registry):
-        """Loop hits max turns → returns last result with summary attempt."""
+        """Loop hits max turns -> returns last result with summary attempt."""
         llm = self._mock_llm(
             [
                 self._tool_call_response("tasks", {"action": "add", "text": "t1"}, call_id="c1"),
                 self._tool_call_response("tasks", {"action": "add", "text": "t2"}, call_id="c2"),
-                # 3rd call: _final_summary (no tools) → text response
+                # 3rd call: _final_summary (no tools) -> text response
                 self._text_response("Here is a summary of results."),
             ]
         )
@@ -384,7 +384,7 @@ class TestAgenticLoop:
         assert phases[0] == "thinking"
 
     async def test_non_tasks_tool_rejected(self, registry):
-        """Non-tasks tool called via function calling → error pointing to sandbox."""
+        """Non-tasks tool called via function calling -> error pointing to sandbox."""
         llm = self._mock_llm(
             [
                 self._tool_call_response("search", {"query": "test"}),
@@ -414,7 +414,7 @@ class TestAgenticLoop:
         assert "Could not connect" in resp["content"]
 
 
-# ── Error Sanitization ──
+# -- Error Sanitization --
 
 
 class TestErrorSanitization:
@@ -447,7 +447,7 @@ class TestErrorSanitization:
 
 
 
-# ── Planner Integration ──
+# -- Planner Integration --
 
 
 class TestPlannerIntegration:
@@ -464,7 +464,7 @@ class TestPlannerIntegration:
             "usage": usage or {"prompt_tokens": 100, "completion_tokens": 20},
         }
 
-    # ── Planner ON (default) ──
+    # -- Planner ON (default) --
 
     async def test_planner_always_runs_agent_loop(self, registry):
         """Planner ON always runs agent loop -- no ANSWER shortcut."""
@@ -544,14 +544,14 @@ class TestPlannerIntegration:
         assert resp["type"] == "message"
         assert "Recovered" in resp["content"]
 
-    # ── Planner OFF ──
+    # -- Planner OFF --
 
     async def test_planner_off_no_plan_call(self, registry):
         """Planner OFF: no plan() call, agent runs directly."""
         from hive.llm.planner import Planner
 
         planner = Planner(tools=registry.tools())
-        planner.plan = AsyncMock()  # spy — should NOT be called
+        planner.plan = AsyncMock()  # spy -- should NOT be called
 
         llm = self._mock_llm([self._text_response("Done.")])
         resp = await route_input(
@@ -586,7 +586,7 @@ class TestPlannerIntegration:
 
 
 
-# ── Sandbox Integration ──
+# -- Sandbox Integration --
 
 
 class TestSandboxIntegration:

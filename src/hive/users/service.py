@@ -1,4 +1,4 @@
-"""User service — create, lookup, list, and manage user preferences."""
+"""User service -- create, lookup, list, and manage user preferences."""
 
 import re
 import secrets

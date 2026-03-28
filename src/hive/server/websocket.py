@@ -107,13 +107,13 @@ async def websocket_endpoint(websocket: WebSocket):
     planner = getattr(app.state, "planner", None)
     max_pairs = config.chat.max_history_pairs if config else 20
 
-    # Per-connection model selection — use user preference if valid, else default
+    # Per-connection model selection -- use user preference if valid, else default
     current_model_id = model_pool.default_id if model_pool else None
     pref_model = (user.preferences or {}).get("model_id")
     if pref_model and model_pool and _resolve_model(model_pool, pref_model, config):
         current_model_id = pref_model
 
-    # Per-connection planner toggle — defaults to True when available
+    # Per-connection planner toggle -- defaults to True when available
     use_planner = bool((user.preferences or {}).get("use_planner", True))
 
     # Per-connection chat tracking (mutable dict so background tasks can update it)
@@ -167,14 +167,14 @@ async def websocket_endpoint(websocket: WebSocket):
                 continue
             data = json.loads(raw)
 
-            # Handle cancel — abort any running processing task
+            # Handle cancel -- abort any running processing task
             if data.get("type") == "cancel":
                 task = manager.tasks.get(conn_id)
                 if task and not task.done():
                     task.cancel()
                 continue
 
-            # Handle model switch — seamless, no chat message
+            # Handle model switch -- seamless, no chat message
             if data.get("type") == "set_model":
                 model_id = data.get("modelId")
                 client = (
@@ -255,7 +255,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         logger.warning("Feedback save failed: %s", e)
                 continue
 
-            # Handle new chat — reset server-side state
+            # Handle new chat -- reset server-side state
             if data.get("type") == "new_chat":
                 chat["id"] = None
                 chat["messages"] = []
@@ -474,7 +474,7 @@ async def _handle_message(
     use_planner: bool = True,
     user_id: int | None = None,
 ):
-    """Process a user message — runs as a cancellable background task."""
+    """Process a user message -- runs as a cancellable background task."""
     try:
         current_user_id.set(user_id)
         current_chat_tasks.set(chat.get("tasks", []))
@@ -497,7 +497,7 @@ async def _handle_message(
             tool_call_budget=config.llm.tool_call_budget if config else 100,
         )
 
-        # Trim workspace between messages — only on success.
+        # Trim workspace between messages -- only on success.
         # On LLM error, preserve p<N> handles so next message can continue.
         if not result.get("llm_error"):
             ws: Workspace = chat["workspace"]
@@ -508,13 +508,13 @@ async def _handle_message(
         if result.get("type") != "form":
             chat["messages"].append({"role": "user", "content": content, "ts": _now_iso()})
 
-        # Track assistant response — extract thinking blocks from content
+        # Track assistant response -- extract thinking blocks from content
         assistant_content = result.get("content", "")
         assistant_content, thinking = _extract_thinking(assistant_content)
         if assistant_content:
             manager.append_history(conn_id, "assistant", assistant_content, max_pairs)
 
-        # Build response — include model metadata and token counts
+        # Build response -- include model metadata and token counts
         result_tokens = result.get("tokens")
         response: dict = {"type": "message", "content": assistant_content, "model": model_id}
         if thinking:
@@ -543,11 +543,11 @@ async def _handle_message(
                 "data": result["data"],
             }
 
-        # Chain of tools — always pass when present (even without widget)
+        # Chain of tools -- always pass when present (even without widget)
         if result.get("chain") and "widget" not in response:
             response["chain"] = result["chain"]
 
-        # Save assistant message (skip forms — they're ephemeral UI)
+        # Save assistant message (skip forms -- they're ephemeral UI)
         if result.get("type") != "form":
             assistant_msg: dict = {
                 "role": "assistant",
@@ -605,7 +605,7 @@ async def _handle_message(
             )
 
             # Generate title once (LLM with fallback to first message words)
-            # Skip LLM title gen if rate-limited — use fallback instead
+            # Skip LLM title gen if rate-limited -- use fallback instead
             if not chat["title_generated"]:
                 chat["title_generated"] = True
                 title = None
@@ -758,7 +758,7 @@ def _strip_large_widget_data(msg: dict, threshold: int) -> dict:
     widget = msg.get("widget")
     if not widget or not widget.get("data") or widget.get("type") == "form":
         return msg
-    # Always persist sandbox report data — can't be re-run without workspace
+    # Always persist sandbox report data -- can't be re-run without workspace
     if widget.get("tool") == "python":
         return msg
     data_size = len(json.dumps(widget["data"], default=str))

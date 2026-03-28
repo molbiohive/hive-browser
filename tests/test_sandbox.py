@@ -4,7 +4,7 @@ from hive.sandbox.exec import safe_exec
 from hive.sandbox.runner import SandboxRunner
 from hive.sandbox.workspace import Workspace
 
-# ── Workspace ──
+# -- Workspace --
 
 
 class TestWorkspace:
@@ -121,7 +121,7 @@ class TestWorkspace:
         assert "..." in desc
 
 
-# ── safe_exec ──
+# -- safe_exec --
 
 
 class TestSafeExec:
@@ -240,7 +240,7 @@ class TestSafeExec:
         assert "data" not in result["user_vars"]
 
 
-# ── SandboxRunner ──
+# -- SandboxRunner --
 
 
 class TestSandboxRunner:

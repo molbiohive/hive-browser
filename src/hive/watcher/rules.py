@@ -1,4 +1,4 @@
-"""Rule engine for file watcher — matches files against YAML-configured rules."""
+"""Rule engine for file watcher -- matches files against YAML-configured rules."""
 
 import fnmatch
 import logging

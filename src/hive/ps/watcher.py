@@ -1,4 +1,4 @@
-"""WatcherProcess — wraps watch_directory as a managed process."""
+"""WatcherProcess -- wraps watch_directory as a managed process."""
 
 from __future__ import annotations
 

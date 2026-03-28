@@ -32,13 +32,13 @@ class Workspace:
     """Central data context for the LLM agent.
 
     Holds three kinds of data:
-      - **Handles** (p0, p1, r0, r1, ...) — tool results stored by the router.
-      - **User variables** — Python variables persisted across sandbox calls.
-      - **Step history** — compact log of what the LLM has done.
+      - **Handles** (p0, p1, r0, r1, ...) -- tool results stored by the router.
+      - **User variables** -- Python variables persisted across sandbox calls.
+      - **Step history** -- compact log of what the LLM has done.
 
     Two methods produce all LLM-facing context:
-      - ``describe()`` — current scope (what data exists and how to access it).
-      - ``history()``  — progress (what was done and what happened).
+      - ``describe()`` -- current scope (what data exists and how to access it).
+      - ``history()``  -- progress (what was done and what happened).
     """
 
     def __init__(self):
@@ -47,7 +47,7 @@ class Workspace:
         self._steps: list[dict] = []
         self._desc_results: list[tuple[str, str]] = []
 
-    # ── Core storage ──
+    # -- Core storage --
 
     def store(
         self, key: str, value: Any, tool: str, params: dict[str, Any] | None = None,
@@ -91,7 +91,7 @@ class Workspace:
         """All handles as Python variables for sandbox injection."""
         return {entry.handle: entry.value for entry in self._entries}
 
-    # ── User variables (persisted across sandbox calls within a message) ──
+    # -- User variables (persisted across sandbox calls within a message) --
 
     @property
     def user_vars(self) -> dict[str, Any]:
@@ -100,7 +100,7 @@ class Workspace:
     def update_vars(self, new_vars: dict[str, Any]) -> None:
         self._user_vars.update(new_vars)
 
-    # ── Step tracking (replaces turn_log) ──
+    # -- Step tracking (replaces turn_log) --
 
     def add_step(
         self, tool: str, feedback: str,
@@ -116,17 +116,17 @@ class Workspace:
     def steps(self) -> list[dict]:
         return self._steps
 
-    # ── LLM context: describe() + history() ──
+    # -- LLM context: describe() + history() --
 
     def describe(
         self,
         report: dict[str, Any] | None = None,
         tool_signatures: list[str] | None = None,
     ) -> str:
-        """Python-comment style scope — everything the LLM can access.
+        """Python-comment style scope -- everything the LLM can access.
 
-        Groups: pipeline handles → user variables → report →
-        persistent handles → desc() results → available commands.
+        Groups: pipeline handles -> user variables -> report ->
+        persistent handles -> desc() results -> available commands.
 
         """
         lines: list[str] = []
@@ -169,7 +169,7 @@ class Workspace:
                     lines.append(f"#   {dl}")
             self._desc_results.clear()
 
-        # Available commands — one per line
+        # Available commands -- one per line
         if tool_signatures:
             lines.append("#")
             for sig in tool_signatures:
@@ -182,7 +182,7 @@ class Workspace:
         self._desc_results.append((var_name, detail))
 
     def history(self, max_steps: int = 5) -> str:
-        """Compact progress log — ok/x prefixed lines.
+        """Compact progress log -- ok/x prefixed lines.
 
         Format::
 
@@ -211,7 +211,7 @@ class Workspace:
                     lines.append(f"# ok: {s['tool']} -> {fb}")
         return "\n".join(lines)
 
-    # ── Lifecycle ──
+    # -- Lifecycle --
 
     def reset_loop(self) -> None:
         """Clear per-message state (user variables, step history)."""
@@ -232,7 +232,7 @@ class Workspace:
     def __contains__(self, handle: str) -> bool:
         return self._find_entry(handle) is not None
 
-    # ── Serialization ──
+    # -- Serialization --
 
     def to_json(self) -> list[dict]:
         out = []
@@ -273,7 +273,7 @@ class Workspace:
         return None
 
 
-# ── Public value descriptor ──
+# -- Public value descriptor --
 
 
 def describe_value(value: Any) -> str:
@@ -284,7 +284,7 @@ def describe_value(value: Any) -> str:
 
     Examples::
 
-        list[dict], 5 rows — keys: {sid, name, size_bp, topology}
+        list[dict], 5 rows -- keys: {sid, name, size_bp, topology}
         dict {sequence: {sid, name, size_bp, ...}, features: [{pid, name, type}]}
         str, 5000 chars
         42
@@ -303,14 +303,14 @@ def describe_value(value: Any) -> str:
         if isinstance(value[0], dict):
             keys = ", ".join(list(value[0].keys())[:8])
             more = ", ..." if len(value[0]) > 8 else ""
-            return f"list[dict], {len(value)} rows — keys: {{{keys}{more}}}"
+            return f"list[dict], {len(value)} rows -- keys: {{{keys}{more}}}"
         return f"list[{type(value[0]).__name__}], {len(value)} items"
     if isinstance(value, dict):
         return f"dict {_dict_schema(value)}"
     return type(value).__name__
 
 
-# ── Internal helpers ──
+# -- Internal helpers --
 
 
 def _type_label(value: Any) -> str:
@@ -391,7 +391,7 @@ def _value_shape(value: Any) -> str:
 def _render_value(handle: str, value: Any) -> list[str]:
     """Rich multi-line rendering of a value for describe().
 
-    dict: JSON-like with nested expansion — every key visible.
+    dict: JSON-like with nested expansion -- every key visible.
     list[dict]: first row expanded inline.
     Other: nothing (shape in header is enough).
     """

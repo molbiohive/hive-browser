@@ -1,4 +1,4 @@
-"""Database audit and cleanup operations — audit, dedupe, prune."""
+"""Database audit and cleanup operations -- audit, dedupe, prune."""
 
 import json
 import logging
@@ -26,7 +26,7 @@ async def audit(
     watcher_root: str,
     verbose: bool = False,
 ) -> dict:
-    """Audit database integrity — counts, duplicates, orphans.
+    """Audit database integrity -- counts, duplicates, orphans.
 
     Returns a structured dict with totals, duplicate groups, and orphan files.
     """

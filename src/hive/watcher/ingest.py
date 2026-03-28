@@ -1,4 +1,4 @@
-"""Ingestion pipeline — parse file, upsert into database with Part-based identity."""
+"""Ingestion pipeline -- parse file, upsert into database with Part-based identity."""
 
 import hashlib
 import logging
@@ -163,7 +163,7 @@ async def ingest_file(
     file_path = file_path.resolve()
     stat = file_path.stat()
 
-    # Check if already indexed — fast mtime check before expensive hash
+    # Check if already indexed -- fast mtime check before expensive hash
     existing = await session.execute(
         select(IndexedFile).where(IndexedFile.file_path == str(file_path))
     )
@@ -235,7 +235,7 @@ async def ingest_file(
         if tags:
             meta["tags"] = tags
 
-    # Upsert Sequence — update in-place to keep SID stable
+    # Upsert Sequence -- update in-place to keep SID stable
     existing_seq = await session.execute(select(Sequence).where(Sequence.file_id == indexed.id))
     seq = existing_seq.scalar_one_or_none()
 

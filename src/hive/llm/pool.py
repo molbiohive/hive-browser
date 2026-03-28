@@ -1,4 +1,4 @@
-"""Model pool — lazy cache of LLMClient instances, one per configured model."""
+"""Model pool -- lazy cache of LLMClient instances, one per configured model."""
 
 from __future__ import annotations
 

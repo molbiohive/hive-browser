@@ -1,4 +1,4 @@
-"""Reverse complement tool — get reverse complement of a DNA sequence."""
+"""Reverse complement tool -- get reverse complement of a DNA sequence."""
 
 from __future__ import annotations
 

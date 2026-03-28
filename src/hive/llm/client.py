@@ -1,4 +1,4 @@
-"""LLM client — unified provider support via litellm."""
+"""LLM client -- unified provider support via litellm."""
 
 import json
 import logging
@@ -22,7 +22,7 @@ class LLMClient:
     def __init__(self, config: ModelEntry):
         self._config = config
 
-        # Build litellm model identifier — litellm always needs provider/ prefix
+        # Build litellm model identifier -- litellm always needs provider/ prefix
         self._model = f"{config.provider}/{config.model}"
 
     @property
@@ -62,7 +62,7 @@ class LLMClient:
                 base = base[:-3]
             kwargs["api_base"] = base
         elif self._config.base_url:
-            # Custom endpoint (vLLM, etc.) — pass base URL to litellm
+            # Custom endpoint (vLLM, etc.) -- pass base URL to litellm
             kwargs["api_base"] = self._config.base_url
 
         if self._config.api_key:
@@ -72,7 +72,7 @@ class LLMClient:
             # but litellm requires one to be set
             kwargs["api_key"] = "no-key"
 
-        kwargs["timeout"] = 120  # seconds — prevent indefinite hangs
+        kwargs["timeout"] = 120  # seconds -- prevent indefinite hangs
         kwargs["num_retries"] = 3  # litellm auto-retry on transient errors
 
         # vLLM + thinking models (Qwen3): optionally disable thinking per call
@@ -119,7 +119,7 @@ class LLMClient:
     async def health(self) -> bool:
         """Check if the LLM service is reachable."""
         if self._config.base_url:
-            # Local providers (Ollama, vLLM, etc.) — ping the endpoint
+            # Local providers (Ollama, vLLM, etc.) -- ping the endpoint
             try:
                 base = self._config.base_url.rstrip("/")
                 if not base.endswith("/v1"):
@@ -130,7 +130,7 @@ class LLMClient:
             except httpx.HTTPError:
                 return False
         else:
-            # Cloud providers — healthy if api_key is configured
+            # Cloud providers -- healthy if api_key is configured
             return bool(self._config.api_key)
 
     async def close(self):

@@ -1,4 +1,4 @@
-"""SQLAlchemy models — hybrid schema with JSON/JSONB meta.
+"""SQLAlchemy models -- hybrid schema with JSON/JSONB meta.
 
 Uses generic JSON type for cross-DB compatibility (SQLite in tests).
 The Alembic migration uses PostgreSQL JSONB explicitly for production.
@@ -126,7 +126,7 @@ class CloningStep(Base):
     __table_args__ = (UniqueConstraint("sequence_id", "node_id", name="uq_cloning_step_seq_node"),)
 
 
-# ── Part system ──────────────────────────────────────────────────
+# -- Part system --------------------------------------------------
 
 
 class Part(Base):
@@ -189,7 +189,7 @@ class PartInstance(Base):
     )
 
 
-# ── Libraries ────────────────────────────────────────────────────
+# -- Libraries ----------------------------------------------------
 
 
 class Library(Base):
@@ -219,7 +219,7 @@ class LibraryMember(Base):
     __table_args__ = (UniqueConstraint("library_id", "part_id", name="uq_library_part"),)
 
 
-# ── Annotations ──────────────────────────────────────────────────
+# -- Annotations --------------------------------------------------
 
 
 class Annotation(Base):
@@ -236,7 +236,7 @@ class Annotation(Base):
     __table_args__ = (Index("idx_annotation_part_key", "part_id", "key"),)
 
 
-# ── Enzymes ──────────────────────────────────────────────────────
+# -- Enzymes ------------------------------------------------------
 
 
 class Enzyme(Base):
@@ -253,7 +253,7 @@ class Enzyme(Base):
     is_blunt: Mapped[bool] = mapped_column(Boolean)
 
 
-# ── Collections ─────────────────────────────────────────────────
+# -- Collections -------------------------------------------------
 
 
 class Collection(Base):
@@ -269,7 +269,7 @@ class Collection(Base):
     __table_args__ = (Index("idx_collection_type", "set_type"),)
 
 
-# ── Feedback ─────────────────────────────────────────────────────
+# -- Feedback -----------------------------------------------------
 
 
 class Feedback(Base):

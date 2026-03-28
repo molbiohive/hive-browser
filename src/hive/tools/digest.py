@@ -1,4 +1,4 @@
-"""Digest tool — restriction enzyme digestion analysis."""
+"""Digest tool -- restriction enzyme digestion analysis."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from hive.db import session as db
 from hive.tools.base import Tool
 from hive.tools.resolve import resolve_and_clean
 
-# NEB 1kb+ DNA Ladder — (size_bp, relative_intensity)
+# NEB 1kb+ DNA Ladder -- (size_bp, relative_intensity)
 _1KB_PLUS_LADDER = [
     (10000, 0.4),
     (8000, 0.3),

@@ -14,7 +14,7 @@ from hive.tools.sites import SitesTool
 from hive.tools.transcribe import TranscribeTool
 from hive.tools.translate import TranslateTool
 
-# ── Translate ──
+# -- Translate --
 
 
 class TestTranslate:
@@ -44,7 +44,7 @@ class TestTranslate:
 
 
 
-# ── Transcribe ──
+# -- Transcribe --
 
 
 class TestTranscribe:
@@ -62,7 +62,7 @@ class TestTranscribe:
         assert "error" in result
 
 
-# ── Digest ──
+# -- Digest --
 
 
 def _mock_enzymes():
@@ -171,7 +171,7 @@ class TestDigest:
 
 
 
-# ── GC Content ──
+# -- GC Content --
 
 
 class TestGC:
@@ -195,7 +195,7 @@ class TestGC:
 
 
 
-# ── Reverse Complement ──
+# -- Reverse Complement --
 
 
 class TestRevComp:
@@ -213,7 +213,7 @@ class TestRevComp:
         assert "error" in result
 
 
-# ── Extract: _slice_sequence ──
+# -- Extract: _slice_sequence --
 
 
 class TestSliceSequence:
@@ -224,11 +224,11 @@ class TestSliceSequence:
         assert _slice_sequence("ABCDE", 0, 5, "linear") == "ABCDE"
 
     def test_circular_wraparound(self):
-        # start=8, end=3 on circular → last 2 + first 3
+        # start=8, end=3 on circular -> last 2 + first 3
         assert _slice_sequence("ABCDEFGHIJ", 8, 3, "circular") == "IJABC"
 
     def test_linear_no_wrap(self):
-        # start > end on linear → empty (no wrap support)
+        # start > end on linear -> empty (no wrap support)
         result = _slice_sequence("ABCDEFGHIJ", 8, 3, "linear")
         assert result == ""  # seq[8:3] = ""
 
@@ -270,7 +270,7 @@ class TestParseBoolQuery:
         assert op == "and"
 
 
-# ── resolve_input ──
+# -- resolve_input --
 
 
 class TestResolveInput:
@@ -343,7 +343,7 @@ class TestResolveInput:
             assert meta["source"] == "sid"
 
 
-# ── Digest without DB returns error ──
+# -- Digest without DB returns error --
 
 
 class TestDigestNoDB:
@@ -355,7 +355,7 @@ class TestDigestNoDB:
         assert "error" in result
 
 
-# ── Sites (inverse digest) ──
+# -- Sites (inverse digest) --
 
 
 class TestSites:

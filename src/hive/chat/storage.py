@@ -1,4 +1,4 @@
-"""Chat storage — JSON file persistence on the server.
+"""Chat storage -- JSON file persistence on the server.
 
 File naming: {user_slug}-{chat_id}.json (or {chat_id}.json without user).
 Storage dir: configurable via config.chat.storage_dir.
