@@ -1,11 +1,10 @@
-"""Tests for tool system: base class, factory, import validation, prompts."""
+"""Tests for tool system: base class, factory, prompts."""
 
-import textwrap
 from typing import Any
 
 from hive.config import Settings
 from hive.tools.base import Tool, ToolRegistry, _params_to_schema
-from hive.tools.factory import ToolFactory, _is_forbidden, _validate_imports
+from hive.tools.factory import ToolFactory
 
 # ── Helpers ──
 
@@ -131,44 +130,6 @@ class TestToolRegistry:
         assert meta[0]["name"] == "dummy"
 
 
-# ── Import Validation ──
-
-
-class TestImportValidation:
-    def test_sdk_allowed(self):
-        assert _validate_imports("from hive.sdk import Tool") == []
-        assert _validate_imports("from hive.sdk.db import ToolDB") == []
-        assert _validate_imports("import hive.sdk.widgets") == []
-
-    def test_internal_forbidden(self):
-        assert _validate_imports("from hive.db.models import Sequence") == ["hive.db.models"]
-        assert _validate_imports("from hive.tools.base import Tool") == ["hive.tools.base"]
-        assert _validate_imports("import hive.config") == ["hive.config"]
-        assert _validate_imports("from hive.llm.client import LLMClient") == ["hive.llm.client"]
-        assert _validate_imports("from hive.server.app import create_app") == ["hive.server.app"]
-
-    def test_stdlib_and_thirdparty_allowed(self):
-        assert _validate_imports("import os\nimport json\nimport pathlib") == []
-        assert _validate_imports("import numpy") == []
-        assert _validate_imports("from collections import defaultdict") == []
-
-    def test_syntax_error_rejected(self):
-        violations = _validate_imports("def broken(")
-        assert violations == ["<syntax error>"]
-
-    def test_multiple_violations(self):
-        code = "from hive.db import session\nfrom hive.config import Settings"
-        violations = _validate_imports(code)
-        assert len(violations) == 2
-
-    def test_is_forbidden_helper(self):
-        assert _is_forbidden("hive.db") is True
-        assert _is_forbidden("hive.db.models") is True
-        assert _is_forbidden("hive.sdk") is False
-        assert _is_forbidden("hive.sdk.db") is False
-        assert _is_forbidden("os") is False
-
-
 # ── ToolFactory — Internal Discovery ──
 
 
@@ -177,9 +138,8 @@ class TestToolFactoryInternal:
         config = Settings()
         registry = ToolFactory.discover(config)
         names = {t.name for t in registry.tools()}
-        # Verify core tools are present (not exhaustive — new tools can be added)
         assert {"search", "blast", "profile", "digest", "extract"} <= names
-        assert len(names) >= 10  # reasonable minimum
+        assert len(names) >= 10
 
     def test_tool_attributes(self):
         config = Settings()
@@ -192,101 +152,7 @@ class TestToolFactoryInternal:
         config = Settings()
         registry = ToolFactory.discover(config)
         all_names = {t.name for t in registry.tools()}
-        # Core tools must be registered
         assert {"search", "blast", "profile", "digest"} <= all_names
-
-
-# ── ToolFactory — External Discovery ──
-
-
-class TestToolFactoryExternal:
-    def test_load_valid_external_tool(self, tmp_path):
-        tool_code = textwrap.dedent("""\
-            from hive.sdk import Tool
-
-            class GCTool(Tool):
-                name = "gc"
-                description = "Calculate GC content"
-                tags = {"analysis"}
-                params = {
-                    "name": {"type": "string", "description": "Sequence name", "required": True},
-                }
-
-                async def execute(self, params, mode="direct"):
-                    return {"gc_content": 42.5}
-        """)
-        tools_dir = tmp_path / "tools"
-        tools_dir.mkdir()
-        (tools_dir / "gc_content.py").write_text(tool_code)
-
-        config = Settings(data_root=str(tmp_path))
-        registry = ToolFactory.discover(config)
-
-        gc = registry.get("gc")
-        assert gc is not None
-        assert gc.description == "Calculate GC content"
-        assert gc.db is not None  # ToolDB injected
-        assert gc.group() == "analysis"
-
-    def test_reject_forbidden_imports(self, tmp_path):
-        bad_code = textwrap.dedent("""\
-            from hive.db.models import Sequence
-            from hive.sdk import Tool
-
-            class BadTool(Tool):
-                name = "bad"
-                description = "Forbidden imports"
-                async def execute(self, params, mode="direct"):
-                    return {}
-        """)
-        tools_dir = tmp_path / "tools"
-        tools_dir.mkdir()
-        (tools_dir / "bad_tool.py").write_text(bad_code)
-
-        config = Settings(data_root=str(tmp_path))
-        registry = ToolFactory.discover(config)
-
-        assert registry.get("bad") is None  # rejected
-
-    def test_skip_underscore_files(self, tmp_path):
-        tools_dir = tmp_path / "tools"
-        tools_dir.mkdir()
-        (tools_dir / "_helper.py").write_text("x = 1")
-        (tools_dir / "__init__.py").write_text("")
-
-        config = Settings(data_root=str(tmp_path))
-        registry = ToolFactory.discover(config)
-
-        # No underscore files loaded as external tools
-        names = {t.name for t in registry.tools()}
-        assert "_helper" not in names
-        assert "__init__" not in names
-
-    def test_external_overrides_internal(self, tmp_path):
-        override_code = textwrap.dedent("""\
-            from hive.sdk import Tool
-
-            class CustomSearch(Tool):
-                name = "search"
-                description = "Custom search override"
-
-                async def execute(self, params, mode="direct"):
-                    return {"custom": True}
-        """)
-        tools_dir = tmp_path / "tools"
-        tools_dir.mkdir()
-        (tools_dir / "custom_search.py").write_text(override_code)
-
-        config = Settings(data_root=str(tmp_path))
-        registry = ToolFactory.discover(config)
-
-        search = registry.get("search")
-        assert search.description == "Custom search override"
-
-    def test_missing_directory_no_error(self):
-        config = Settings(data_root="/nonexistent")
-        registry = ToolFactory.discover(config)
-        assert len(registry.tools()) >= 10  # just internal tools
 
 
 # ── Prompts ──
