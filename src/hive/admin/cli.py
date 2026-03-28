@@ -416,89 +416,6 @@ def cmd_lib_export(args):
     asyncio.run(_run_db(_export))
 
 
-# ── tools ─────────────────────────────────────────────────────────────
-
-
-def cmd_tools_list(args):
-    async def _list(s):
-        from sqlalchemy import select as sel
-
-        from hive.db.models import ToolApproval
-
-        rows = (
-            (await s.execute(sel(ToolApproval).order_by(ToolApproval.created_at))).scalars().all()
-        )
-        if not rows:
-            print("No external tools registered.")
-            return
-        for t in rows:
-            name = t.tool_name or "?"
-            short_hash = t.file_hash[:8]
-            date = t.created_at.strftime("%Y-%m-%d") if t.created_at else ""
-            print(f"  {t.status:<13s} {t.filename:<30s} {name:<20s} {short_hash}  {date}")
-
-    asyncio.run(_run_db(_list))
-
-
-def cmd_tools_approve(args):
-    async def _approve(s):
-        from sqlalchemy import select as sel
-
-        from hive.db.models import ToolApproval
-
-        record = (
-            await s.execute(sel(ToolApproval).where(ToolApproval.filename == args.filename))
-        ).scalar_one_or_none()
-        if not record:
-            print(f"Tool not found: {args.filename}", file=sys.stderr)
-            sys.exit(1)
-        if record.status == "approved":
-            print(f"Already approved: {args.filename}")
-            return
-        from datetime import UTC, datetime
-
-        record.status = "approved"
-        record.reviewed_at = datetime.now(UTC)
-        await s.commit()
-        print(f"Approved: {args.filename}")
-        print("Restart the server to load this tool.")
-
-    asyncio.run(_run_db(_approve))
-
-
-def cmd_tools_reject(args):
-    async def _reject(s):
-        from sqlalchemy import select as sel
-
-        from hive.db.models import ToolApproval
-
-        record = (
-            await s.execute(sel(ToolApproval).where(ToolApproval.filename == args.filename))
-        ).scalar_one_or_none()
-        if not record:
-            print(f"Tool not found: {args.filename}", file=sys.stderr)
-            sys.exit(1)
-        from datetime import UTC, datetime
-
-        record.status = "rejected"
-        record.reviewed_at = datetime.now(UTC)
-        await s.commit()
-        print(f"Rejected: {args.filename}")
-
-    asyncio.run(_run_db(_reject))
-
-
-def cmd_tools_show(args):
-    from hive.config import load_config
-
-    tools_dir = Path(load_config().tools_dir)
-    tool_file = tools_dir / args.filename
-    if not tool_file.is_file():
-        print(f"File not found: {tool_file}", file=sys.stderr)
-        sys.exit(1)
-    print(tool_file.read_text())
-
-
 # ── Parser ────────────────────────────────────────────────────────────
 
 
@@ -704,40 +621,6 @@ def main():
                 [
                     (["name"], {"help": "Library name"}),
                     (["path"], {"help": "Output JSON file path"}),
-                ],
-            ),
-        ],
-    )
-
-    # admin tools <list|approve|reject|show>
-    _add_group(
-        sub,
-        "tool",
-        "External tool quarantine",
-        [
-            ("list", "List tools and approval status", cmd_tools_list, []),
-            (
-                "approve",
-                "Approve a quarantined tool",
-                cmd_tools_approve,
-                [
-                    (["filename"], {"help": "Tool filename (e.g. my_tool.py)"}),
-                ],
-            ),
-            (
-                "reject",
-                "Reject a quarantined tool",
-                cmd_tools_reject,
-                [
-                    (["filename"], {"help": "Tool filename (e.g. my_tool.py)"}),
-                ],
-            ),
-            (
-                "show",
-                "Show tool source code for review",
-                cmd_tools_show,
-                [
-                    (["filename"], {"help": "Tool filename (e.g. my_tool.py)"}),
                 ],
             ),
         ],
