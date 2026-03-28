@@ -48,9 +48,9 @@ async def lifespan(app: FastAPI):
     if app.state.db_ready:
         try:
             from hive.cloning.enzymes import bootstrap_enzymes
-            from hive.db import async_session_factory
+            from hive.db import session as db
 
-            async with async_session_factory() as session:
+            async with db.async_session_factory() as session:
                 await bootstrap_enzymes(session)
                 await session.commit()
         except Exception as e:

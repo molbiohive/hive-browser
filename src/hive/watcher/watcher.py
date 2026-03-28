@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from watchfiles import Change, awatch
 
 from hive.config import WatcherConfig
-from hive.db import async_session_factory
+from hive.db import session as db
 from hive.watcher.ingest import ingest_file, remove_file
 from hive.watcher.rules import match_file
 
@@ -60,7 +60,7 @@ async def scan_and_ingest(
 
     for batch_start in range(0, total, batch_size):
         batch = files[batch_start : batch_start + batch_size]
-        async with async_session_factory() as session:
+        async with db.async_session_factory() as session:
             for path, match in batch:
                 try:
                     result = await ingest_file(
@@ -128,7 +128,7 @@ async def watch_directory(
             path = Path(path_str)
 
             if change_type == Change.deleted:
-                async with async_session_factory() as session:
+                async with db.async_session_factory() as session:
                     await remove_file(session, path)
                 continue
 
@@ -139,7 +139,7 @@ async def watch_directory(
 
             if match.action == "parse":
                 try:
-                    async with async_session_factory() as session:
+                    async with db.async_session_factory() as session:
                         await ingest_file(session, path, match, watcher_root=watcher_root)
                     if dep_registry:
                         await dep_registry.rebuild_all()

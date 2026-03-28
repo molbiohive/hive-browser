@@ -16,7 +16,7 @@ from hive.db.models import (
     Sequence,
     User,
 )
-from hive.db.session import async_session_factory, init_db
+from hive.db.session import init_db
 
 __all__ = [
     "Annotation",
@@ -33,6 +33,5 @@ __all__ = [
     "PartName",
     "Sequence",
     "User",
-    "async_session_factory",
     "init_db",
 ]
