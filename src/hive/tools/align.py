@@ -43,7 +43,7 @@ class AlignTool(Tool):
     def __init__(self, config=None, **_):
         self._dep = None
         if config:
-            from hive.deps.mafft import MafftDep
+            from hive.deps import MafftDep
 
             self._dep = MafftDep(config.deps.mafft.bin_dir)
 

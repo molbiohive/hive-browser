@@ -10,13 +10,12 @@ from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 
 from hive.context import current_chat_tasks
-from hive.llm.client import LLMClient
-from hive.llm.prompts import build_system_prompt
+from hive.llm import LLMClient, build_system_prompt
 from hive.sandbox import SandboxRunner, Workspace
-from hive.tools.base import ToolRegistry
+from hive.tools import ToolRegistry
 
 if TYPE_CHECKING:
-    from hive.llm.planner import Planner
+    from hive.llm import Planner
 
 logger = logging.getLogger(__name__)
 
@@ -178,7 +177,6 @@ async def _unified_loop(
         tool_call_budget=tool_call_budget,
     )
     tokens = {"in": 0, "out": 0}
-    exceeded = False
     error_msg = ""  # LLM error message (vs max_turns exhaustion)
     plan_text = None  # plan injected into agent context
 
@@ -277,12 +275,10 @@ async def _unified_loop(
                 except Exception as e2:
                     logger.error("LLM retry failed (turn %d): %s", turn, e2)
                     error_msg = _sanitize_llm_error(str(e2))
-                    exceeded = True
                     break
             else:
                 logger.error("LLM call failed (turn %d): %s", turn, e)
                 error_msg = sanitized
-                exceeded = True
                 break
 
         # Accumulate token usage
@@ -436,7 +432,6 @@ async def _unified_loop(
 
     else:
         # for-loop exhausted without break → max turns exceeded
-        exceeded = True
         logger.warning(
             "Unified loop hit max turns (%d): %s",
             max_turns,

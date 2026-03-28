@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from hive.tools.base import Tool, ToolRegistry
-from hive.tools.router import (
+from hive.tools import Tool, ToolRegistry
+from hive.agent import (
     DIRECT_PATTERN,
     GUIDED_PATTERN,
     _error,
@@ -419,27 +419,27 @@ class TestAgenticLoop:
 
 class TestErrorSanitization:
     def test_rate_limit(self):
-        from hive.tools.router import _sanitize_llm_error
+        from hive.agent import _sanitize_llm_error
 
         assert _sanitize_llm_error("Rate limit exceeded: 429") == "Rate limit reached"
 
     def test_auth_error(self):
-        from hive.tools.router import _sanitize_llm_error
+        from hive.agent import _sanitize_llm_error
 
         assert _sanitize_llm_error("AuthenticationError: invalid key") == "LLM auth failed"
 
     def test_timeout(self):
-        from hive.tools.router import _sanitize_llm_error
+        from hive.agent import _sanitize_llm_error
 
         assert _sanitize_llm_error("Request timeout after 30s") == "LLM request timed out"
 
     def test_connection_error(self):
-        from hive.tools.router import _sanitize_llm_error
+        from hive.agent import _sanitize_llm_error
 
         assert _sanitize_llm_error("ConnectionError: refused") == "Could not connect to LLM"
 
     def test_unknown_capped(self):
-        from hive.tools.router import _sanitize_llm_error
+        from hive.agent import _sanitize_llm_error
 
         long_msg = "x" * 200
         result = _sanitize_llm_error(long_msg)

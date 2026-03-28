@@ -10,13 +10,12 @@ from typing import TYPE_CHECKING
 from sqlalchemy import delete, select
 
 from hive.config import Settings
+from hive.db import Annotation, Part
 from hive.db import session as db
-from hive.db.models import Annotation, Part
 from hive.ps.base import Process, ProcessContext
 
 if TYPE_CHECKING:
-    from hive.deps import DepRegistry
-    from hive.deps.blast import BlastDep
+    from hive.deps import BlastDep, DepRegistry
 
 logger = logging.getLogger(__name__)
 

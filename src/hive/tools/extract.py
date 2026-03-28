@@ -9,8 +9,8 @@ from sqlalchemy import case, select
 from sqlalchemy.orm import selectinload
 
 from hive.cloning.seq import reverse_complement
+from hive.db import Part, PartInstance, PartName
 from hive.db import session as db
-from hive.db.models import Part, PartInstance, PartName
 from hive.tools.base import Tool
 from hive.tools.resolve import resolve_sequence
 

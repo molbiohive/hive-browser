@@ -9,7 +9,7 @@ from pathlib import Path
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from hive.db.models import (
+from hive.db import (
     IndexedFile,
     Library,
     Part,

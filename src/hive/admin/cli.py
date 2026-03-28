@@ -247,7 +247,7 @@ def cmd_users_rm(args):
     async def _rm(s):
         from sqlalchemy import delete
 
-        from hive.db.models import User
+        from hive.db import User
 
         result = await s.execute(delete(User).where(User.slug == args.slug))
         await s.commit()

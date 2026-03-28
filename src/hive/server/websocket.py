@@ -12,11 +12,11 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy import func, select
 
 from hive.context import current_chat_tasks, current_user_id
+from hive.db import IndexedFile, Part, Sequence, User
 from hive.db import session as db
-from hive.db.models import IndexedFile, Part, Sequence, User
 from hive.sandbox import Workspace
-from hive.tools.router import route_input
-from hive.users.service import create_feedback, get_user_by_token, update_preferences
+from hive.agent import route_input
+from hive.users import create_feedback, get_user_by_token, update_preferences
 
 logger = logging.getLogger(__name__)
 

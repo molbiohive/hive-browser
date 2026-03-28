@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from hive.admin.db import audit, dedupe, prune
-from hive.db.models import Base, IndexedFile, Part, PartInstance, PartName, Sequence
+from hive.db import Base, IndexedFile, Part, PartInstance, PartName, Sequence
 from hive.utils import hash_sequence
 
 FIXTURES = Path(__file__).parent / "fixtures"

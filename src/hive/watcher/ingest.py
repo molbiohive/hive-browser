@@ -9,7 +9,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from hive.cloning.seq import reverse_complement
-from hive.db.models import (
+from hive.db import (
     CloningStep,
     IndexedFile,
     Part,

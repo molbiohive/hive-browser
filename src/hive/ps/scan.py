@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from hive.config import WatcherConfig
 from hive.ps.base import Process, ProcessContext
-from hive.watcher.watcher import scan_and_ingest
+from hive.watcher import scan_and_ingest
 
 if TYPE_CHECKING:
     from hive.deps import DepRegistry

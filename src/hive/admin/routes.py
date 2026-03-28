@@ -9,8 +9,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import func, select, text
 
+from hive.db import IndexedFile, Part, PartInstance, Sequence
 from hive.db import session as db
-from hive.db.models import IndexedFile, Part, PartInstance, Sequence
 from hive.ps import ProcessState
 
 logger = logging.getLogger(__name__)
@@ -266,7 +266,7 @@ async def list_libraries():
     if not db.async_session_factory:
         return {"libraries": []}
 
-    from hive.db.models import Library, LibraryMember
+    from hive.db import Library, LibraryMember
 
     async with db.async_session_factory() as s:
         libs = (
@@ -306,7 +306,7 @@ async def create_library(body: dict):
     if not db.async_session_factory:
         raise HTTPException(status_code=503, detail="Database not available")
 
-    from hive.db.models import Library
+    from hive.db import Library
 
     name = body.get("name", "").strip()
     if not name:
@@ -335,7 +335,7 @@ async def add_to_library(lib_id: int, body: dict):
     if not db.async_session_factory:
         raise HTTPException(status_code=503, detail="Database not available")
 
-    from hive.db.models import Library, LibraryMember
+    from hive.db import Library, LibraryMember
 
     pid = body.get("pid")
     if pid is None:

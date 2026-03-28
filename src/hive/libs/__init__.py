@@ -5,7 +5,7 @@ import logging
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from hive.db.models import Annotation, Library, LibraryMember
+from hive.db import Annotation, Library, LibraryMember
 from hive.libs.classify import classify_part
 
 logger = logging.getLogger(__name__)

@@ -6,9 +6,9 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
 
+from hive.db import IndexedFile, Part, PartInstance, Sequence
 from hive.db import session as db
-from hive.db.models import IndexedFile, Part, PartInstance, Sequence
-from hive.users.service import (
+from hive.users import (
     create_user,
     get_user_by_slug,
     get_user_by_token,
@@ -278,7 +278,7 @@ async def list_enzymes():
     """Return all enzyme names for the collection item picker."""
     if not db.async_session_factory:
         return []
-    from hive.db.models import Enzyme
+    from hive.db import Enzyme
 
     async with db.async_session_factory() as s:
         rows = (
@@ -294,7 +294,7 @@ async def list_primer_parts():
         return []
     from sqlalchemy.orm import selectinload
 
-    from hive.db.models import Part, PartInstance
+    from hive.db import Part, PartInstance
 
     async with db.async_session_factory() as s:
         parts = (

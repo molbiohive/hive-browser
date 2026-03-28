@@ -10,13 +10,13 @@ from typing import TYPE_CHECKING
 from watchfiles import Change, awatch
 
 from hive.config import WatcherConfig
-from hive.db.session import async_session_factory
+from hive.db import async_session_factory
 from hive.watcher.ingest import ingest_file, remove_file
 from hive.watcher.rules import match_file
 
 if TYPE_CHECKING:
     from hive.deps import DepRegistry
-    from hive.ps.base import ProcessContext
+    from hive.ps import ProcessContext
 
 logger = logging.getLogger(__name__)
 

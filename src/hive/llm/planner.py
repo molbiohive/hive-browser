@@ -9,7 +9,7 @@ from hive.llm.prompts import build_plan_messages, build_tool_catalog
 
 if TYPE_CHECKING:
     from hive.llm.client import LLMClient
-    from hive.tools.base import Tool
+    from hive.tools import Tool
 
 logger = logging.getLogger(__name__)
 

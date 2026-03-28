@@ -10,9 +10,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from hive.config import display_file_path
+from hive.db import IndexedFile, Sequence
 from hive.db import session as db
-from hive.db.models import IndexedFile, Sequence
-from hive.deps.blast import BlastDep
+from hive.deps import BlastDep
 from hive.tools.base import Tool
 from hive.tools.resolve import resolve_input
 

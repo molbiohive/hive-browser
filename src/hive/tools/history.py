@@ -8,8 +8,8 @@ from typing import Any
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
+from hive.db import CloningStep
 from hive.db import session as db
-from hive.db.models import CloningStep
 from hive.tools.base import Tool
 from hive.tools.resolve import resolve_sequence
 

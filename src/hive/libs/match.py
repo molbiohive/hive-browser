@@ -6,7 +6,7 @@ import logging
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from hive.db.models import PartName
+from hive.db import PartName
 from hive.libs import add_annotation
 
 logger = logging.getLogger(__name__)

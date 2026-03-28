@@ -12,9 +12,9 @@ from typing import Any
 
 from sqlalchemy import select
 
+from hive.db import IndexedFile, Part, PartName, Sequence
 from hive.db import session as db
-from hive.db.models import IndexedFile, Part, PartName, Sequence
-from hive.deps import Dep
+from hive.deps.base import Dep
 
 logger = logging.getLogger(__name__)
 

@@ -8,17 +8,14 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from hive.admin.routes import admin_router
-from hive.admin.token import generate_token, save_token
-from hive.chat.storage import ChatStorage
+from hive.admin import admin_router, generate_token, save_token
+from hive.chat import ChatStorage
 from hive.config import Settings
-from hive.deps import DepRegistry
-from hive.deps.blast import BlastDep
-from hive.deps.mafft import MafftDep
-from hive.llm.pool import ModelPool
+from hive.deps import BlastDep, DepRegistry, MafftDep
+from hive.llm import ModelPool
 from hive.server.routes import router
 from hive.server.websocket import ws_router
-from hive.tools.factory import ToolFactory
+from hive.tools import ToolFactory
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +38,7 @@ async def lifespan(app: FastAPI):
 
     # --- Database ---
     try:
-        from hive.db.session import init_db
+        from hive.db import init_db
 
         app.state.db_ready = await init_db(config.database)
     except Exception as e:
@@ -51,7 +48,7 @@ async def lifespan(app: FastAPI):
     if app.state.db_ready:
         try:
             from hive.cloning.enzymes import bootstrap_enzymes
-            from hive.db.session import async_session_factory
+            from hive.db import async_session_factory
 
             async with async_session_factory() as session:
                 await bootstrap_enzymes(session)
@@ -85,17 +82,21 @@ async def lifespan(app: FastAPI):
     # --- Planner (cheap LLM call for task description) ---
     app.state.planner = None
     if config.llm.use_planner:
-        from hive.llm.planner import Planner
+        from hive.llm import Planner
 
         all_tools = app.state.tool_registry.tools()
         if all_tools:
             app.state.planner = Planner(tools=all_tools)
 
     # --- Process registry ---
-    from hive.ps import ProcessRegistry
-    from hive.ps.match import MatchProcess
-    from hive.ps.scan import ReindexProcess, RescanProcess, ScanProcess
-    from hive.ps.watcher import WatcherProcess
+    from hive.ps import (
+        MatchProcess,
+        ProcessRegistry,
+        ReindexProcess,
+        RescanProcess,
+        ScanProcess,
+        WatcherProcess,
+    )
 
     ps = ProcessRegistry()
     ps.register(ScanProcess(config.watcher, config.data_root, dep_registry))

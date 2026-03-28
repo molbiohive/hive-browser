@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from hive.db.models import Annotation, Base, Library, LibraryMember, Part
+from hive.db import Annotation, Base, Library, LibraryMember, Part
 from hive.libs import annotate_part, tag_libraries
 from hive.utils import hash_sequence
 

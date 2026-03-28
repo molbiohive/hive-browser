@@ -11,7 +11,7 @@ from hive.sandbox.exec import safe_exec
 from hive.sandbox.workspace import Workspace, detailed_describe
 
 if TYPE_CHECKING:
-    from hive.tools.base import ToolRegistry
+    from hive.tools import ToolRegistry
 
 logger = logging.getLogger(__name__)
 

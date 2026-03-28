@@ -6,7 +6,7 @@ import secrets
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from hive.db.models import Feedback, User
+from hive.db import Feedback, User
 
 _USERNAME_RE = re.compile(r"^[a-zA-Z0-9\-_ ]+$")
 _MAX_USERNAME_LEN = 50

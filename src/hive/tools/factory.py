@@ -30,7 +30,7 @@ def _load_internal(registry: ToolRegistry, config: Settings):
     """Scan hive.tools.* for Tool subclasses and register them."""
     import hive.tools as tools_pkg
 
-    skip = {"base", "router", "factory", "resolve"}
+    skip = {"base", "factory", "resolve"}
     kwargs = {"config": config}
 
     for info in pkgutil.iter_modules(tools_pkg.__path__):

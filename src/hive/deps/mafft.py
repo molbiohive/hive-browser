@@ -8,7 +8,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from hive.deps import Dep
+from hive.deps.base import Dep
 
 logger = logging.getLogger(__name__)
 

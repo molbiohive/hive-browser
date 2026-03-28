@@ -9,17 +9,17 @@ import logging
 import re
 from typing import Any
 
-logger = logging.getLogger(__name__)
-
 from pydantic import BaseModel, Field
 from sqlalchemy import Text, bindparam, cast, desc, func, literal_column, select, text
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.orm import selectinload
 
 from hive.config import display_file_path
+from hive.db import IndexedFile, Part, PartInstance, PartName, Sequence
 from hive.db import session as db
-from hive.db.models import IndexedFile, Part, PartInstance, PartName, Sequence
 from hive.tools.base import Tool
+
+logger = logging.getLogger(__name__)
 
 
 def _parse_bool_query(query: str) -> tuple[list[str], str]:

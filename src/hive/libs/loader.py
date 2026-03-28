@@ -7,7 +7,7 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from hive.db.models import (
+from hive.db import (
     Annotation,
     Library,
     LibraryMember,

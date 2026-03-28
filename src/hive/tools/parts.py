@@ -10,8 +10,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from hive.config import display_file_path
+from hive.db import Part, PartInstance
 from hive.db import session as db
-from hive.db.models import Annotation, Part, PartInstance, PartName
 from hive.tools.base import Tool
 from hive.tools.resolve import resolve_part, resolve_sequence
 

@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from hive.tools.base import Tool
+    from hive.tools import Tool
 
 _SYSTEM = """\
 You are Hive Browser, a lab sequence search assistant. Be FAST and DIRECT.

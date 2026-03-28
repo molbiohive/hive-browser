@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from hive.db.models import Collection, Part, PartInstance, User
+from hive.db import Collection, Part, PartInstance, User
 
 
 async def list_collections(

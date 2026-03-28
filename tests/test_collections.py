@@ -11,7 +11,7 @@ from hive.cloning.collections import (
     list_collections,
     update_collection,
 )
-from hive.db.models import Base, User
+from hive.db import Base, User
 
 
 @pytest.fixture

@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from hive.db.models import (
+from hive.db import (
     IndexedFile,
     LibraryMember,
     Part,

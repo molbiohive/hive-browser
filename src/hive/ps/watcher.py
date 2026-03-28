@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from hive.config import WatcherConfig
 from hive.ps.base import Process, ProcessContext
-from hive.watcher.watcher import watch_directory
+from hive.watcher import watch_directory
 
 if TYPE_CHECKING:
     from hive.deps import DepRegistry

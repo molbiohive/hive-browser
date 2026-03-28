@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from hive.db.models import Base, IndexedFile, Part, PartInstance, PartName, Sequence
+from hive.db import Base, IndexedFile, Part, PartInstance, PartName, Sequence
 from hive.watcher.ingest import extract_tags, ingest_file, remove_file
 from hive.watcher.rules import MatchResult
 

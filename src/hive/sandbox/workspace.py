@@ -464,7 +464,7 @@ def _short_val(val: Any, max_len: int = 20) -> str:
         if not val:
             return "[]"
         if isinstance(val[0], dict):
-            return f"[{{...}}, ...+{len(val) - 1}]" if len(val) > 1 else f"[{{...}}]"
+            return f"[{{...}}, ...+{len(val) - 1}]" if len(val) > 1 else "[{...}]"
         return f"list({len(val)})"
     if isinstance(val, dict):
         return f"dict({len(val)})"

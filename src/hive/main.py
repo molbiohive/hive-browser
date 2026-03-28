@@ -5,7 +5,7 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 from hive.config import Settings, load_config
-from hive.server.app import create_app
+from hive.server import create_app
 
 
 class _HealthFilter(logging.Filter):
