@@ -1,11 +1,13 @@
 """Tests for Planner: tool signatures and planning call."""
 
+import json
 from typing import Any
 from unittest.mock import AsyncMock
 
 import pytest
 
 from hive.llm.planner import Planner
+from hive.skills import SkillLibrary
 from hive.tools.base import Tool, ToolRegistry
 
 # -- Fixtures --
@@ -81,8 +83,19 @@ def registry(tools):
 
 
 @pytest.fixture()
-def planner(registry):
-    return Planner(registry=registry)
+def skills(tmp_path):
+    (tmp_path / "seq_search.md").write_text(
+        "# Seq Search\n## When\nUser searches sequences.\n## Workflow\n1. search()\n"
+    )
+    (tmp_path / "blast_sim.md").write_text(
+        "# BLAST\n## When\nUser wants similarity search.\n## Workflow\n1. blast()\n"
+    )
+    return SkillLibrary(tmp_path)
+
+
+@pytest.fixture()
+def planner(registry, skills):
+    return Planner(registry=registry, skills=skills)
 
 
 # -- Signatures --
@@ -118,31 +131,46 @@ class TestSignatures:
 # -- Planning --
 
 
-class TestPlan:
-    def _mock_llm(self, content):
-        client = AsyncMock()
-        client.chat = AsyncMock(
-            return_value={
-                "choices": [{"message": {"content": content}}],
-                "usage": {"prompt_tokens": 50, "completion_tokens": 10},
-            }
-        )
-        return client
+def _mock_llm(content):
+    """Build a mock LLM that returns a text response."""
+    client = AsyncMock()
+    client.chat = AsyncMock(
+        return_value={
+            "choices": [{"message": {"content": content}}],
+            "usage": {"prompt_tokens": 50, "completion_tokens": 10},
+        }
+    )
+    return client
 
+
+def _mock_llm_multiturn(responses):
+    """Build a mock LLM that returns tool_calls then text across turns."""
+    client = AsyncMock()
+    client.chat = AsyncMock(side_effect=[
+        {
+            "choices": [{"message": resp}],
+            "usage": {"prompt_tokens": 50, "completion_tokens": 10},
+        }
+        for resp in responses
+    ])
+    return client
+
+
+class TestPlan:
     async def test_returns_plan_text_and_usage(self, planner):
-        llm = self._mock_llm("Search the database for GFP sequences.")
+        llm = _mock_llm("Search the database for GFP sequences.")
         plan_text, usage = await planner.prepare("find GFP").run(llm)
         assert "GFP" in plan_text
         assert usage["in"] == 50
         assert usage["out"] == 10
 
     async def test_conversational_plan(self, planner):
-        llm = self._mock_llm("respond conversationally")
+        llm = _mock_llm("respond conversationally")
         plan_text, _ = await planner.prepare("hello").run(llm)
         assert "conversationally" in plan_text
 
     async def test_plan_passes_history(self, planner):
-        llm = self._mock_llm("Follow up on the previous search.")
+        llm = _mock_llm("Follow up on the previous search.")
         history = [{"role": "user", "content": "prev"}, {"role": "assistant", "content": "ok"}]
         await planner.prepare("follow up", history=history).run(llm)
         call_args = llm.chat.call_args[0][0]
@@ -150,9 +178,70 @@ class TestPlan:
         assert len(call_args) == 4
 
     async def test_catalog_has_typed_signatures(self, planner):
-        llm = self._mock_llm("plan text")
+        llm = _mock_llm("plan text")
         await planner.prepare("test").run(llm)
         messages = llm.chat.call_args[0][0]
         system_msg = messages[0]["content"]
         assert "search(query:string, tags:string?)" in system_msg
         assert "query: Search text" in system_msg
+
+    async def test_brief_format_in_system_prompt(self, planner):
+        llm = _mock_llm("plan text")
+        await planner.prepare("test").run(llm)
+        system_msg = llm.chat.call_args[0][0][0]["content"]
+        for keyword in ("GOAL:", "DELIVER:", "STOP:"):
+            assert keyword in system_msg
+
+    async def test_skills_section_in_system_prompt(self, planner):
+        llm = _mock_llm("plan text")
+        await planner.prepare("test").run(llm)
+        system_msg = llm.chat.call_args[0][0][0]["content"]
+        assert "Call search()" in system_msg
+        assert "Call read(name)" in system_msg
+
+
+# -- Skill Integration --
+
+
+class TestSkillIntegration:
+    async def test_search_then_read_then_brief(self, planner):
+        """Three-turn flow: search -> read -> text brief."""
+        llm = _mock_llm_multiturn([
+            # Turn 1: LLM calls search()
+            {"tool_calls": [{"id": "1", "function": {"name": "search", "arguments": "{}"}}]},
+            # Turn 2: LLM calls read(name)
+            {"tool_calls": [{"id": "2", "function": {"name": "read", "arguments": json.dumps({"name": "seq_search"})}}]},
+            # Turn 3: LLM produces text brief
+            {"content": "GOAL: find GFP plasmids"},
+        ])
+        plan_text, usage = await planner.prepare("find GFP").run(llm, max_turns=4)
+        assert "GOAL" in plan_text
+        assert usage["in"] == 150  # 50 * 3 turns
+
+        # Verify skill content was injected into system prompt on turn 3
+        last_messages = llm.chat.call_args[0][0]
+        system_msg = last_messages[0]["content"]
+        assert "## Available Skills" in system_msg
+        assert "seq_search" in system_msg
+        assert "## Domain Skills" in system_msg
+
+    async def test_tools_offered(self, planner):
+        """Planner always offers search/read tools."""
+        llm = _mock_llm("plan text")
+        await planner.prepare("test").run(llm)
+        call_kwargs = llm.chat.call_args[1]
+        tools = call_kwargs.get("tools")
+        assert tools is not None
+        names = {t["function"]["name"] for t in tools}
+        assert names == {"search", "read"}
+
+    async def test_read_missing_skill_no_crash(self, planner):
+        """Reading a nonexistent skill doesn't add to context."""
+        llm = _mock_llm_multiturn([
+            {"tool_calls": [{"id": "1", "function": {"name": "read", "arguments": json.dumps({"name": "nonexistent"})}}]},
+            {"content": "brief text"},
+        ])
+        plan_text, _ = await planner.prepare("test").run(llm, max_turns=3)
+        assert plan_text == "brief text"
+        system_msg = llm.chat.call_args[0][0][0]["content"]
+        assert "## Domain Skills" not in system_msg
