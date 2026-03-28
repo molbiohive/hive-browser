@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from hive.skills import SkillLibrary
 from hive.tools import Tool, ToolRegistry
 from hive.agent import (
     DIRECT_PATTERN,
@@ -466,11 +467,11 @@ class TestPlannerIntegration:
 
     # -- Planner ON (default) --
 
-    async def test_planner_always_runs_agent_loop(self, registry):
+    async def test_planner_always_runs_agent_loop(self, registry, tmp_path):
         """Planner ON always runs agent loop -- no ANSWER shortcut."""
         from hive.llm.planner import Planner
 
-        planner = Planner(registry=registry)
+        planner = Planner(registry=registry, skills=SkillLibrary(tmp_path))
 
         llm = self._mock_llm(
             [
@@ -492,11 +493,11 @@ class TestPlannerIntegration:
         assert resp.get("plan") == "respond conversationally"
         assert llm.chat.call_count == 2  # plan + agent
 
-    async def test_planner_on_injects_plan_text(self, registry):
+    async def test_planner_on_injects_plan_text(self, registry, tmp_path):
         """Planner produces task description, agent sees plan in system prompt."""
         from hive.llm.planner import Planner
 
-        planner = Planner(registry=registry)
+        planner = Planner(registry=registry, skills=SkillLibrary(tmp_path))
 
         llm = self._mock_llm(
             [
@@ -522,11 +523,11 @@ class TestPlannerIntegration:
         user_msg = [m for m in agent_messages if m.get("role") == "user"][-1]
         assert "echo test" in user_msg["content"]
 
-    async def test_planner_on_failure_falls_through(self, registry):
+    async def test_planner_on_failure_falls_through(self, registry, tmp_path):
         """If planning call fails, agent continues without plan."""
         from hive.llm.planner import Planner
 
-        planner = Planner(registry=registry)
+        planner = Planner(registry=registry, skills=SkillLibrary(tmp_path))
 
         llm = self._mock_llm(
             [
@@ -546,11 +547,11 @@ class TestPlannerIntegration:
 
     # -- Planner OFF --
 
-    async def test_planner_off_no_plan_call(self, registry):
+    async def test_planner_off_no_plan_call(self, registry, tmp_path):
         """Planner OFF: no planning call, agent runs directly."""
         from hive.llm.planner import Planner
 
-        planner = Planner(registry=registry)
+        planner = Planner(registry=registry, skills=SkillLibrary(tmp_path))
 
         llm = self._mock_llm([self._text_response("Done.")])
         resp = await route_input(
@@ -564,11 +565,11 @@ class TestPlannerIntegration:
         # Only 1 LLM call (worker), no planning call
         assert llm.chat.call_count == 1
 
-    async def test_planner_off_agent_sees_user_input(self, registry):
+    async def test_planner_off_agent_sees_user_input(self, registry, tmp_path):
         """Planner OFF: agent loop receives raw user input, not plan."""
         from hive.llm.planner import Planner
 
-        planner = Planner(registry=registry)
+        planner = Planner(registry=registry, skills=SkillLibrary(tmp_path))
 
         llm = self._mock_llm([self._text_response("Hello.")])
         await route_input(
