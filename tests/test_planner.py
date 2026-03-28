@@ -192,48 +192,46 @@ class TestPlan:
         for keyword in ("GOAL:", "DELIVER:", "STOP:"):
             assert keyword in system_msg
 
-    async def test_skills_section_in_system_prompt(self, planner):
+    async def test_skills_catalog_in_system_prompt(self, planner):
         llm = _mock_llm("plan text")
         await planner.prepare("test").run(llm)
         system_msg = llm.chat.call_args[0][0][0]["content"]
-        assert "Call search()" in system_msg
-        assert "Call read(name)" in system_msg
+        assert "seq_search" in system_msg
+        assert "blast_sim" in system_msg
+        assert "MUST call read(name)" in system_msg
 
 
 # -- Skill Integration --
 
 
 class TestSkillIntegration:
-    async def test_search_then_read_then_brief(self, planner):
-        """Three-turn flow: search -> read -> text brief."""
+    async def test_read_then_brief(self, planner):
+        """Two-turn flow: read -> text brief."""
         llm = _mock_llm_multiturn([
-            # Turn 1: LLM calls search()
-            {"tool_calls": [{"id": "1", "function": {"name": "search", "arguments": "{}"}}]},
-            # Turn 2: LLM calls read(name)
-            {"tool_calls": [{"id": "2", "function": {"name": "read", "arguments": json.dumps({"name": "seq_search"})}}]},
-            # Turn 3: LLM produces text brief
+            # Turn 1: LLM calls read(name)
+            {"tool_calls": [{"id": "1", "function": {"name": "read", "arguments": json.dumps({"name": "seq_search"})}}]},
+            # Turn 2: LLM produces text brief
             {"content": "GOAL: find GFP plasmids"},
         ])
         plan_text, usage = await planner.prepare("find GFP").run(llm, max_turns=4)
         assert "GOAL" in plan_text
-        assert usage["in"] == 150  # 50 * 3 turns
+        assert usage["in"] == 100  # 50 * 2 turns
 
-        # Verify skill content was injected into system prompt on turn 3
+        # Verify skill content was injected into system prompt on turn 2
         last_messages = llm.chat.call_args[0][0]
         system_msg = last_messages[0]["content"]
-        assert "## Available Skills" in system_msg
-        assert "seq_search" in system_msg
         assert "## Domain Skills" in system_msg
+        assert "seq_search" in system_msg
 
-    async def test_tools_offered(self, planner):
-        """Planner always offers search/read tools."""
+    async def test_only_read_tool_offered(self, planner):
+        """Planner offers only read tool (catalog is in system prompt)."""
         llm = _mock_llm("plan text")
         await planner.prepare("test").run(llm)
         call_kwargs = llm.chat.call_args[1]
         tools = call_kwargs.get("tools")
         assert tools is not None
         names = {t["function"]["name"] for t in tools}
-        assert names == {"search", "read"}
+        assert names == {"read"}
 
     async def test_read_missing_skill_no_crash(self, planner):
         """Reading a nonexistent skill doesn't add to context."""

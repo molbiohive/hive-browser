@@ -37,10 +37,12 @@ report["plasmids"]: name, size_bp, resistance
 STOP: What NOT to do -- no unsolicited extras.
 
 ## Skills
-Call search() to see available domain procedures.
-Call read(name) for procedures matching the user's request.
-Use the procedure's workflow, report keys, and pitfalls in your brief.
-If no procedure matches, produce the brief from the tool catalog alone.
+Available domain procedures:
+{skills_catalog}
+
+IMPORTANT: You MUST call read(name) for the best matching skill BEFORE writing \
+the brief. Use the procedure's workflow, report keys, and pitfalls. \
+For greetings/general questions, skip read() and respond directly.
 
 ## Rules
 - Resolve all references ("that plasmid", "those results") to concrete \
@@ -51,12 +53,7 @@ IDs/names/values from conversation history. Never leave pronouns unresolved.
 - NEVER fabricate data, IDs, or results.
 - Keep it tight -- the brief is injected into the worker's system prompt."""
 
-_TOOLS = [
-    {"type": "function", "function": {
-        "name": "search",
-        "description": "List available skill procedures with trigger descriptions.",
-        "parameters": {"type": "object", "properties": {}},
-    }},
+_READ_TOOL = [
     {"type": "function", "function": {
         "name": "read",
         "description": "Read full content of a skill procedure by name.",
@@ -70,9 +67,9 @@ _TOOLS = [
 class Planner(LLMAgent):
     """Plan generation agent.
 
-    Multi-turn loop that reads the tool catalog, consults skill
-    procedures via search/read tools, and produces a self-contained
-    task description for the worker.
+    Multi-turn loop that reads the tool catalog, reads skill procedures
+    via read() tool, and produces a self-contained task description
+    for the worker.
     """
 
     def __init__(self, registry: ToolRegistry, skills: SkillLibrary):
@@ -80,14 +77,16 @@ class Planner(LLMAgent):
         sigs = registry.signatures(detailed=True)
         self._catalog = "\n".join(f"- {s}" for s in sigs)
         self._skills = skills
+        cat = skills.catalog()
+        self._skills_catalog = "\n".join(
+            f"- **{s['name']}**: {s['when']}" for s in cat
+        ) if cat else "No skills available."
         self._user_input = ""
         self._history: list[dict] | None = None
-        self._search_result: list[dict] | None = None
         self._read_skills: list[dict] = []
 
     def _reset(self):
         super()._reset()
-        self._search_result = None
         self._read_skills = []
 
     def prepare(
@@ -101,25 +100,23 @@ class Planner(LLMAgent):
         return self
 
     def _tools(self) -> list[dict]:
-        return _TOOLS
+        return _READ_TOOL
 
     async def _handle_call(self, tc: dict) -> None:
         name = tc["function"]["name"]
-        args = self._parse_tool_args(tc)
-        if name == "search":
-            self._search_result = self._skills.catalog()
-        elif name == "read":
+        if name == "read":
+            args = self._parse_tool_args(tc)
             skill_name = args.get("name", "")
             content = self._skills.read(skill_name)
             if content:
                 self._read_skills.append({"name": skill_name, "content": content})
 
     def _build_messages(self) -> list[dict]:
-        system = _SYSTEM.format(catalog=self._catalog)
+        system = _SYSTEM.format(
+            catalog=self._catalog,
+            skills_catalog=self._skills_catalog,
+        )
 
-        if self._search_result is not None:
-            lines = [f"- **{s['name']}**: {s['when']}" for s in self._search_result]
-            system += "\n\n## Available Skills\n" + "\n".join(lines)
         if self._read_skills:
             parts = [f"### {s['name']}\n{s['content']}" for s in self._read_skills]
             system += "\n\n## Domain Skills\n" + "\n".join(parts)

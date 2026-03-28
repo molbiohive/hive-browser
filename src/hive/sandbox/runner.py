@@ -41,14 +41,20 @@ class SandboxRunner:
         budget = self._tool_call_budget
         call_count = [0]
 
-        for tool in self._registry.tools():
-
-            def wrapper(_tool=tool, **kwargs):
+        def _make_wrapper(t):
+            def wrapper(*args, **kwargs):
+                # Accept first positional arg as 'query' for convenience
+                if args:
+                    schema = t.llm_schema()
+                    required = schema.get("required", [])
+                    first_param = required[0] if required else next(iter(schema.get("properties", {})), None)
+                    if first_param and first_param not in kwargs:
+                        kwargs[first_param] = args[0]
                 call_count[0] += 1
                 if call_count[0] > budget:
                     raise RuntimeError(f"Tool call budget exceeded ({budget})")
                 future = asyncio.run_coroutine_threadsafe(
-                    _tool.execute(dict(kwargs)),
+                    t.execute(dict(kwargs)),
                     loop,
                 )
                 result = future.result(timeout=30)
@@ -57,12 +63,14 @@ class SandboxRunner:
                     f'{k}="{v}"' if isinstance(v, str) else f"{k}={v}"
                     for k, v in kwargs.items()
                 )
-                call_repr = f"{_tool.name}({args_str})"
+                call_repr = f"{t.name}({args_str})"
                 if isinstance(result, dict):
-                    ws.store_result(result, _tool.name, dict(kwargs), call_repr=call_repr)
+                    ws.store_result(result, t.name, dict(kwargs), call_repr=call_repr)
                 return result
+            return wrapper
 
-            callables[tool.name] = wrapper
+        for tool in self._registry.tools():
+            callables[tool.name] = _make_wrapper(tool)
         return callables
 
     def _make_desc_fn(self) -> Any:
