@@ -147,7 +147,7 @@ async def _run_agents(
         try:
             plan_text, plan_tokens = await planner.prepare(
                 user_input, history,
-            ).run(llm_client)
+            ).run(llm_client, max_turns=4)
         except Exception as e:
             logger.warning("Planner failed, continuing without plan: %s", e)
 

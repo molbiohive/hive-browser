@@ -204,17 +204,16 @@ class Worker(LLMAgent):
 
         if tool_name == "python":
             await self._exec_python(params)
-            return
-
-        if tool_name != "tasks":
+        elif tool_name == "tasks":
+            await self._exec_tasks(params)
+        else:
             err = f"'{tool_name}' is callable from python: {tool_name}(param=value)"
             self._workspace.add_step(tool_name, err, error=err)
-            return
 
-        await self._exec_tasks(params)
+        await self._emit("tool", tool=tool_name)
 
     async def _post_turn(self, turn: int) -> None:
-        await self._emit("thinking")
+        pass
 
     def _on_complete(self, content: str) -> dict[str, Any]:
         logger.info(

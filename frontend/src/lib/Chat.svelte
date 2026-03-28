@@ -65,7 +65,12 @@
 	const progressMeta = $derived.by(() => {
 		const p = $chatStore.progress;
 		const parts = [];
-		if (p && p.tools_used > 0) parts.push(`${p.tools_used} tool${p.tools_used > 1 ? 's' : ''}`);
+		if (p?.tool) {
+			const label = p.tool.charAt(0).toUpperCase() + p.tool.slice(1);
+			parts.push(`${label} +${p.tools_used}`);
+		} else if (p && p.tools_used > 0) {
+			parts.push(`${p.tools_used} tool${p.tools_used > 1 ? 's' : ''}`);
+		}
 		if (p && (p.tokens.in > 0 || p.tokens.out > 0)) parts.push(`${p.tokens.in}\u2192${p.tokens.out} tok`);
 		parts.push(`${elapsed.toFixed(1)}s`);
 		return parts.join(' \u00b7 ');

@@ -83,9 +83,11 @@ async def lifespan(app: FastAPI):
     app.state.planner = None
     if config.llm.use_planner:
         from hive.llm import Planner
+        from hive.skills import SkillLibrary
 
         if app.state.tool_registry.tools():
-            app.state.planner = Planner(registry=app.state.tool_registry)
+            skills = SkillLibrary()
+            app.state.planner = Planner(registry=app.state.tool_registry, skills=skills)
 
     # --- Process registry ---
     from hive.ps import (
