@@ -4,15 +4,15 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from hive.tools.digest import DigestTool
-from hive.tools.extract import _slice_sequence
-from hive.tools.gc import GCTool
 from hive.tools.resolve import resolve_input
-from hive.tools.revcomp import RevCompTool
-from hive.tools.search import _parse_bool_query
-from hive.tools.sites import SitesTool
-from hive.tools.transcribe import TranscribeTool
-from hive.tools.translate import TranslateTool
+from hive.tools.tools.digest import DigestTool
+from hive.tools.tools.extract import _slice_sequence
+from hive.tools.tools.gc import GCTool
+from hive.tools.tools.revcomp import RevCompTool
+from hive.tools.tools.search import _parse_bool_query
+from hive.tools.tools.sites import SitesTool
+from hive.tools.tools.transcribe import TranscribeTool
+from hive.tools.tools.translate import TranslateTool
 
 # -- Translate --
 
@@ -106,7 +106,7 @@ class TestDigest:
         mock_factory.__aexit__ = AsyncMock(return_value=False)
         mock_factory.return_value = mock_factory
         with (
-            patch("hive.tools.digest.db.async_session_factory", mock_factory),
+            patch("hive.tools.tools.digest.db.async_session_factory", mock_factory),
             patch("hive.cloning.enzymes.load_enzymes", AsyncMock(return_value=enzymes)),
         ):
             yield
@@ -372,7 +372,7 @@ class TestSites:
         mock_factory.__aexit__ = AsyncMock(return_value=False)
         mock_factory.return_value = mock_factory
         with (
-            patch("hive.tools.sites.db.async_session_factory", mock_factory),
+            patch("hive.tools.tools.sites.db.async_session_factory", mock_factory),
             patch("hive.cloning.enzymes.load_enzymes", AsyncMock(return_value=enzymes)),
         ):
             yield

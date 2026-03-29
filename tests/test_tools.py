@@ -3,7 +3,8 @@
 from typing import Any
 
 from hive.config import Settings
-from hive.tools.base import Tool, ToolRegistry, _params_to_schema
+from hive.tools.base import Tool, _params_to_schema
+from hive.tools.registry import ToolRegistry
 from hive.tools.factory import ToolFactory
 
 # -- Helpers --

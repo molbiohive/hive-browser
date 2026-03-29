@@ -8,7 +8,8 @@ import pytest
 
 from hive.llm.agent import Agent
 from hive.skills import SkillLibrary
-from hive.tools.base import Tool, ToolRegistry
+from hive.tools.base import Tool
+from hive.tools.registry import ToolRegistry
 
 
 # -- Fixtures --

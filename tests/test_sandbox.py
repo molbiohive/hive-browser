@@ -302,7 +302,8 @@ class TestToolCallables:
     """Tests for sandbox-callable tools."""
 
     async def test_tool_signatures_in_schema(self):
-        from hive.tools.base import Tool, ToolRegistry
+        from hive.tools.base import Tool
+        from hive.tools.registry import ToolRegistry
 
         class GcTool(Tool):
             name = "gc"
@@ -328,7 +329,8 @@ class TestToolCallables:
         assert "desc(var, name:" in desc
 
     async def test_callable_from_sandbox(self):
-        from hive.tools.base import Tool, ToolRegistry
+        from hive.tools.base import Tool
+        from hive.tools.registry import ToolRegistry
 
         class GcTool(Tool):
             name = "gc"
@@ -354,7 +356,8 @@ class TestToolCallables:
         assert ws.user_vars["r"]["gc_percent"] == 50.0
 
     async def test_tool_call_budget_exceeded(self):
-        from hive.tools.base import Tool, ToolRegistry
+        from hive.tools.base import Tool
+        from hive.tools.registry import ToolRegistry
 
         class GcTool(Tool):
             name = "gc"
