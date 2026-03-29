@@ -25,7 +25,7 @@
 		<p class="meta">{data.sequence_name} &mdash; {data.steps} step(s), {data.sequence_size} bp</p>
 		<div class="history-scroll">
 			<CloningHistoryViewer
-				root={data.root}
+				data={data.root}
 				width={viewerW}
 				height={viewerH}
 				onhoverinfo={(info) => hoverInfo = info}

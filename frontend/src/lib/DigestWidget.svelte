@@ -36,9 +36,7 @@
 	{#if data.gel_data}
 	<div class="digest-right">
 		<GelViewer
-			lanes={data.gel_data.lanes}
-			gelType={data.gel_data.gelType}
-			stain={data.gel_data.stain}
+			data={data.gel_data}
 			showSizeLabels={false}
 			onhoverinfo={(info) => { hover = info; }}
 		/>

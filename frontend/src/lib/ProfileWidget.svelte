@@ -166,11 +166,7 @@
 		<div class="panel-plasmid" bind:clientWidth={plasmidW}>
 			{#if plasmidW > 0}
 			<PlasmidViewer
-				name={seq.name}
-				size={seq.size_bp}
-				{parts}
-				cutSites={cappedCutSites}
-				{topology}
+				data={{ name: seq.name, size: seq.size_bp, parts, cutSites: cappedCutSites, topology }}
 				{selectionState}
 				width={plasmidW}
 				height={plasmidW}
@@ -183,11 +179,7 @@
 		<div class="panel-sequence" bind:clientWidth={seqPanelW}>
 			{#if seqPanelW > 0}
 			<SequenceViewer
-				seq={seqData}
-				{parts}
-				cutSites={cappedCutSites}
-				{translations}
-				{topology}
+				data={{ seq: seqData, parts, cutSites: cappedCutSites, translations, topology }}
 				{selectionState}
 				width={seqPanelW}
 				height={seqHeight}
