@@ -38,6 +38,7 @@ history -- your brief must carry all context it needs.
 GOAL: What the user wants (one sentence).
 CONTEXT: Resolved references from history -- use names and descriptions, \
 never numeric IDs. The worker will look up IDs via search. Omit if first message.
+TOOLS: tool function names the worker needs (comma-separated).
 DELIVER:
 1. Step with expected report key and columns, e.g. \
 report["plasmids"]: name, size_bp, resistance
@@ -105,6 +106,22 @@ Be concise and direct."""
 _MAX_PLANNER_TURNS = 4
 
 
+def _parse_tools_line(plan: str) -> list[str] | None:
+    """Extract tool names from TOOLS: line in planner output."""
+    for line in plan.splitlines():
+        if line.startswith("TOOLS:"):
+            names = [n.strip() for n in line[6:].split(",") if n.strip()]
+            return names if names else None
+    return None
+
+
+def _strip_tools_line(plan: str) -> str:
+    """Remove the TOOLS: line from plan text."""
+    return "\n".join(
+        line for line in plan.splitlines() if not line.startswith("TOOLS:")
+    )
+
+
 def worker_system_prompt() -> str:
     """Return the worker system prompt (used by tests)."""
     return _WORKER_SYSTEM
@@ -170,16 +187,14 @@ class Agent:
             self._mode = "planner"
         else:
             self._mode = "worker"
-        # Worker state
+        # Worker state (sandbox created lazily in _init_worker)
         self._plan = None
         self._chain = []
         self._error = ""
         self._workspace = Workspace()
-        self._sandbox = SandboxRunner(
-            self._workspace,
-            output_limit=self._output_limit,
-            registry=self._registry,
-        )
+        self._sandbox = None
+        if self._mode == "worker":
+            self._init_worker()
         # Planner state
         sigs = self._registry.signatures(detailed=True)
         self._catalog = "\n".join(f"- {s}" for s in sigs)
@@ -188,6 +203,29 @@ class Agent:
         self._turn_calls = []
         self._turn_results = []
         self._planner_turns = 0
+
+    def _init_worker(self):
+        """Create sandbox with filtered registry based on planner TOOLS line."""
+        if self._sandbox is not None:
+            return
+        registry = self._registry
+        if self._plan:
+            tool_names = _parse_tools_line(self._plan)
+            if tool_names:
+                # Always include search as fallback
+                if "search" not in tool_names:
+                    tool_names.append("search")
+                registry = self._registry.filtered(tool_names)
+                self._plan = _strip_tools_line(self._plan)
+                logger.info(
+                    "Worker tools filtered: %s",
+                    [t.name for t in registry.tools()],
+                )
+        self._sandbox = SandboxRunner(
+            self._workspace,
+            output_limit=self._output_limit,
+            registry=registry,
+        )
 
     # -- Override run() for mode switching --
 
@@ -216,6 +254,7 @@ class Agent:
                     # Planner failure -> switch to worker without plan
                     logger.warning("Planner LLM call failed, switching to worker: %s", e)
                     self._mode = "worker"
+                    self._init_worker()
                     continue
                 if await self._on_error(e, turn):
                     continue
@@ -255,6 +294,7 @@ class Agent:
                     # Planner produced text -> that's the plan
                     self._plan = self._msg_content(response)
                     self._mode = "worker"
+                    self._init_worker()
                     logger.info("Planner done, plan=%r", (self._plan or "")[:120])
                     continue  # Don't return -- keep looping in worker mode
                 # Handle planner tool calls
@@ -265,6 +305,7 @@ class Agent:
                 if self._planner_turns >= _MAX_PLANNER_TURNS:
                     logger.warning("Planner hit max turns, switching to worker")
                     self._mode = "worker"
+                    self._init_worker()
                 continue
 
             # Worker mode
