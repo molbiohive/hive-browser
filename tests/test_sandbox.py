@@ -21,13 +21,13 @@ class TestWorkspace:
         ws = Workspace()
         ws.update_vars({"sequence_data": "ATGC" * 100})
         desc = ws.describe()
-        assert "str(400)" in desc
+        assert "str  # 400 chars" in desc
 
     def test_describe_user_vars_list_int(self):
         ws = Workspace()
         ws.update_vars({"fragments": [4521, 2100, 800]})
         desc = ws.describe()
-        assert "list(3)" in desc
+        assert "list[int]  # 3 items" in desc
 
     def test_describe_user_vars_dict(self):
         ws = Workspace()
@@ -165,6 +165,14 @@ class TestSafeExec:
         assert result["status"] == "error"
         assert "before" in result["stdout"]
 
+    def test_partial_vars_on_error(self):
+        result = safe_exec('a = 42\nb = {"x": 1}\nc = b["missing_key"]')
+        assert result["status"] == "error"
+        assert "KeyError" in result["error"]
+        assert result["user_vars"]["a"] == 42
+        assert result["user_vars"]["b"] == {"x": 1}
+        assert "c" not in result["user_vars"]
+
     def test_builtins_available(self):
         result = safe_exec("n = len([1, 2, 3])")
         assert result["user_vars"]["n"] == 3
@@ -249,7 +257,7 @@ class TestSandboxRunner:
         schema = runner.tool_schema()
         assert schema["function"]["name"] == "python"
         desc = schema["function"]["description"]
-        assert "desc(var)" in desc
+        assert "desc(var, name:" in desc
 
     async def test_report_dict_persists_across_calls(self):
         ws = Workspace()
@@ -315,10 +323,9 @@ class TestToolCallables:
         runner = SandboxRunner(ws, registry=reg)
         schema = runner.tool_schema()
         desc = schema["function"]["description"]
-        assert "gc(" in desc
-        assert "sequence:string" in desc
-        assert "-- GC content" in desc
-        assert "desc(var) -- inspect" in desc
+        assert "gc(sequence:" in desc
+        assert "-> dict  # GC content" in desc
+        assert "desc(var, name:" in desc
 
     async def test_callable_from_sandbox(self):
         from hive.tools.base import Tool, ToolRegistry

@@ -78,22 +78,26 @@ class SandboxRunner:
     def tool_schema(self) -> dict:
         """OpenAI-format function schema with dynamic workspace description."""
         sigs = self._registry.signatures() if self._registry else []
-        sigs.append("desc(var) -- inspect variable")
-        desc = self.workspace.describe(report=self.report, tool_signatures=sigs)
+        sigs.append("desc(var, name: str | None = None) -> str  # inspect variable")
+        ws_desc = self.workspace.describe(report=self.report, tool_signatures=sigs)
         return {
             "type": "function",
             "function": {
                 "name": "python",
-                "description": desc,
+                "description": ws_desc,
                 "parameters": {
                     "type": "object",
                     "properties": {
+                        "description": {
+                            "type": "string",
+                            "description": "Brief description of what this code does.",
+                        },
                         "code": {
                             "type": "string",
                             "description": "Python code to execute.",
                         },
                     },
-                    "required": ["code"],
+                    "required": ["description", "code"],
                 },
             },
         }
@@ -107,7 +111,7 @@ class SandboxRunner:
         if self._registry:
             variables.update(self._make_tool_callables(loop))
         result = await asyncio.to_thread(safe_exec, code, variables)
-        if result["status"] == "ok" and result.get("user_vars"):
+        if result.get("user_vars"):
             self.workspace.update_vars(result["user_vars"])
         return result
 

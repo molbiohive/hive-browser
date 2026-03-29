@@ -112,10 +112,18 @@ def safe_exec(code: str, variables: dict[str, Any] | None = None) -> dict[str, A
         with contextlib.redirect_stdout(stdout_buf):
             exec(compiled, namespace)  # noqa: S102
     except Exception as e:
+        # Capture variables assigned before the error so workspace can show
+        # what tool calls returned (prevents blind retry loops)
+        user_vars = {
+            k: namespace[k]
+            for k in set(namespace.keys()) - pre_keys
+            if not k.startswith("_")
+        }
         return {
             "status": "error",
             "error": f"{type(e).__name__}: {e}",
             "stdout": stdout_buf.getvalue(),
+            "user_vars": user_vars,
         }
 
     stdout = stdout_buf.getvalue()

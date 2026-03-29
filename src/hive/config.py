@@ -44,7 +44,6 @@ class LLMConfig(BaseSettings):
     pipe_min_length: int = 200  # auto-pipe strings longer than this between tools
     use_planner: bool = True  # planning call before agent loop
     sandbox_output_limit: int = 4000  # max chars for sandbox/tool output sent to LLM
-    tool_call_budget: int = 100  # max tool calls from a single sandbox execution
     model_config = {"env_prefix": "LLM_"}
 
 

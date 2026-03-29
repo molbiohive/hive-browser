@@ -487,7 +487,6 @@ async def _handle_message(
             on_progress=_progress,
             skills=skills,
             use_planner=use_planner,
-            tool_call_budget=config.llm.tool_call_budget if config else 100,
         )
 
         # Track user message (skip bare commands that just show a form)

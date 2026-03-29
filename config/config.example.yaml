@@ -27,7 +27,6 @@ llm:
   agent_max_turns: 20 # max tool-call turns in agentic loop
   sandbox_output_limit: 4000 # max chars for sandbox/tool output sent to LLM
   use_planner: true # planning call before agent loop
-  tool_call_budget: 100 # max tool calls from a single sandbox execution
 deps:
   blast:
     bin_dir: "" # empty = use PATH; or set to /usr/local/bin etc.

@@ -35,7 +35,6 @@ async def route_input(
     on_progress: Callable[[dict], Awaitable[None]] | None = None,
     skills: SkillLibrary | None = None,
     use_planner: bool = True,
-    tool_call_budget: int = 100,
 ) -> dict[str, Any]:
     """Route user input -> tool execution -> response.
 
@@ -94,7 +93,6 @@ async def route_input(
             on_progress=on_progress,
             skills=skills,
             use_planner=use_planner,
-            tool_call_budget=tool_call_budget,
         )
 
     # -- Mode 3: Natural language -- unified agentic loop --
@@ -111,7 +109,6 @@ async def route_input(
         on_progress=on_progress,
         skills=skills,
         use_planner=use_planner,
-        tool_call_budget=tool_call_budget,
     )
 
 
@@ -128,13 +125,11 @@ async def _run_agents(
     on_progress: Callable[[dict], Awaitable[None]] | None = None,
     skills: SkillLibrary | None = None,
     use_planner: bool = True,
-    tool_call_budget: int = 100,
 ) -> dict[str, Any]:
     """Run unified agent (planner + worker in one loop)."""
     agent = Agent(
         registry, skills,
         output_limit=sandbox_output_limit,
-        tool_call_budget=tool_call_budget,
     )
     agent.prepare(
         user_input,

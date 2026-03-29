@@ -136,13 +136,13 @@ class TestSignatures:
         sigs = registry.signatures()
         assert len(sigs) == len(registry.tools())
         for sig in sigs:
-            assert " -- " in sig
+            assert " -> dict  # " in sig
 
     def test_typed_params(self, registry):
         sigs = registry.signatures()
         text = "\n".join(sigs)
-        assert "search(query:string, tags:string?)" in text
-        assert "blast(sequence:string)" in text
+        assert "search(query: str, tags: str | None = None)" in text
+        assert "blast(sequence: str)" in text
 
     def test_detailed_includes_param_descriptions(self, registry):
         sigs = registry.signatures(detailed=True)

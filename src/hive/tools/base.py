@@ -134,23 +134,27 @@ class ToolRegistry:
         return [t.metadata() for t in self._tools.values()]
 
     def signatures(self, detailed: bool = False) -> list[str]:
-        """Typed tool signatures for LLM context.
+        """Python-style tool signatures for LLM context.
 
-        When detailed=False (workspace): ``search(query:string, tags:string?) -- fuzzy search``
+        When detailed=False (workspace):
+            ``def search(query: str, tags: str | None = None) -> dict  # fuzzy search``
         When detailed=True (planner catalog): adds indented param descriptions.
         """
         lines = []
         for tool in self._tools.values():
             sig, descs = _build_signature(tool)
-            lines.append(f"{sig} -- {tool.short_desc}")
+            lines.append(f"{sig} -> dict  # {tool.short_desc}")
             if detailed:
                 for d in descs:
                     lines.append(f"  {d}")
         return lines
 
 
+_JSON_TO_PY = {"string": "str", "integer": "int", "number": "float", "boolean": "bool", "array": "list", "object": "dict"}
+
+
 def _build_signature(tool: Tool) -> tuple[str, list[str]]:
-    """Build ``name(param:type, ...)`` and param descriptions from llm_schema()."""
+    """Build ``name(param: type, ...)`` and param descriptions from llm_schema()."""
     schema = tool.llm_schema()
     props = schema.get("properties", {})
     required = set(schema.get("required", []))
@@ -158,9 +162,11 @@ def _build_signature(tool: Tool) -> tuple[str, list[str]]:
     parts = []
     descs = []
     for name, spec in props.items():
-        ptype = spec.get("type", "str")
-        suffix = "" if name in required else "?"
-        parts.append(f"{name}:{ptype}{suffix}")
+        ptype = _JSON_TO_PY.get(spec.get("type", "string"), spec.get("type", "str"))
+        if name in required:
+            parts.append(f"{name}: {ptype}")
+        else:
+            parts.append(f"{name}: {ptype} | None = None")
         desc = spec.get("description")
         if desc:
             descs.append(f"{name}: {desc}")

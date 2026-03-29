@@ -118,14 +118,12 @@ class Agent:
         registry: ToolRegistry,
         skills: SkillLibrary | None = None,
         output_limit: int = 4000,
-        tool_call_budget: int = 100,
     ):
         self.tokens: dict[str, int] = {"in": 0, "out": 0}
         self._llm: LLMClient | None = None
         self._registry = registry
         self._skills = skills
         self._output_limit = output_limit
-        self._tool_call_budget = tool_call_budget
         # Per-run context (via prepare)
         self._user_input = ""
         self._history: list[dict] | None = None
@@ -176,7 +174,6 @@ class Agent:
             self._workspace,
             output_limit=self._output_limit,
             registry=self._registry,
-            tool_call_budget=self._tool_call_budget,
         )
         # Planner state
         sigs = self._registry.signatures(detailed=True)
@@ -200,6 +197,13 @@ class Agent:
             tools = self._tools()
             tool_choice = self._tool_choice(turn)
 
+            # Debug: log tools sent to LLM
+            tool_names = [t["function"]["name"] for t in tools] if tools else []
+            logger.debug(
+                "[%s turn=%d] sending tools=%s, tool_choice=%s, msgs=%d",
+                self._mode, turn, tool_names, tool_choice, len(messages),
+            )
+
             try:
                 response = await self._chat(llm, messages, tools, tool_choice=tool_choice)
             except Exception as e:
@@ -218,6 +222,28 @@ class Agent:
                 return self._on_complete(content or "Request declined by the model.")
 
             calls = self._msg_tool_calls(response)
+            text = self._msg_content(response)
+
+            # Debug: log tool calls (show Python code inline)
+            if calls:
+                for tc in calls:
+                    fn = tc.get("function", {})
+                    name = fn.get("name", "")
+                    if name == "Python":
+                        args = self._parse_tool_args(tc)
+                        desc = args.get("description", "")
+                        code = args.get("code", "")
+                        logger.debug(
+                            "[%s turn=%d] Python(%s):\n%s",
+                            self._mode, turn, desc, code,
+                        )
+                    else:
+                        logger.debug(
+                            "[%s turn=%d] %s(%s)",
+                            self._mode, turn, name, fn.get("arguments", ""),
+                        )
+            if text:
+                logger.debug("[%s turn=%d] text: %s", self._mode, turn, text[:200])
 
             if self._mode == "planner":
                 if not calls:
@@ -427,9 +453,9 @@ class Agent:
         tasks_tool = self._registry.get("tasks")
         if tasks_tool:
             tools.append(tasks_cmd(tasks_tool))
-        tools.append(self._sandbox.tool_schema())
-        # Rename python -> Python for consistency with commands
-        tools[-1]["function"]["name"] = "Python"
+        py_tool = self._sandbox.tool_schema()
+        py_tool["function"]["name"] = "Python"
+        tools.append(py_tool)
         if self._skills and len(self._skills) > 0:
             tools.append(PLAN_CMD)
         return tools
@@ -491,6 +517,7 @@ class Agent:
     async def _cmd_python(self, tc: dict) -> None:
         params = self._parse_tool_args(tc)
         code = params.get("code", "")
+        step_desc = params.get("description", "")
         sb_result = await self._sandbox.execute(code)
         compact = self._sandbox.summary_for_llm(sb_result)
         ws = self._workspace
@@ -499,14 +526,13 @@ class Agent:
             err_text = sb_result.get("error", "unknown")
             hint = _error_hint(err_text, ws, self._sandbox)
             ws.add_step("python", err_text, code=code, error=err_text, hint=hint)
-            display = f"Error: {err_text}"
         else:
             produced = _build_produced(ws, self._sandbox)
             ws.add_step("python", compact, code=code, produced=produced)
-            display = compact
 
-        self._chain.append({"tool": "python", "params": {"code": code}, "summary": display})
-        logger.info("Sandbox exec: %s", compact[:200])
+        summary = step_desc or compact[:120]
+        self._chain.append({"tool": "python", "params": {"code": code}, "summary": summary})
+        logger.info("Python [%s]: %s", step_desc or "no desc", compact[:200])
 
     def _cmd_plan(self) -> None:
         """Switch back to planner mode."""

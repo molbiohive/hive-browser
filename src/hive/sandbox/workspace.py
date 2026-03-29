@@ -63,7 +63,7 @@ class Workspace:
         # User variables from previous python calls
         for name in sorted(self._user_vars):
             val = self._user_vars[name]
-            lines.append(f"# {name} -- {_value_shape(val)}")
+            lines.append(f"# {name}: {_value_shape(val)}")
             for detail_line in _render_value(name, val):
                 lines.append(f"#   {detail_line}")
 
@@ -71,7 +71,7 @@ class Workspace:
         if report:
             for key, val in report.items():
                 rname = f'report["{key}"]'
-                lines.append(f"# {rname} -- {_value_shape(val)}")
+                lines.append(f"# {rname}: {_value_shape(val)}")
                 for detail_line in _render_value(rname, val):
                     lines.append(f"#   {detail_line}")
 
@@ -84,9 +84,10 @@ class Workspace:
                     lines.append(f"#   {dl}")
             self._desc_results.clear()
 
-        # Available commands -- one per line
+        # Available tools
         if tool_signatures:
             lines.append("#")
+            lines.append("# [tools]")
             for sig in tool_signatures:
                 lines.append(f"# {sig}")
 
@@ -96,8 +97,8 @@ class Workspace:
         """Record a desc() result to be shown in the next describe()."""
         self._desc_results.append((var_name, detail))
 
-    def history(self, max_steps: int = 5) -> str:
-        """Compact progress log -- ok/x prefixed lines."""
+    def history(self, max_steps: int = 8) -> str:
+        """Compact progress log -- ok/x prefixed lines with code context."""
         if not self._steps:
             return ""
         recent = self._steps[-max_steps:]
@@ -106,17 +107,19 @@ class Workspace:
         if offset > 0:
             lines.append(f"# ({offset} earlier steps omitted)")
         for s in recent:
+            code = s.get("code")
+            code_ctx = f" `{_truncate(code, 80)}`:" if code else ""
             if s["error"]:
                 err = _truncate(s["error"], 60)
                 hint = f" -- {s['hint']}" if s.get("hint") else ""
-                lines.append(f"# x: {s['tool']} {err}{hint}")
+                lines.append(f"# x: {s['tool']}{code_ctx} {err}{hint}")
             else:
                 produced = s.get("produced")
                 if produced:
-                    lines.append(f"# ok: {s['tool']} -> {produced}")
+                    lines.append(f"# ok: {s['tool']}{code_ctx} -> {produced}")
                 else:
                     fb = _truncate(s["feedback"], 80)
-                    lines.append(f"# ok: {s['tool']} -> {fb}")
+                    lines.append(f"# ok: {s['tool']}{code_ctx} -> {fb}")
         return "\n".join(lines)
 
     # -- Lifecycle --
@@ -146,7 +149,7 @@ def describe_value(value: Any) -> str:
         if isinstance(value[0], dict):
             keys = ", ".join(list(value[0].keys())[:8])
             more = ", ..." if len(value[0]) > 8 else ""
-            return f"list[dict], {len(value)} rows -- keys: {{{keys}{more}}}"
+            return f"list[dict], {len(value)} rows, keys: {{{keys}{more}}}"
         return f"list[{type(value[0]).__name__}], {len(value)} items"
     if isinstance(value, dict):
         return f"dict {_dict_schema(value)}"
@@ -187,21 +190,31 @@ def _dict_schema(d: dict, max_keys: int = 8) -> str:
 
 
 def _value_shape(value: Any) -> str:
-    """Compact shape: '56 rows', 'dict', 'str(5369)', etc."""
+    """Python-style type annotation for a value."""
     if value is None:
         return "None"
-    if isinstance(value, (bool, int, float)):
+    if isinstance(value, bool):
         return str(value)
+    if isinstance(value, int):
+        return f"int = {value}"
+    if isinstance(value, float):
+        return f"float = {value}"
     if isinstance(value, str):
-        return repr(value) if len(value) <= 40 else f"str({len(value)})"
+        if len(value) <= 40:
+            return f"str = {repr(value)}"
+        return f"str  # {len(value)} chars"
     if isinstance(value, list):
         if not value:
-            return "empty list"
+            return "list  # empty"
         if isinstance(value[0], dict):
-            return f"{len(value)} rows"
-        return f"list({len(value)})"
+            keys = ", ".join(list(value[0].keys())[:6])
+            more = ", ..." if len(value[0]) > 6 else ""
+            return f"list[dict]  # {len(value)} rows, keys: {{{keys}{more}}}"
+        return f"list[{type(value[0]).__name__}]  # {len(value)} items"
     if isinstance(value, dict):
-        return "dict"
+        keys = ", ".join(list(value.keys())[:8])
+        more = ", ..." if len(value) > 8 else ""
+        return f"dict  # keys: {{{keys}{more}}}"
     return type(value).__name__
 
 
