@@ -406,17 +406,18 @@ class Agent:
         if not self._plan and self._history:
             msgs.extend(self._history)
 
-        # User message with optional workspace context
+        # User message
         ws = self._workspace
-        ws_ctx = ""
-        if ws.user_vars and not ws.steps:
-            ws_ctx = f"\n\n[Workspace]\n{ws.describe()}"
-        msgs.append({"role": "user", "content": f"{self._user_input}{ws_ctx}"})
+        msgs.append({"role": "user", "content": self._user_input})
 
-        # Progress from previous turns
+        # Progress from previous turns + current workspace state
         progress = ws.history()
         if progress:
-            msgs.append({"role": "assistant", "content": f"Done so far:\n{progress}"})
+            scope = ws.describe(report=self._sandbox.report)
+            msgs.append({
+                "role": "assistant",
+                "content": f"Done so far:\n{progress}\n\n[Workspace]\n{scope}",
+            })
             msgs.append({"role": "user", "content": "Continue."})
 
         return msgs
@@ -448,6 +449,10 @@ class Agent:
             "tool_call_id": tc.get("id", ""),
             "content": result_content,
         })
+        self._chain.append({
+            "tool": "Search", "params": {},
+            "summary": f"{len(cat)} skills found",
+        })
 
     def _cmd_read(self, tc: dict) -> None:
         self._turn_calls.append(tc)
@@ -466,6 +471,10 @@ class Agent:
             "role": "tool",
             "tool_call_id": tc.get("id", ""),
             "content": result_content,
+        })
+        self._chain.append({
+            "tool": "Read", "params": {"name": skill_name},
+            "summary": f"read {skill_name}" if content else f"{skill_name} not found",
         })
 
     # -- Worker commands --
@@ -620,6 +629,9 @@ def _error_hint(err_text: str, workspace: Workspace, sandbox: SandboxRunner) -> 
     m = re.search(r"KeyError:?\s*['\"](\w+)['\"]", err_text)
     if m:
         for val in reversed(list(workspace.user_vars.values())):
+            if isinstance(val, dict) and val:
+                keys = ", ".join(list(val.keys())[:8])
+                return f"keys: {{{keys}}}"
             if isinstance(val, list) and val and isinstance(val[0], dict):
                 keys = ", ".join(list(val[0].keys())[:8])
                 return f"keys: {{{keys}}}"
