@@ -223,6 +223,8 @@ async def _resolve_variants(
             d = json.loads(a.value)
         except (json.JSONDecodeError, TypeError):
             continue
+        if not isinstance(d, dict):
+            continue
         if a.key == "variant_of":
             for pid in d.get("pids", []):
                 if pid not in collision_pids:

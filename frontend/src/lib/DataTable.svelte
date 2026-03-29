@@ -1,5 +1,6 @@
 <script>
 	import { sendMessage } from '$lib/stores/chat.ts';
+	import CopyableSequence from '$lib/CopyableSequence.svelte';
 
 	let { rows = [], columns = [], actions = [], defaultPageSize = 10 } = $props();
 
@@ -246,6 +247,15 @@
 	}
 
 	const hasCustomWidths = $derived(colWidths.some(w => w > 0));
+
+	// Sequence detection: DNA/RNA (ATGCURYSWKMBDHVN) or amino acid (uppercase letters)
+	const _SEQ_RE = /^[ATGCURYSWKMBDHVN*-]+$/i;
+	const _AA_RE = /^[ACDEFGHIKLMNPQRSTVWY*-]+$/i;
+
+	function isSequence(val) {
+		if (typeof val !== 'string' || val.length < 20) return false;
+		return _SEQ_RE.test(val) || _AA_RE.test(val);
+	}
 </script>
 
 {#if rows?.length}
@@ -315,9 +325,18 @@
 		{#each pageRows as row}
 		<tr>
 			{#each columns as col}
-				<td class={col.class || ''} title={cellText(row, col)}
-					style={cellBg(row, col.key) ? `background: ${cellBg(row, col.key)}` : ''}
-				>{formatCell(row, col)}</td>
+				{@const cellVal = formatCell(row, col)}
+				{#if isSequence(cellVal)}
+					<td class="seq-cell {col.class || ''}"
+						style={cellBg(row, col.key) ? `background: ${cellBg(row, col.key)}` : ''}
+					>
+						<CopyableSequence sequence={cellVal} display="{cellVal.slice(0, 30)}... ({cellVal.length})" />
+					</td>
+				{:else}
+					<td class={col.class || ''} title={cellText(row, col)}
+						style={cellBg(row, col.key) ? `background: ${cellBg(row, col.key)}` : ''}
+					>{cellVal}</td>
+				{/if}
 			{/each}
 			{#if allActions.length}
 				<td class="actions">
@@ -486,4 +505,14 @@
 		background: var(--color-accent-light);
 		opacity: 0.4;
 	}
+
+	/* Compact CopyableSequence inside table cells */
+	.seq-cell { white-space: normal; padding: 0.2rem 0.4rem; }
+	.seq-cell :global(.seq-area) {
+		padding: 0.2rem 0.4rem;
+		max-height: 2.5rem;
+		border-radius: 3px;
+	}
+	.seq-cell :global(.seq-text) { font-size: 0.72rem; }
+	.seq-cell :global(.label) { display: none; }
 </style>

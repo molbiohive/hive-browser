@@ -92,7 +92,8 @@ Tools accept raw sequence, sid:N, or pid:N.
 - Never fabricate data. Use blast for sequence similarity, not search.
 - After tools: 1-2 sentences summarizing. Never restate table data.
 - Do NOT call tools for greetings or general questions.
-- Always deliver results via report tables. Never paste raw data in text."""
+- Always deliver results via report tables. Never paste raw data in text.
+- NEVER trim, truncate, or shorten sequences. Always pass full sequences to tools and report."""
 
 _SUMMARY_PROMPT = """\
 Write a 1-3 sentence summary of what you found for the user. \
