@@ -1,6 +1,6 @@
 <script>
 	import { mapToParts, mapToCutSites, mapToTranslations } from '$lib/hatchlings.ts';
-	import { PlasmidViewer, SequenceViewer, Tooltip, SelectionState } from '@molbiohive/hatchlings';
+	import { PlasmidViewer, SequenceViewer, ProteinSequenceViewer, Tooltip, SelectionState } from '@molbiohive/hatchlings';
 	import DataTable from '$lib/DataTable.svelte';
 	import TabBar from '$lib/TabBar.svelte';
 	import CopyableSequence from '$lib/CopyableSequence.svelte';
@@ -49,6 +49,9 @@
 	const seq = $derived(data?.sequence);
 	const seqData = $derived(seq?.sequence_data || '');
 	const topology = $derived(seq?.topology || 'circular');
+	const isProtein = $derived(
+		seq?.molecule === 'protein' || seq?.molecule === 'AA'
+	);
 
 	const parts = $derived(mapToParts(data?.features, data?.primers));
 	const translations = $derived(mapToTranslations(data?.translations));
@@ -162,6 +165,20 @@
 	{/if}
 
 	<!-- Visual viewers -->
+	{#if isProtein}
+	<div class="panel-protein" bind:clientWidth={seqPanelW}>
+		{#if seqPanelW > 0 && seqData}
+		<ProteinSequenceViewer
+			data={{ seq: seqData }}
+			colorResidues={true}
+			showNumbers={true}
+			width={seqPanelW}
+			height={Math.min(500, 80 + Math.ceil(seqData.length / 60) * 24)}
+			onhoverinfo={(info) => { hover = info; }}
+		/>
+		{/if}
+	</div>
+	{:else}
 	<div class="viewers">
 		<div class="panel-plasmid" bind:clientWidth={plasmidW}>
 			{#if plasmidW > 0}
@@ -192,6 +209,7 @@
 		</div>
 		{/if}
 	</div>
+	{/if}
 
 	<Tooltip
 		visible={hover != null}
