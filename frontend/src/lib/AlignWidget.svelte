@@ -1,9 +1,13 @@
 <script>
 	import { copyToClipboard } from '$lib/clipboard.ts';
+	import { AlignmentViewer } from '@molbiohive/hatchlings';
 
 	let { data } = $props();
 	let copied = $state(false);
+	let containerEl = $state(undefined);
+	let containerWidth = $state(800);
 
+	// Parse FASTA into AlignmentSequence[]
 	const sequences = $derived.by(() => {
 		if (!data?.aligned) return [];
 		const lines = data.aligned.split('\n');
@@ -12,24 +16,40 @@
 		for (const line of lines) {
 			if (line.startsWith('>')) {
 				if (current) seqs.push(current);
-				current = { name: line.slice(1).trim(), seq: '' };
+				const name = line.slice(1).trim();
+				current = { id: name, name, sequence: '' };
 			} else if (current) {
-				current.seq += line.trim();
+				current.sequence += line.trim();
 			}
 		}
 		if (current) seqs.push(current);
 		return seqs;
 	});
 
-	// Find max name length for padding
-	const maxName = $derived(
-		sequences.reduce((m, s) => Math.max(m, s.name.length), 0)
+	// Auto-detect alphabet from first sequence
+	const alphabet = $derived.by(() => {
+		if (!sequences.length) return 'dna';
+		const sample = sequences[0].sequence.replace(/-/g, '').toUpperCase();
+		if (/U/.test(sample) && !/[DEFHIKLMPQRSVWY]/.test(sample)) return 'rna';
+		if (/[DEFHIKLMPQRSVWY]/.test(sample)) return 'protein';
+		return 'dna';
+	});
+
+	const alignmentData = $derived(
+		sequences.length ? { sequences, alphabet, name: data.name } : null
 	);
 
-	// Build formatted alignment lines
-	const formatted = $derived(
-		sequences.map(s => `${s.name.padEnd(maxName)}  ${s.seq}`).join('\n')
-	);
+	const alignLength = $derived(sequences.length ? sequences[0].sequence.length : 0);
+
+	// Track container width for responsive sizing
+	$effect(() => {
+		if (!containerEl) return;
+		const ro = new ResizeObserver(([e]) => {
+			containerWidth = e.contentRect.width;
+		});
+		ro.observe(containerEl);
+		return () => ro.disconnect();
+	});
 
 	async function copyAlignment() {
 		const ok = await copyToClipboard(data.aligned);
@@ -42,18 +62,24 @@
 
 {#if data?.error}
 <p class="error">{data.error}</p>
-{:else if data?.aligned}
-<div class="align-widget">
+{:else if alignmentData}
+<div class="align-widget" bind:this={containerEl}>
 	<div class="meta">
 		<span><strong>Sequences:</strong> {data.count || sequences.length}</span>
-		{#if sequences.length > 0}
-			<span><strong>Alignment length:</strong> {sequences[0].seq.length}</span>
-		{/if}
+		<span><strong>Length:</strong> {alignLength}</span>
+		<span><strong>Type:</strong> {alphabet}</span>
 		<button class="copy-btn" onclick={copyAlignment}>
 			{copied ? 'Copied!' : 'Copy FASTA'}
 		</button>
 	</div>
-	<pre class="alignment">{formatted}</pre>
+	<div class="viewer-wrap">
+		<AlignmentViewer data={alignmentData}
+			width={Math.max(400, containerWidth - 2)}
+			height={Math.min(500, 60 + sequences.length * 20)}
+			showConsensus={true}
+			showConservation={sequences.length > 2}
+			showNames={true} />
+	</div>
 </div>
 {:else}
 <p class="empty">No alignment data</p>
@@ -83,18 +109,10 @@
 	.copy-btn:hover {
 		background: var(--bg-hover);
 	}
-	.alignment {
-		font-family: var(--font-mono);
-		font-size: 0.75rem;
-		line-height: 1.4;
-		padding: 0.75rem;
-		background: var(--bg-muted);
+	.viewer-wrap {
 		border-radius: 6px;
-		overflow-x: auto;
-		white-space: pre;
-		margin: 0;
-		max-height: 60vh;
-		overflow-y: auto;
+		overflow: hidden;
+		border: 1px solid var(--border-muted);
 	}
 	.error { color: var(--color-err); font-size: 0.85rem; }
 	.empty { color: var(--text-placeholder); font-size: 0.85rem; }
