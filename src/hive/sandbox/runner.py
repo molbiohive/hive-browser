@@ -8,9 +8,10 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 from hive.sandbox.exec import safe_exec
-from hive.sandbox.workspace import Workspace, detailed_describe
+from hive.sandbox.workspace import detailed_describe
 
 if TYPE_CHECKING:
+    from hive.sandbox.workspace import Workspace
     from hive.tools import ToolRegistry
 
 logger = logging.getLogger(__name__)
@@ -37,7 +38,6 @@ class SandboxRunner:
         if not self._registry:
             return {}
         callables: dict[str, Any] = {}
-        ws = self.workspace
         budget = self._tool_call_budget
         call_count = [0]
 
@@ -57,16 +57,7 @@ class SandboxRunner:
                     t.execute(dict(kwargs)),
                     loop,
                 )
-                result = future.result(timeout=30)
-                # Build provenance call_repr and auto-store in workspace
-                args_str = ", ".join(
-                    f'{k}="{v}"' if isinstance(v, str) else f"{k}={v}"
-                    for k, v in kwargs.items()
-                )
-                call_repr = f"{t.name}({args_str})"
-                if isinstance(result, dict):
-                    ws.store_result(result, t.name, dict(kwargs), call_repr=call_repr)
-                return result
+                return future.result(timeout=30)
             return wrapper
 
         for tool in self._registry.tools():
@@ -108,10 +99,9 @@ class SandboxRunner:
         }
 
     async def execute(self, code: str) -> dict[str, Any]:
-        """Run *code* with workspace handles + report dict + persisted vars + tool callables + desc()."""
+        """Run *code* with user vars + report dict + tool callables + desc()."""
         loop = asyncio.get_running_loop()
         variables = dict(self.workspace.user_vars)
-        variables.update(self.workspace.namespace())
         variables["report"] = self.report
         variables["desc"] = self._make_desc_fn()
         if self._registry:
@@ -122,9 +112,7 @@ class SandboxRunner:
         return result
 
     def flush_report(self) -> None:
-        """Move report entries to r<N> workspace handles."""
-        for key, val in self.report.items():
-            self.workspace.store(key, val, "report", prefix="r")
+        """Mark report as flushed (no-op now that handles are removed)."""
 
     def summary_for_llm(self, result: dict[str, Any]) -> str:
         """Compact result summary for LLM context."""

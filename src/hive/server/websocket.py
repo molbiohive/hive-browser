@@ -276,8 +276,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         chat["id"] = requested_id
                         chat["messages"] = saved.get("messages", [])
                         chat["tasks"] = saved.get("tasks", [])
-                        ws_data = saved.get("workspace", [])
-                        chat["workspace"] = Workspace.from_json(ws_data) if ws_data else Workspace()
+                        chat["workspace"] = Workspace()
                         chat["title_generated"] = bool(saved.get("title"))
                         manager.histories[conn_id] = [
                             {"role": m["role"], "content": m["content"]} for m in chat["messages"]
@@ -497,11 +496,7 @@ async def _handle_message(
             tool_call_budget=config.llm.tool_call_budget if config else 100,
         )
 
-        # Trim workspace between messages -- only on success.
-        # On LLM error, preserve p<N> handles so next message can continue.
-        if not result.get("llm_error"):
-            ws: Workspace = chat["workspace"]
-            ws.trim_between_messages(max_report=10)
+        # Nothing to trim now that handles are removed
 
         # Track user message (skip bare commands that just show a form)
         manager.append_history(conn_id, "user", content, max_pairs)
@@ -601,7 +596,6 @@ async def _handle_message(
                 user_slug=user_slug,
                 model=chat.get("model"),
                 tasks=chat.get("tasks"),
-                workspace=chat["workspace"].to_json(),
             )
 
             # Generate title once (LLM with fallback to first message words)

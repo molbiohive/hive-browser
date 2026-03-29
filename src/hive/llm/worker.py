@@ -157,7 +157,7 @@ class Worker(LLMAgent):
         # User message with optional workspace context
         ws = self._workspace
         ws_ctx = ""
-        if len(ws) > 0 and not ws.steps:
+        if ws.user_vars and not ws.steps:
             ws_ctx = f"\n\n[Workspace]\n{ws.describe()}"
         msgs.append({"role": "user", "content": f"{self._user_input}{ws_ctx}"})
 
@@ -389,17 +389,16 @@ class Worker(LLMAgent):
 def _error_hint(err_text: str, workspace: Workspace, sandbox: SandboxRunner) -> str | None:
     m = re.search(r"KeyError:?\s*['\"](\w+)['\"]", err_text)
     if m:
-        for e in reversed(workspace._entries):
-            if isinstance(e.value, list) and e.value and isinstance(e.value[0], dict):
-                keys = ", ".join(list(e.value[0].keys())[:8])
+        for val in reversed(list(workspace.user_vars.values())):
+            if isinstance(val, list) and val and isinstance(val[0], dict):
+                keys = ", ".join(list(val[0].keys())[:8])
                 return f"keys: {{{keys}}}"
         return None
 
     m = re.search(r"NameError:?\s*.*?'(\w+)'", err_text)
     if m:
-        ns = list(workspace.namespace().keys())
         uv = list(workspace.user_vars.keys())
-        available = ns + uv + list(sandbox.report.keys())
+        available = uv + list(sandbox.report.keys())
         if available:
             return f"available: {', '.join(available[:10])}"
     return None
