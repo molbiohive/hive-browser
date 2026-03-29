@@ -214,12 +214,12 @@ def _value_shape(value: Any) -> str:
         if not value:
             return "list  # empty"
         if isinstance(value[0], dict):
-            keys = ", ".join(list(value[0].keys())[:6])
+            keys = ", ".join(str(k) for k in list(value[0].keys())[:6])
             more = ", ..." if len(value[0]) > 6 else ""
             return f"list[dict]  # {len(value)} rows, keys: {{{keys}{more}}}"
         return f"list[{type(value[0]).__name__}]  # {len(value)} items"
     if isinstance(value, dict):
-        keys = ", ".join(list(value.keys())[:8])
+        keys = ", ".join(str(k) for k in list(value.keys())[:8])
         more = ", ..." if len(value) > 8 else ""
         return f"dict  # keys: {{{keys}{more}}}"
     return type(value).__name__
