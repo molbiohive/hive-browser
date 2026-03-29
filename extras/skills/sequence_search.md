@@ -3,6 +3,9 @@
 ## When
 Find sequences by name, keyword, feature, or resistance marker.
 
+## Tools
+- search
+
 ## Workflow
 1. search(query=...) — supports && (AND), || (OR), * (all)
 2. Build report from results

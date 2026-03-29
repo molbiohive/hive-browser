@@ -3,6 +3,10 @@
 ## When
 List all parts/features on a specific sequence: "what features does pX have", "show parts on pX".
 
+## Tools
+- search
+- parts
+
 ## Workflow
 1. If name given, search() to resolve SID
 2. parts(sid=...)

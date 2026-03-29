@@ -3,6 +3,10 @@
 ## When
 Find restriction enzymes that cut a sequence: "what enzymes cut pX", "find unique cutters".
 
+## Tools
+- search
+- sites
+
 ## Workflow
 1. sites(sequence=..., max_cuts=N) — use max_cuts=1 for unique cutters
 

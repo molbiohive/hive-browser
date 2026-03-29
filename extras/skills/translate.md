@@ -3,6 +3,10 @@
 ## When
 Translate DNA/RNA to protein: "translate this sequence", "what protein does pX encode".
 
+## Tools
+- search
+- translate
+
 ## Workflow
 1. translate(sequence=...) — accepts sid:N or raw sequence
 

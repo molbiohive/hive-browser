@@ -3,6 +3,13 @@
 ## When
 Comprehensive report on a sequence: "give me full report on pX", "everything about pX".
 
+## Tools
+- search
+- profile
+- parts
+- sites
+- history
+
 ## Workflow
 1. search() to resolve name to SID
 2. In ONE Python call: profile(), parts(sid=...), sites(sequence=sid:N, max_cuts=1), history(sid=...)

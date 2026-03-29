@@ -3,6 +3,10 @@
 ## When
 Get reverse complement: "reverse complement of this sequence", "revcomp pX".
 
+## Tools
+- search
+- revcomp
+
 ## Workflow
 1. revcomp(sequence=...) — accepts sid:N or raw sequence
 

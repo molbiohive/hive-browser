@@ -3,6 +3,10 @@
 ## When
 Show primer binding sites on a sequence: "show primers on pX", "where do primers bind".
 
+## Tools
+- search
+- primers
+
 ## Workflow
 1. primers(sequence=...) — accepts sid:N
 

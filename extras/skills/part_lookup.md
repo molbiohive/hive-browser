@@ -3,6 +3,10 @@
 ## When
 Look up a specific part by PID: "what is part 42", "show part details".
 
+## Tools
+- search
+- parts
+
 ## Workflow
 1. parts(pid=...)
 

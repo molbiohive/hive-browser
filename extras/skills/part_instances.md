@@ -3,6 +3,10 @@
 ## When
 Find where a specific part is used across sequences: "which plasmids have GFP", "where is ori used".
 
+## Tools
+- search
+- parts
+
 ## Workflow
 1. search() to find the part and get PID
 2. parts(pid=...) to get all instances

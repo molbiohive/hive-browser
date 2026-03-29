@@ -3,6 +3,10 @@
 ## When
 Transcribe DNA to mRNA: "transcribe pX", "get the mRNA".
 
+## Tools
+- search
+- transcribe
+
 ## Workflow
 1. transcribe(sequence=...) — accepts sid:N or raw sequence
 

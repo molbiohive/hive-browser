@@ -3,6 +3,10 @@
 ## When
 Extract a subsequence by feature name or region: "get the GFP sequence from pX", "extract region 100-500".
 
+## Tools
+- search
+- extract
+
 ## Workflow
 1. If name given, search() to resolve SID
 2. extract(sid=..., feature_name=...) or extract(sid=..., region="start:end")

@@ -3,6 +3,10 @@
 ## When
 Show details of a specific sequence: "tell me about pX", "what is pX".
 
+## Tools
+- search
+- profile
+
 ## Workflow
 1. If name given, search() to resolve SID
 2. profile(sid=...)

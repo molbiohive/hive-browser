@@ -3,6 +3,9 @@
 ## When
 Search within a specific project or directory: "show plasmids in vectors folder", "what's in the cloning project".
 
+## Tools
+- search
+
 ## Workflow
 1. search(query="*", tags="<directory_name>")
 

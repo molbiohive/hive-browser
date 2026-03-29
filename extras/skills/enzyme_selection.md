@@ -3,6 +3,10 @@
 ## When
 Choose restriction enzymes for cloning: "which enzymes can I use", "find enzymes that cut once outside the insert".
 
+## Tools
+- search
+- sites
+
 ## Workflow
 1. sites(sequence=..., max_cuts=1) to find unique cutters
 2. If user specifies a region to avoid, filter by position

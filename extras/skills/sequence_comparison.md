@@ -3,6 +3,11 @@
 ## When
 Compare two specific sequences: "compare pX and pY", "what's different between these two".
 
+## Tools
+- search
+- profile
+- blast
+
 ## Workflow
 1. search() to resolve both names to SIDs
 2. Fetch profiles for both, then blast one against the other

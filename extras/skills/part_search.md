@@ -3,6 +3,9 @@
 ## When
 Find parts by name or type: "find all GFP parts", "show promoters".
 
+## Tools
+- search
+
 ## Workflow
 1. search(query=...) — parts are in the response alongside sequences
 

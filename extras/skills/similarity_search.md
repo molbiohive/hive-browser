@@ -3,6 +3,10 @@
 ## When
 Find similar sequences, homologs, or compare a query sequence against the database.
 
+## Tools
+- search
+- blast
+
 ## Workflow
 1. If user gives a name, search() first to get SID
 2. blast(sequence=...) — auto-detects program

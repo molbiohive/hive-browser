@@ -3,6 +3,10 @@
 ## When
 Calculate GC content of a sequence: "what's the GC content of pX".
 
+## Tools
+- search
+- gc
+
 ## Workflow
 1. gc(sequence=...) — accepts sid:N or raw sequence
 

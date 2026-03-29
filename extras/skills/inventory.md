@@ -3,6 +3,9 @@
 ## When
 List all sequences in the database, show everything available.
 
+## Tools
+- search
+
 ## Workflow
 1. search(query="*")
 2. Build sorted table

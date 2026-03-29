@@ -3,6 +3,10 @@
 ## When
 Align multiple sequences: "align these sequences", "compare pX, pY, pZ".
 
+## Tools
+- search
+- align
+
 ## Workflow
 1. If names given, search() to resolve SIDs
 2. align(sids=[...]) — uses MAFFT

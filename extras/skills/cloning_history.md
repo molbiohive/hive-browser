@@ -3,6 +3,10 @@
 ## When
 Show how a sequence was assembled: "how was pX built", "cloning history of pX", "construction steps".
 
+## Tools
+- search
+- history
+
 ## Workflow
 1. If name given, search() to resolve SID
 2. history(sid=...)
