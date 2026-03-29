@@ -30,7 +30,7 @@
 		--btn-fg: white;
 		--btn-hover: #9D78CE;
 
-		--color-ok: #CB9D57;
+		--color-ok: #9D78CE;
 		--color-err: #dc2626;
 		--color-link: #5E4666;
 		--color-accent: #9D78CE;
@@ -112,11 +112,11 @@
 		--btn-fg: #F8E4C5;
 		--btn-hover: #E9A14C;
 
-		--color-ok: #E9A14C;
+		--color-ok: #B8500D;
 		--color-err: #f87171;
 		--color-link: #E9A14C;
 		--color-accent: #B8500D;
-		--color-accent-light: #E9A14C;
+		--color-accent-light: #D4762E;
 		--color-warn: #66270A;
 
 		--shadow: rgba(23, 18, 23, 0.4);

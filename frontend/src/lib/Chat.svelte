@@ -891,7 +891,7 @@
 	}
 
 	.indicator.ok {
-		color: var(--color-ok);
+		color: var(--color-accent);
 	}
 
 	.indicator.err {
@@ -925,7 +925,7 @@
 	}
 
 	.planner-dot.on {
-		background: var(--color-ok);
+		background: var(--color-accent);
 	}
 
 	.feedback-btn {
