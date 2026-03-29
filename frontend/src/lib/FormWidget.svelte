@@ -7,6 +7,9 @@
 	const toolName = $derived(data?.tool_name || '');
 	const properties = $derived(schema.properties || {});
 	const required = $derived(new Set(schema.required || []));
+	const advancedFields = $derived(new Set(data?.advanced || []));
+	const hasAdvanced = $derived(advancedFields.size > 0);
+	let showAdvanced = $state(false);
 
 	// Resolve type from Pydantic anyOf: [{type: "integer"}, {type: "null"}] → "integer"
 	function resolveType(prop) {
@@ -109,60 +112,79 @@
 
 <form class="form-widget" onsubmit={handleSubmit}>
 	{#each Object.entries(properties) as [key, prop]}
-		{@const type = resolveType(prop)}
-		<div class="field">
-			<label for={key}>
-				{key}
-				{#if required.has(key)}<span class="req">*</span>{/if}
-			</label>
-			{#if prop.description}
-				<span class="desc">{prop.description}</span>
-			{/if}
-			{#if type === 'boolean'}
-				<input type="checkbox" id={key} bind:checked={values[key]} />
-			{:else if type === 'number' || type === 'integer'}
-				<input
-					type="number"
-					id={key}
-					step={type === 'integer' ? '1' : 'any'}
-					placeholder={prop.default != null ? String(prop.default) : ''}
-					bind:value={values[key]}
-				/>
-			{:else if type === 'array' || type === 'object'}
-				<label class="tag-input" for="{key}-tag">
-					{#each tags[key] || [] as tag, i}
-						<button type="button" class="tag" onclick={() => removeTag(key, i)}>
-							{#if type === 'object'}
-								<span class="tag-key">{tag.key}:</span> {tag.value}
-							{:else}
-								{tag}
-							{/if}
-							<span class="tag-x">&times;</span>
-						</button>
-					{/each}
-					<input
-						id="{key}-tag"
-						type="text"
-						placeholder={tagPlaceholder(prop)}
-						onkeydown={(e) => handleTagKeydown(key, e)}
-						onblur={(e) => addTag(key, e.target)}
-					/>
-				</label>
-			{:else}
-				<textarea
-					id={key}
-					rows={key === 'sequence' ? 4 : 1}
-					placeholder={prop.default != null ? String(prop.default) : ''}
-					bind:value={values[key]}
-				></textarea>
-			{/if}
-		</div>
+		{#if !advancedFields.has(key)}
+			{@const type = resolveType(prop)}
+			{@render fieldBlock(key, prop, type)}
+		{/if}
 	{/each}
+	{#if hasAdvanced}
+		<button type="button" class="advanced-toggle" onclick={() => showAdvanced = !showAdvanced}>
+			{showAdvanced ? 'Hide' : 'Show'} advanced
+		</button>
+		{#if showAdvanced}
+			{#each Object.entries(properties) as [key, prop]}
+				{#if advancedFields.has(key)}
+					{@const type = resolveType(prop)}
+					{@render fieldBlock(key, prop, type)}
+				{/if}
+			{/each}
+		{/if}
+	{/if}
 	<div class="form-actions">
 		<button type="submit">Run {toolName}</button>
 		<button type="button" class="cancel-btn" onclick={(e) => { e.stopPropagation(); cancelForm(messageIndex); }}>Cancel</button>
 	</div>
 </form>
+
+{#snippet fieldBlock(key, prop, type)}
+	<div class="field">
+		<label for={key}>
+			{key}
+			{#if required.has(key)}<span class="req">*</span>{/if}
+		</label>
+		{#if prop.description}
+			<span class="desc">{prop.description}</span>
+		{/if}
+		{#if type === 'boolean'}
+			<input type="checkbox" id={key} bind:checked={values[key]} />
+		{:else if type === 'number' || type === 'integer'}
+			<input
+				type="number"
+				id={key}
+				step={type === 'integer' ? '1' : 'any'}
+				placeholder={prop.default != null ? String(prop.default) : ''}
+				bind:value={values[key]}
+			/>
+		{:else if type === 'array' || type === 'object'}
+			<label class="tag-input" for="{key}-tag">
+				{#each tags[key] || [] as tag, i}
+					<button type="button" class="tag" onclick={() => removeTag(key, i)}>
+						{#if type === 'object'}
+							<span class="tag-key">{tag.key}:</span> {tag.value}
+						{:else}
+							{tag}
+						{/if}
+						<span class="tag-x">&times;</span>
+					</button>
+				{/each}
+				<input
+					id="{key}-tag"
+					type="text"
+					placeholder={tagPlaceholder(prop)}
+					onkeydown={(e) => handleTagKeydown(key, e)}
+					onblur={(e) => addTag(key, e.target)}
+				/>
+			</label>
+		{:else}
+			<textarea
+				id={key}
+				rows={key === 'sequence' ? 4 : 1}
+				placeholder={prop.default != null ? String(prop.default) : ''}
+				bind:value={values[key]}
+			></textarea>
+		{/if}
+	</div>
+{/snippet}
 
 <style>
 	.form-widget {
@@ -300,5 +322,21 @@
 
 	.cancel-btn:hover {
 		background: var(--bg-active);
+	}
+
+	.advanced-toggle {
+		background: none;
+		border: none;
+		color: var(--text-faint);
+		font-size: 0.78rem;
+		cursor: pointer;
+		padding: 0.2rem 0;
+		text-decoration: underline;
+		text-underline-offset: 2px;
+		align-self: flex-start;
+	}
+
+	.advanced-toggle:hover {
+		color: var(--text-secondary);
 	}
 </style>
