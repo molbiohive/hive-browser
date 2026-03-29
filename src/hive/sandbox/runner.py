@@ -113,6 +113,8 @@ class SandboxRunner:
         result = await asyncio.to_thread(safe_exec, code, variables)
         if result.get("user_vars"):
             self.workspace.update_vars(result["user_vars"])
+        if result.get("stdout"):
+            self.workspace.set_stdout(result["stdout"])
         return result
 
     def flush_report(self) -> None:

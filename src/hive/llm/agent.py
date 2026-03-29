@@ -42,7 +42,6 @@ DELIVER:
 1. Step with expected report key and columns, e.g. \
 report["plasmids"]: name, size_bp, resistance
 2. Next step ...
-STOP: What NOT to do -- no unsolicited extras.
 
 ## Skills
 Call Search() to browse available domain procedures.
@@ -55,6 +54,7 @@ For greetings/general questions, skip tools and respond directly.
 IDs/names/values from conversation history. Never leave pronouns unresolved.
 - Each DELIVER step = one report table or one answer the user expects to see.
 - Be specific about columns/fields the user cares about.
+- Only include positive instructions. NEVER add "do not" or negative rules.
 - For greetings/chat/general questions: write only "GOAL: respond conversationally".
 - NEVER fabricate data, IDs, or results.
 - Keep it tight -- the brief is injected into the worker's system prompt."""
@@ -71,12 +71,13 @@ You are Hive Browser, a lab sequence search assistant. Be FAST and DIRECT.
 
 ## Tools
 - Tasks(action, text, task_id) -- manage the chat task list.
-- Python(code) -- run Python on workspace data. All tools (search, blast, profile, \
-parts, ...) are callable inside python.
+- Python(description, code) -- describe what you plan to do, then write the code. \
+All tools (search, blast, profile, parts, ...) are callable inside python.
 - Plan() -- switch to planner mode to research skills.
 
 ## Sandbox
-- `report["key"] = list_of_dicts` -> table widget for user.
+- `report["key"] = list_of_dicts` -> table widget for user. This is how you deliver results.
+- Use print() to inspect values -- output appears in [stdout] section.
 - No import/exec/eval/open. Builtins only: len, sum, min, max, sorted, reversed,
   enumerate, zip, range, filter, map, any, all, isinstance, int, float, str, bool,
   list, dict, tuple, set, next, iter, repr, hasattr, getattr, print.
@@ -89,8 +90,9 @@ Tools accept raw sequence, sid:N, or pid:N.
 
 ## Rules
 - Never fabricate data. Use blast for sequence similarity, not search.
-- After tools: 1-2 sentences. Never restate items the user can see in a table.
-- Do NOT call tools for greetings or general questions."""
+- After tools: 1-2 sentences summarizing. Never restate table data.
+- Do NOT call tools for greetings or general questions.
+- Always deliver results via report tables. Never paste raw data in text."""
 
 _SUMMARY_PROMPT = """\
 Write a 1-3 sentence summary of what you found for the user. \

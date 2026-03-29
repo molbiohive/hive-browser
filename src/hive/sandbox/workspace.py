@@ -21,6 +21,7 @@ class Workspace:
         self._user_vars: dict[str, Any] = {}
         self._steps: list[dict] = []
         self._desc_results: list[tuple[str, str]] = []
+        self._stdout: str = ""
 
     # -- User variables (persisted across sandbox calls within a message) --
 
@@ -30,6 +31,10 @@ class Workspace:
 
     def update_vars(self, new_vars: dict[str, Any]) -> None:
         self._user_vars.update(new_vars)
+
+    def set_stdout(self, text: str) -> None:
+        """Store latest stdout for next describe()."""
+        self._stdout = text
 
     # -- Step tracking --
 
@@ -54,40 +59,42 @@ class Workspace:
         report: dict[str, Any] | None = None,
         tool_signatures: list[str] | None = None,
     ) -> str:
-        """Python-comment style scope -- everything the LLM can access.
-
-        Groups: user variables -> report -> desc() results -> available commands.
-        """
+        """Three-section LLM context: [stdout], [data], [tools]."""
         lines: list[str] = []
 
-        # User variables from previous python calls
+        if self._stdout:
+            lines.append("# [stdout] -- print output from last execution")
+            trimmed = self._stdout.rstrip()
+            if len(trimmed) > 500:
+                trimmed = trimmed[:500] + "..."
+            for sl in trimmed.split("\n")[:10]:
+                lines.append(f"# {sl}")
+            self._stdout = ""
+
+        data_lines: list[str] = []
         for name in sorted(self._user_vars):
             val = self._user_vars[name]
-            lines.append(f"# {name}: {_value_shape(val)}")
+            data_lines.append(f"# {name}: {_value_shape(val)}")
             for detail_line in _render_value(name, val):
-                lines.append(f"#   {detail_line}")
-
-        # Report entries (sandbox report dict)
+                data_lines.append(f"#   {detail_line}")
         if report:
             for key, val in report.items():
                 rname = f'report["{key}"]'
-                lines.append(f"# {rname}: {_value_shape(val)}")
+                data_lines.append(f"# {rname}: {_value_shape(val)}")
                 for detail_line in _render_value(rname, val):
-                    lines.append(f"#   {detail_line}")
-
-        # Pending desc() results
+                    data_lines.append(f"#   {detail_line}")
         if self._desc_results:
-            lines.append("#")
             for var_name, detail in self._desc_results:
-                lines.append(f"# desc({var_name}):")
+                data_lines.append(f"# desc({var_name}):")
                 for dl in detail.split("\n"):
-                    lines.append(f"#   {dl}")
+                    data_lines.append(f"#   {dl}")
             self._desc_results.clear()
+        if data_lines:
+            lines.append("# [data] -- user variables, report entries, desc() results")
+            lines.extend(data_lines)
 
-        # Available tools
         if tool_signatures:
-            lines.append("#")
-            lines.append("# [tools]")
+            lines.append("# [tools] -- callable functions")
             for sig in tool_signatures:
                 lines.append(f"# {sig}")
 
