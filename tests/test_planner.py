@@ -192,13 +192,12 @@ class TestPlan:
         for keyword in ("GOAL:", "DELIVER:", "STOP:"):
             assert keyword in system_msg
 
-    async def test_skills_catalog_in_system_prompt(self, planner):
+    async def test_skills_section_in_system_prompt(self, planner):
         llm = _mock_llm("plan text")
         await planner.prepare("test").run(llm)
         system_msg = llm.chat.call_args[0][0][0]["content"]
-        assert "seq_search" in system_msg
-        assert "blast_sim" in system_msg
-        assert "MUST call read(name)" in system_msg
+        assert "search()" in system_msg
+        assert "read(name)" in system_msg
 
 
 # -- Skill Integration --
@@ -223,18 +222,36 @@ class TestSkillIntegration:
         assert "## Domain Skills" in system_msg
         assert "seq_search" in system_msg
 
-    async def test_only_read_tool_offered(self, planner):
-        """Planner offers only read tool (catalog is in system prompt)."""
+    async def test_conv_includes_tool_history(self, planner):
+        """After read(), messages include assistant tool_calls + tool result."""
+        llm = _mock_llm_multiturn([
+            {"tool_calls": [{"id": "tc1", "function": {"name": "read", "arguments": json.dumps({"name": "seq_search"})}}]},
+            {"content": "GOAL: search"},
+        ])
+        await planner.prepare("find stuff").run(llm, max_turns=4)
+
+        # Inspect turn 2 messages
+        turn2_msgs = llm.chat.call_args[0][0]
+        # system + user + assistant(tool_calls) + tool(result) = 4
+        assert len(turn2_msgs) == 4
+        assert turn2_msgs[2]["role"] == "assistant"
+        assert turn2_msgs[2]["tool_calls"][0]["id"] == "tc1"
+        assert turn2_msgs[3]["role"] == "tool"
+        assert turn2_msgs[3]["tool_call_id"] == "tc1"
+        assert "Seq Search" in turn2_msgs[3]["content"]
+
+    async def test_search_and_read_tools_offered(self, planner):
+        """Planner offers search and read tools."""
         llm = _mock_llm("plan text")
         await planner.prepare("test").run(llm)
         call_kwargs = llm.chat.call_args[1]
         tools = call_kwargs.get("tools")
         assert tools is not None
         names = {t["function"]["name"] for t in tools}
-        assert names == {"read"}
+        assert names == {"search", "read"}
 
-    async def test_read_missing_skill_no_crash(self, planner):
-        """Reading a nonexistent skill doesn't add to context."""
+    async def test_read_missing_skill_includes_available(self, planner):
+        """Reading nonexistent skill returns available names in tool result."""
         llm = _mock_llm_multiturn([
             {"tool_calls": [{"id": "1", "function": {"name": "read", "arguments": json.dumps({"name": "nonexistent"})}}]},
             {"content": "brief text"},
@@ -243,3 +260,44 @@ class TestSkillIntegration:
         assert plan_text == "brief text"
         system_msg = llm.chat.call_args[0][0][0]["content"]
         assert "## Domain Skills" not in system_msg
+
+        # Tool result should list available skills
+        tool_result_msg = llm.chat.call_args[0][0][3]
+        assert tool_result_msg["role"] == "tool"
+        assert "seq_search" in tool_result_msg["content"]
+        assert "blast_sim" in tool_result_msg["content"]
+
+    async def test_tool_choice_required_on_first_turn(self, planner):
+        """First turn forces tool_choice='required', second turn does not."""
+        llm = _mock_llm_multiturn([
+            {"tool_calls": [{"id": "1", "function": {"name": "read", "arguments": json.dumps({"name": "seq_search"})}}]},
+            {"content": "GOAL: search"},
+        ])
+        await planner.prepare("find stuff").run(llm, max_turns=4)
+
+        # Two calls: turn 0 (forced) + turn 1 (text)
+        assert llm.chat.call_count == 2
+        # Turn 0: tool_choice="required"
+        turn0_kwargs = llm.chat.call_args_list[0][1]
+        assert turn0_kwargs["tool_choice"] == "required"
+        # Turn 1: tool_choice=None (not forced)
+        turn1_kwargs = llm.chat.call_args_list[1][1]
+        assert turn1_kwargs.get("tool_choice") is None
+
+    async def test_multi_read_in_one_turn(self, planner):
+        """Model reads two skills in a single turn."""
+        llm = _mock_llm_multiturn([
+            {"tool_calls": [
+                {"id": "1", "function": {"name": "read", "arguments": json.dumps({"name": "seq_search"})}},
+                {"id": "2", "function": {"name": "read", "arguments": json.dumps({"name": "blast_sim"})}},
+            ]},
+            {"content": "GOAL: combined search"},
+        ])
+        plan_text, _ = await planner.prepare("search and blast").run(llm, max_turns=4)
+        assert "GOAL" in plan_text
+
+        # Turn 2 should have: system + user + assistant + tool + tool = 5
+        turn2_msgs = llm.chat.call_args[0][0]
+        assert len(turn2_msgs) == 5
+        tool_msgs = [m for m in turn2_msgs if m["role"] == "tool"]
+        assert len(tool_msgs) == 2

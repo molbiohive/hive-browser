@@ -55,9 +55,10 @@ class LLMAgent:
         for turn in range(max_turns):
             messages = self._build_messages()
             tools = self._tools()
+            tool_choice = self._tool_choice(turn)
 
             try:
-                response = await self._chat(llm, messages, tools)
+                response = await self._chat(llm, messages, tools, tool_choice=tool_choice)
             except Exception as e:
                 if await self._on_error(e, turn):
                     continue
@@ -89,6 +90,10 @@ class LLMAgent:
         """Tool schemas for LLM. None = no tool calling."""
         return None
 
+    def _tool_choice(self, turn: int) -> str | None:
+        """Override to control tool_choice per turn (e.g. 'required')."""
+        return None
+
     async def _handle_call(self, tc: dict) -> None:
         """Process a tool call. Override to execute tools and record results."""
 
@@ -118,9 +123,10 @@ class LLMAgent:
         llm: LLMClient,
         messages: list[dict],
         tools: list[dict] | None = None,
+        tool_choice: str | None = None,
     ) -> dict:
         """Make an LLM call, accumulating token usage."""
-        response = await llm.chat(messages, tools=tools)
+        response = await llm.chat(messages, tools=tools, tool_choice=tool_choice)
         usage = response.get("usage") or {}
         self.tokens["in"] += usage.get("prompt_tokens", 0)
         self.tokens["out"] += usage.get("completion_tokens", 0)

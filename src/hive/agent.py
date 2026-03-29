@@ -144,12 +144,16 @@ async def _run_agents(
     plan_text = None
     plan_tokens: dict[str, int] = {"in": 0, "out": 0}
     if planner and use_planner:
+        logger.info("Planner: starting (use_planner=%s)", use_planner)
         try:
             plan_text, plan_tokens = await planner.prepare(
                 user_input, history,
             ).run(llm_client, max_turns=4)
+            logger.info("Planner: brief=%r tokens=%s", (plan_text or "")[:120], plan_tokens)
         except Exception as e:
             logger.warning("Planner failed, continuing without plan: %s", e)
+    else:
+        logger.info("Planner: skipped (planner=%s, use_planner=%s)", planner is not None, use_planner)
 
     # -- Worker --
     worker = Worker(

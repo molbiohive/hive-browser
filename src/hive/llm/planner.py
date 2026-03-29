@@ -37,12 +37,10 @@ report["plasmids"]: name, size_bp, resistance
 STOP: What NOT to do -- no unsolicited extras.
 
 ## Skills
-Available domain procedures:
-{skills_catalog}
-
-IMPORTANT: You MUST call read(name) for the best matching skill BEFORE writing \
-the brief. Use the procedure's workflow, report keys, and pitfalls. \
-For greetings/general questions, skip read() and respond directly.
+Call search() to browse available domain procedures.
+Call read(name) to load a procedure matching the user's request.
+Use the procedure's workflow, report keys, and pitfalls in your brief.
+For greetings/general questions, skip tools and respond directly.
 
 ## Rules
 - Resolve all references ("that plasmid", "those results") to concrete \
@@ -53,7 +51,12 @@ IDs/names/values from conversation history. Never leave pronouns unresolved.
 - NEVER fabricate data, IDs, or results.
 - Keep it tight -- the brief is injected into the worker's system prompt."""
 
-_READ_TOOL = [
+_SKILL_TOOLS = [
+    {"type": "function", "function": {
+        "name": "search",
+        "description": "List available skill procedures with trigger descriptions.",
+        "parameters": {"type": "object", "properties": {}},
+    }},
     {"type": "function", "function": {
         "name": "read",
         "description": "Read full content of a skill procedure by name.",
@@ -77,17 +80,21 @@ class Planner(LLMAgent):
         sigs = registry.signatures(detailed=True)
         self._catalog = "\n".join(f"- {s}" for s in sigs)
         self._skills = skills
-        cat = skills.catalog()
-        self._skills_catalog = "\n".join(
-            f"- **{s['name']}**: {s['when']}" for s in cat
-        ) if cat else "No skills available."
         self._user_input = ""
         self._history: list[dict] | None = None
         self._read_skills: list[dict] = []
+        self._search_result: list[dict] | None = None
+        self._conv: list[dict] = []
+        self._turn_calls: list[dict] = []
+        self._turn_results: list[dict] = []
 
     def _reset(self):
         super()._reset()
         self._read_skills = []
+        self._search_result = None
+        self._conv = []
+        self._turn_calls = []
+        self._turn_results = []
 
     def prepare(
         self,
@@ -100,22 +107,60 @@ class Planner(LLMAgent):
         return self
 
     def _tools(self) -> list[dict]:
-        return _READ_TOOL
+        return _SKILL_TOOLS
+
+    def _tool_choice(self, turn: int) -> str | None:
+        """Force tool use on first turn so model reads a skill."""
+        if turn == 0:
+            return "required"
+        return None
 
     async def _handle_call(self, tc: dict) -> None:
         name = tc["function"]["name"]
-        if name == "read":
+        self._turn_calls.append(tc)
+        result_content = ""
+        if name == "search":
+            cat = self._skills.catalog()
+            self._search_result = cat
+            result_content = "\n".join(
+                f"- {s['name']}: {s['when']}" for s in cat
+            ) if cat else "No skills available."
+            logger.info("Planner: search returned %d skills", len(cat))
+        elif name == "read":
             args = self._parse_tool_args(tc)
             skill_name = args.get("name", "")
             content = self._skills.read(skill_name)
             if content:
                 self._read_skills.append({"name": skill_name, "content": content})
+                result_content = content
+                logger.info("Planner: read skill %r (%d chars)", skill_name, len(content))
+            else:
+                available = ", ".join(self._skills.names())
+                result_content = f"Skill '{skill_name}' not found. Available: {available}"
+                logger.warning("Planner: skill %r not found", skill_name)
+        else:
+            result_content = f"Unknown tool: {name}"
+
+        self._turn_results.append({
+            "role": "tool",
+            "tool_call_id": tc.get("id", ""),
+            "content": result_content,
+        })
+
+    async def _post_turn(self, turn: int) -> None:
+        """Append assistant tool_calls + tool results to conversation history."""
+        if self._turn_calls:
+            self._conv.append({
+                "role": "assistant",
+                "content": None,
+                "tool_calls": list(self._turn_calls),
+            })
+            self._conv.extend(self._turn_results)
+            self._turn_calls = []
+            self._turn_results = []
 
     def _build_messages(self) -> list[dict]:
-        system = _SYSTEM.format(
-            catalog=self._catalog,
-            skills_catalog=self._skills_catalog,
-        )
+        system = _SYSTEM.format(catalog=self._catalog)
 
         if self._read_skills:
             parts = [f"### {s['name']}\n{s['content']}" for s in self._read_skills]
@@ -125,10 +170,17 @@ class Planner(LLMAgent):
         if self._history:
             messages.extend(self._history)
         messages.append({"role": "user", "content": self._user_input})
+
+        # Append tool call conversation so model sees its past actions
+        messages.extend(self._conv)
+
         return messages
 
     def _on_complete(self, content: str) -> tuple[str, dict[str, int]]:
+        skills_used = [s["name"] for s in self._read_skills]
+        logger.info("Planner: complete, skills=%s, brief=%r", skills_used, content[:120])
         return content, dict(self.tokens)
 
     async def _on_exhausted(self) -> tuple[str, dict[str, int]]:
+        logger.warning("Planner: exhausted max turns, skills_read=%d", len(self._read_skills))
         return "", dict(self.tokens)

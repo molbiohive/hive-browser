@@ -1,0 +1,21 @@
+# Reverse Complement
+
+## When
+Get reverse complement: "reverse complement of this sequence", "revcomp pX".
+
+## Workflow
+1. revcomp(sequence=...) — accepts sid:N or raw sequence
+
+## Report
+```python
+report["revcomp"] = [
+    {"property": "Sequence", "value": r["sequence"]},
+    {"property": "Length", "value": f"{r['length']} bp"},
+]
+```
+
+## Red Flags
+- None
+
+## Rules
+- 1 Python call, property-value table

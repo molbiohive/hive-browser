@@ -27,7 +27,8 @@ class SkillLibrary:
 
     def __init__(self, skills_dir: str | Path | None = None):
         if skills_dir is None:
-            skills_dir = Path(__file__).parent
+            # Default: extras/skills/ at project root
+            skills_dir = Path(__file__).resolve().parents[3] / "extras" / "skills"
         self._dir = Path(skills_dir)
         self._skills: dict[str, Skill] = {}
         self._load()
