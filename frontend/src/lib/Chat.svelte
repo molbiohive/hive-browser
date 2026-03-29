@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { chatStore, chatList, appConfig, statusBar, tasks, connect, sendMessage, cancelRequest, loadChat, newChat, fetchChatList, deleteChat, setPreference } from '$lib/stores/chat.ts';
 	import { currentUser, needsAuth, setToken, getUserToken } from '$lib/stores/user.ts';
-	import { leftPanelOpen, rightPanelOpen } from '$lib/stores/panels.ts';
+	import { leftPanelOpen, rightPanelOpen, sidebarWidth, searchPanelWidth } from '$lib/stores/panels.ts';
 	import MessageBubble from '$lib/MessageBubble.svelte';
 	import CommandPalette from '$lib/CommandPalette.svelte';
 	import ModelSelector from '$lib/ModelSelector.svelte';
@@ -326,14 +326,43 @@
 		}
 		prevMsgCount = count;
 	});
+
+	let resizing = $state(false);
+
+	function startResize(side, e) {
+		e.preventDefault();
+		resizing = true;
+		const startX = e.clientX;
+		const startW = side === 'left' ? $sidebarWidth : $searchPanelWidth;
+		const [min, max] = side === 'left' ? [160, 400] : [300, 700];
+
+		function onMove(ev) {
+			const delta = side === 'left' ? ev.clientX - startX : startX - ev.clientX;
+			const clamped = Math.min(max, Math.max(min, startW + delta));
+			if (side === 'left') sidebarWidth.set(clamped);
+			else searchPanelWidth.set(clamped);
+		}
+		function onUp() {
+			resizing = false;
+			window.removeEventListener('mousemove', onMove);
+			window.removeEventListener('mouseup', onUp);
+		}
+		window.addEventListener('mousemove', onMove);
+		window.addEventListener('mouseup', onUp);
+	}
+
+	function resetWidth(side) {
+		if (side === 'left') sidebarWidth.set(240);
+		else searchPanelWidth.set(450);
+	}
 </script>
 
 {#if $needsAuth}
 	<WelcomeModal mode={modalMode} onCancel={showAddUser ? handleCancelAddUser : undefined} />
 {:else}
 <div class="chat-layout">
-	<div class="sidebar-wrapper" style:width={$leftPanelOpen ? '240px' : '0'}>
-	<aside class="sidebar">
+	<div class="sidebar-wrapper" class:no-transition={resizing} style:width={$leftPanelOpen ? $sidebarWidth + 'px' : '0'}>
+	<aside class="sidebar" style:width={$sidebarWidth + 'px'}>
 		<div class="sidebar-header">
 			<img src={dark ? "/logo-dark.svg" : "/logo.svg"} alt="Hive Browser" class="logo" />
 			<h2>Hive Browser</h2>
@@ -385,6 +414,9 @@
 		</div>
 	</aside>
 	</div>
+	{#if $leftPanelOpen}
+		<div class="resize-handle" role="separator" aria-orientation="vertical" onmousedown={(e) => startResize('left', e)} ondblclick={() => resetWidth('left')}></div>
+	{/if}
 
 	<div class="chat-main">
 		<div class="panel-toggles">
@@ -510,8 +542,11 @@
 		</div>
 	</div>
 
-	<div class="search-wrapper" style:width={$rightPanelOpen ? '450px' : '0'}>
-		<SearchPanel />
+	{#if $rightPanelOpen}
+		<div class="resize-handle" role="separator" aria-orientation="vertical" onmousedown={(e) => startResize('right', e)} ondblclick={() => resetWidth('right')}></div>
+	{/if}
+	<div class="search-wrapper" class:no-transition={resizing} style:width={$rightPanelOpen ? $searchPanelWidth + 'px' : '0'}>
+		<SearchPanel width={$searchPanelWidth} />
 	</div>
 </div>
 {#if showFeedback}
@@ -541,8 +576,25 @@
 		transition: width 0.2s ease;
 	}
 
+	.sidebar-wrapper.no-transition,
+	.search-wrapper.no-transition {
+		transition: none;
+	}
+
+	.resize-handle {
+		width: 4px;
+		cursor: col-resize;
+		flex-shrink: 0;
+		background: transparent;
+		transition: background 0.15s;
+		z-index: 5;
+	}
+
+	.resize-handle:hover {
+		background: var(--color-accent);
+	}
+
 	.sidebar {
-		width: 240px;
 		background: var(--bg-sidebar);
 		border-right: 1px solid var(--border);
 		display: flex;

@@ -3,6 +3,7 @@
 	import DataTable from '$lib/DataTable.svelte';
 	import TabBar from '$lib/TabBar.svelte';
 
+	let { width = 450 } = $props();
 	let searchQuery = $state('');
 	let blastQuery = $state('');
 	let searchResults = $state(null);
@@ -159,7 +160,7 @@
 	});
 </script>
 
-<div class="search-panel">
+<div class="search-panel" style:width={width + 'px'}>
 	<div class="panel-header">
 		<h3>Search</h3>
 	</div>
@@ -267,7 +268,6 @@
 
 <style>
 	.search-panel {
-		width: 450px;
 		background: var(--bg-sidebar);
 		border-left: 1px solid var(--border);
 		display: flex;
