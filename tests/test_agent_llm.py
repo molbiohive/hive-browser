@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from hive.llm.agent import Agent
+from hive.llm.agent import Agent, _parse_tools_line, _strip_tools_line
 from hive.skills import SkillLibrary
 from hive.tools.base import Tool
 from hive.tools.registry import ToolRegistry
@@ -364,3 +364,133 @@ class TestModeSwitching:
         result = await agent.run(llm, max_turns=10)
         assert result["type"] == "message"
         assert "Recovered" in result["content"]
+
+
+# -- Parse/strip TOOLS line --
+
+
+class TestParseToolsLine:
+    def test_parses_tools(self):
+        plan = "GOAL: search\nTOOLS: search, blast, profile\nDELIVER:\n1. search"
+        assert _parse_tools_line(plan) == ["search", "blast", "profile"]
+
+    def test_returns_none_when_missing(self):
+        plan = "GOAL: search\nDELIVER:\n1. search"
+        assert _parse_tools_line(plan) is None
+
+    def test_empty_tools_returns_none(self):
+        plan = "GOAL: search\nTOOLS: \nDELIVER:\n1. search"
+        assert _parse_tools_line(plan) is None
+
+    def test_strips_whitespace(self):
+        plan = "TOOLS:  search ,  blast  "
+        assert _parse_tools_line(plan) == ["search", "blast"]
+
+
+class TestStripToolsLine:
+    def test_removes_tools_line(self):
+        plan = "GOAL: search\nTOOLS: search, blast\nDELIVER:\n1. search"
+        result = _strip_tools_line(plan)
+        assert "TOOLS:" not in result
+        assert "GOAL: search" in result
+        assert "DELIVER:" in result
+
+    def test_no_tools_line_unchanged(self):
+        plan = "GOAL: search\nDELIVER:\n1. search"
+        assert _strip_tools_line(plan) == plan
+
+
+# -- ToolRegistry.filtered --
+
+
+class TestRegistryFiltered:
+    def test_subset(self, registry):
+        sub = registry.filtered(["search", "blast"])
+        names = {t.name for t in sub.tools()}
+        assert names == {"search", "blast"}
+
+    def test_ignores_unknown(self, registry):
+        sub = registry.filtered(["search", "nonexistent"])
+        names = {t.name for t in sub.tools()}
+        assert names == {"search"}
+
+    def test_empty_names(self, registry):
+        sub = registry.filtered([])
+        assert len(sub.tools()) == 0
+
+
+# -- Worker sees filtered tools --
+
+
+class TestWorkerToolFiltering:
+    async def test_tools_line_filters_worker(self, registry, skills):
+        """Planner TOOLS: line causes worker to see filtered tools only."""
+        llm = _mock_llm([
+            _tool_call_response([("Search", {})]),
+            _text_response("GOAL: find GFP\nTOOLS: search\nDELIVER:\n1. search"),
+            _text_response("Done."),
+        ])
+        agent = Agent(registry, skills)
+        agent.prepare("find GFP", use_planner=True)
+        await agent.run(llm, max_turns=10)
+
+        # Worker call (3rd): Python tool description should only show search
+        worker_call = llm.chat.call_args_list[2]
+        worker_tools = worker_call[1].get("tools") or worker_call[0][1]
+        py_tool = [t for t in worker_tools if t["function"]["name"] == "Python"][0]
+        desc = py_tool["function"]["description"]
+        assert "search(" in desc
+        # blast should NOT appear since it wasn't in TOOLS line
+        assert "blast(" not in desc
+
+    async def test_no_tools_line_uses_full_registry(self, registry, skills):
+        """Without TOOLS line, worker sees all tools."""
+        llm = _mock_llm([
+            _tool_call_response([("Search", {})]),
+            _text_response("GOAL: find GFP\nDELIVER:\n1. search"),
+            _text_response("Done."),
+        ])
+        agent = Agent(registry, skills)
+        agent.prepare("find GFP", use_planner=True)
+        await agent.run(llm, max_turns=10)
+
+        worker_call = llm.chat.call_args_list[2]
+        worker_tools = worker_call[1].get("tools") or worker_call[0][1]
+        py_tool = [t for t in worker_tools if t["function"]["name"] == "Python"][0]
+        desc = py_tool["function"]["description"]
+        assert "search(" in desc
+        assert "blast(" in desc
+
+    async def test_search_always_included(self, registry, skills):
+        """Even if TOOLS doesn't list search, it's force-included."""
+        llm = _mock_llm([
+            _tool_call_response([("Search", {})]),
+            _text_response("GOAL: blast\nTOOLS: blast\nDELIVER:\n1. blast"),
+            _text_response("Done."),
+        ])
+        agent = Agent(registry, skills)
+        agent.prepare("blast query", use_planner=True)
+        await agent.run(llm, max_turns=10)
+
+        worker_call = llm.chat.call_args_list[2]
+        worker_tools = worker_call[1].get("tools") or worker_call[0][1]
+        py_tool = [t for t in worker_tools if t["function"]["name"] == "Python"][0]
+        desc = py_tool["function"]["description"]
+        assert "search(" in desc
+        assert "blast(" in desc
+
+    async def test_tools_line_stripped_from_plan(self, registry, skills):
+        """TOOLS line is removed from the plan injected into worker system prompt."""
+        llm = _mock_llm([
+            _tool_call_response([("Search", {})]),
+            _text_response("GOAL: find GFP\nTOOLS: search\nDELIVER:\n1. search"),
+            _text_response("Done."),
+        ])
+        agent = Agent(registry, skills)
+        agent.prepare("find GFP", use_planner=True)
+        await agent.run(llm, max_turns=10)
+
+        worker_msgs = llm.chat.call_args_list[2][0][0]
+        system_msg = [m for m in worker_msgs if m["role"] == "system"][0]
+        assert "TOOLS:" not in system_msg["content"]
+        assert "GOAL: find GFP" in system_msg["content"]

@@ -128,6 +128,23 @@ class TestToolRegistry:
         assert len(meta) == 1
         assert meta[0]["name"] == "dummy"
 
+    def test_filtered_subset(self):
+        reg = ToolRegistry()
+        t1 = DummyTool()
+        t2 = ParamsTool()
+        reg.register(t1)
+        reg.register(t2)
+        sub = reg.filtered(["dummy"])
+        assert len(sub.tools()) == 1
+        assert sub.get("dummy") is t1
+        assert sub.get("paramtool") is None
+
+    def test_filtered_ignores_unknown(self):
+        reg = ToolRegistry()
+        reg.register(DummyTool())
+        sub = reg.filtered(["dummy", "nonexistent"])
+        assert len(sub.tools()) == 1
+
 
 # -- ToolFactory -- Internal Discovery --
 
