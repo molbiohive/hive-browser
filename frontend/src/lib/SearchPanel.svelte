@@ -104,7 +104,11 @@
 
 	async function doSearch(q) {
 		try {
-			const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+			const res = await fetch('/api/tools/search', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ query: q }),
+			});
 			if (res.ok) {
 				searchResults = await res.json();
 			} else {
@@ -123,7 +127,7 @@
 		blastLoading = true;
 		blastResults = null;
 		try {
-			const res = await fetch('/api/blast', {
+			const res = await fetch('/api/tools/blast', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ sequence: seq }),

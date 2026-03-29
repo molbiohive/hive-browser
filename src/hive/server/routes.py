@@ -322,38 +322,37 @@ async def list_primer_parts():
         ]
 
 
-# -- Search / BLAST endpoints (for search panel) ----------
+# -- Generic tool API ------------------------------------
 
 
-@router.get("/search")
-async def search_endpoint(request: Request, q: str = ""):
-    """Direct BM25 search -- reuses SearchTool.execute()."""
-    q = q.strip()
-    if len(q) < 2:
-        return {"results": [], "total": 0, "parts": [], "parts_total": 0, "query": q}
+@router.get("/tools")
+async def list_tools(request: Request):
+    """List all tools with schemas."""
     registry = getattr(request.app.state, "tool_registry", None)
-    tool = registry.get("search") if registry else None
-    if not tool:
-        return JSONResponse({"error": "Search tool not available"}, status_code=503)
-    result = await tool.execute({"query": q}, mode="direct")
-    return result
+    if not registry:
+        return []
+    return [t.api_schema() for t in registry.tools()]
 
 
-@router.post("/blast")
-async def blast_endpoint(request: Request):
-    """Direct BLAST search -- reuses BlastTool.execute()."""
+@router.get("/tools/{tool_name}/schema")
+async def tool_schema(tool_name: str, request: Request):
+    """Single tool schema."""
     registry = getattr(request.app.state, "tool_registry", None)
-    tool = registry.get("blast") if registry else None
+    tool = registry.get(tool_name) if registry else None
     if not tool:
-        return JSONResponse({"error": "BLAST tool not available"}, status_code=503)
-    body = await request.json()
-    sequence = body.get("sequence", "").strip()
-    if not sequence:
-        return JSONResponse({"error": "Missing required field: sequence"}, status_code=422)
-    params = {"sequence": sequence}
-    if program := body.get("program"):
-        params["program"] = program
-    result = await tool.execute(params, mode="direct")
+        return JSONResponse({"error": f"Unknown tool: {tool_name}"}, status_code=404)
+    return tool.api_schema()
+
+
+@router.post("/tools/{tool_name}")
+async def execute_tool(tool_name: str, request: Request):
+    """Execute a tool by name with JSON params."""
+    registry = getattr(request.app.state, "tool_registry", None)
+    tool = registry.get(tool_name) if registry else None
+    if not tool:
+        return JSONResponse({"error": f"Unknown tool: {tool_name}"}, status_code=404)
+    params = await request.json()
+    result = await tool.execute(params)
     return result
 
 
