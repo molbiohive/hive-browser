@@ -70,17 +70,16 @@ def safe_exec(code: str, variables: dict[str, Any] | None = None) -> dict[str, A
     Parameters
     ----------
     code:
-        Python source. Must assign to ``feedback``.
+        Python source.
     variables:
-        Extra names injected into the namespace (e.g. cached data handles).
+        Extra names injected into the namespace (e.g. user variables, tools).
 
     Returns
     -------
     dict with keys:
         status: "ok" | "error"
-        feedback: the value of ``feedback`` (on success)
         stdout: captured print output
-        type:   "list" | "dict" | "scalar" (on success)
+        user_vars: new variables created by the code (on success)
         error:  error message (on failure)
     """
     if not code or not code.strip():
@@ -121,29 +120,15 @@ def safe_exec(code: str, variables: dict[str, Any] | None = None) -> dict[str, A
 
     stdout = stdout_buf.getvalue()
 
-    if "feedback" not in namespace:
-        return {
-            "status": "error",
-            "error": "Code must assign to `feedback`",
-            "stdout": stdout,
-        }
-
-    value = namespace["feedback"]
-    result_type = (
-        "list" if isinstance(value, list) else "dict" if isinstance(value, dict) else "scalar"
-    )
-
-    # Capture user-created variables (not feedback, not _-prefixed, not builtins)
+    # Capture user-created variables (not _-prefixed, not builtins)
     user_vars = {
         k: namespace[k]
         for k in set(namespace.keys()) - pre_keys
-        if k != "feedback" and not k.startswith("_")
+        if not k.startswith("_")
     }
 
     return {
         "status": "ok",
-        "feedback": value,
         "stdout": stdout,
-        "type": result_type,
         "user_vars": user_vars,
     }

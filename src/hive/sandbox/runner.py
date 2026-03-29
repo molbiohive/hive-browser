@@ -90,7 +90,7 @@ class SandboxRunner:
                     "properties": {
                         "code": {
                             "type": "string",
-                            "description": "Python code. Assign output to `feedback`.",
+                            "description": "Python code to execute.",
                         },
                     },
                     "required": ["code"],
@@ -122,18 +122,28 @@ class SandboxRunner:
                 parts.append(f"stdout: {result['stdout'].rstrip()}")
             return "\n".join(parts)
 
-        value = result["feedback"]
+        parts: list[str] = []
         stdout = result.get("stdout", "")
-        max_chars = self.output_limit
 
-        if isinstance(value, (list, dict)):
-            text = json.dumps(value, default=str)
-            if len(text) > max_chars:
-                text = text[: max_chars - 3] + "..."
-        else:
-            text = str(value)
+        # Show new/modified variable names and shapes
+        user_vars = result.get("user_vars", {})
+        if user_vars:
+            var_summaries = []
+            for k, v in list(user_vars.items())[:5]:
+                if isinstance(v, list):
+                    var_summaries.append(f"{k}: list({len(v)})")
+                elif isinstance(v, dict):
+                    var_summaries.append(f"{k}: dict({len(v)})")
+                elif isinstance(v, str) and len(v) > 40:
+                    var_summaries.append(f"{k}: str({len(v)})")
+                else:
+                    var_summaries.append(f"{k} = {repr(v)}")
+            parts.append("vars: " + ", ".join(var_summaries))
 
-        parts = [f"feedback = {text}"]
         if stdout:
-            parts.append(f"stdout: {stdout.rstrip()}")
-        return "\n".join(parts)
+            trimmed = stdout.rstrip()
+            if len(trimmed) > self.output_limit:
+                trimmed = trimmed[: self.output_limit - 3] + "..."
+            parts.append(f"stdout: {trimmed}")
+
+        return "\n".join(parts) if parts else "ok"

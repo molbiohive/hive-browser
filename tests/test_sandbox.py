@@ -102,38 +102,37 @@ class TestSafeExec:
     def test_filter_list(self):
         data = [{"name": "GFP", "size": 720}, {"name": "RFP", "size": 680}]
         result = safe_exec(
-            'feedback = [r for r in data if r["size"] > 700]',
+            'filtered = [r for r in data if r["size"] > 700]',
             {"data": data},
         )
         assert result["status"] == "ok"
-        assert len(result["feedback"]) == 1
-        assert result["feedback"][0]["name"] == "GFP"
+        assert result["user_vars"]["filtered"] == [{"name": "GFP", "size": 720}]
 
     def test_aggregation(self):
         data = [{"v": 10}, {"v": 20}, {"v": 30}]
-        result = safe_exec('feedback = sum(r["v"] for r in data)', {"data": data})
+        result = safe_exec('total = sum(r["v"] for r in data)', {"data": data})
         assert result["status"] == "ok"
-        assert result["feedback"] == 60
+        assert result["user_vars"]["total"] == 60
 
     def test_sorted_result(self):
         data = [{"n": "C"}, {"n": "A"}, {"n": "B"}]
         result = safe_exec(
-            'feedback = sorted(data, key=lambda r: r["n"])',
+            'ordered = sorted(data, key=lambda r: r["n"])',
             {"data": data},
         )
         assert result["status"] == "ok"
-        assert [r["n"] for r in result["feedback"]] == ["A", "B", "C"]
+        assert [r["n"] for r in result["user_vars"]["ordered"]] == ["A", "B", "C"]
 
     def test_comprehension(self):
         data = [{"id": 1}, {"id": 2}, {"id": 3}]
-        result = safe_exec('feedback = [r["id"] for r in data]', {"data": data})
+        result = safe_exec('ids = [r["id"] for r in data]', {"data": data})
         assert result["status"] == "ok"
-        assert result["feedback"] == [1, 2, 3]
+        assert result["user_vars"]["ids"] == [1, 2, 3]
 
-    def test_must_assign_feedback(self):
-        result = safe_exec("x = 42")
-        assert result["status"] == "error"
-        assert "feedback" in result["error"]
+    def test_code_without_assignments_ok(self):
+        result = safe_exec("print('hello')")
+        assert result["status"] == "ok"
+        assert result["stdout"] == "hello\n"
 
     def test_empty_code(self):
         result = safe_exec("")
@@ -141,69 +140,61 @@ class TestSafeExec:
         assert "Empty" in result["error"]
 
     def test_import_blocked(self):
-        result = safe_exec("import os\nfeedback = 1")
+        result = safe_exec("import os\nx = 1")
         assert result["status"] == "error"
         assert "Blocked" in result["error"]
 
     def test_dunder_import_blocked(self):
-        result = safe_exec('feedback = __import__("os")')
+        result = safe_exec('x = __import__("os")')
         assert result["status"] == "error"
         assert "Blocked" in result["error"]
 
     def test_syntax_error(self):
-        result = safe_exec("feedback = [")
+        result = safe_exec("x = [")
         assert result["status"] == "error"
         assert "SyntaxError" in result["error"]
 
-    def test_type_classification_list(self):
-        result = safe_exec("feedback = [1, 2, 3]")
-        assert result["type"] == "list"
-
     def test_stdout_capture(self):
-        result = safe_exec('print("hello")\nfeedback = 1')
+        result = safe_exec('print("hello")\nx = 1')
         assert result["status"] == "ok"
         assert result["stdout"] == "hello\n"
-        assert result["feedback"] == 1
+        assert result["user_vars"]["x"] == 1
 
     def test_stdout_on_error(self):
-        result = safe_exec('print("before")\nfeedback = 1 / 0')
+        result = safe_exec('print("before")\nx = 1 / 0')
         assert result["status"] == "error"
         assert "before" in result["stdout"]
 
     def test_builtins_available(self):
-        result = safe_exec("feedback = len([1, 2, 3])")
-        assert result["feedback"] == 3
+        result = safe_exec("n = len([1, 2, 3])")
+        assert result["user_vars"]["n"] == 3
 
-        result = safe_exec("feedback = max(1, 5, 3)")
-        assert result["feedback"] == 5
+        result = safe_exec("m = max(1, 5, 3)")
+        assert result["user_vars"]["m"] == 5
 
-        result = safe_exec("feedback = list(range(3))")
-        assert result["feedback"] == [0, 1, 2]
+        result = safe_exec("r = list(range(3))")
+        assert result["user_vars"]["r"] == [0, 1, 2]
 
     def test_no_variables(self):
-        result = safe_exec("feedback = sum(range(10))")
+        result = safe_exec("total = sum(range(10))")
         assert result["status"] == "ok"
-        assert result["feedback"] == 45
+        assert result["user_vars"]["total"] == 45
 
     def test_cached_variables_in_scope(self):
         result = safe_exec(
-            "feedback = len(data1) + len(data2)",
+            "n = len(data1) + len(data2)",
             {"data1": [1, 2, 3], "data2": [4, 5]},
         )
         assert result["status"] == "ok"
-        assert result["feedback"] == 5
+        assert result["user_vars"]["n"] == 5
 
     def test_user_vars_returned_on_success(self):
-        result = safe_exec("x = 42\ny = [1, 2]\nfeedback = 'done'")
+        result = safe_exec("x = 42\ny = [1, 2]")
         assert result["status"] == "ok"
         assert result["user_vars"] == {"x": 42, "y": [1, 2]}
 
-    def test_user_vars_excludes_feedback(self):
-        result = safe_exec("feedback = 'hi'")
-        assert "feedback" not in result["user_vars"]
-
     def test_user_vars_excludes_injected(self):
-        result = safe_exec("z = 99\nfeedback = data", {"data": [1]})
+        result = safe_exec("z = 99", {"data": [1]})
         assert result["user_vars"] == {"z": 99}
         assert "data" not in result["user_vars"]
 
@@ -226,17 +217,16 @@ class TestSandboxRunner:
         ws = Workspace()
         ws.update_vars({"data": [{"id": 1}, {"id": 2}, {"id": 3}]})
         runner = SandboxRunner(ws)
-        result = await runner.execute('feedback = [r["id"] for r in data]')
+        result = await runner.execute('ids = [r["id"] for r in data]')
         assert result["status"] == "ok"
-        assert result["feedback"] == [1, 2, 3]
+        assert ws.user_vars["ids"] == [1, 2, 3]
 
     def test_summary_for_llm_ok(self):
         ws = Workspace()
         runner = SandboxRunner(ws)
-        result = {"status": "ok", "feedback": [1, 2, 3], "stdout": "", "type": "list"}
+        result = {"status": "ok", "stdout": "", "user_vars": {"x": 42}}
         summary = runner.summary_for_llm(result)
-        assert "feedback = " in summary
-        assert "[1, 2, 3]" in summary
+        assert "x = 42" in summary
 
     def test_summary_for_llm_error(self):
         ws = Workspace()
@@ -249,18 +239,9 @@ class TestSandboxRunner:
     def test_summary_for_llm_with_stdout(self):
         ws = Workspace()
         runner = SandboxRunner(ws)
-        result = {"status": "ok", "feedback": 42, "stdout": "debug\n", "type": "scalar"}
+        result = {"status": "ok", "stdout": "debug\n", "user_vars": {}}
         summary = runner.summary_for_llm(result)
-        assert "feedback = 42" in summary
         assert "stdout: debug" in summary
-
-    def test_summary_for_llm_truncates(self):
-        ws = Workspace()
-        runner = SandboxRunner(ws, output_limit=40)
-        big_list = list(range(1000))
-        result = {"status": "ok", "feedback": big_list, "stdout": "", "type": "list"}
-        summary = runner.summary_for_llm(result)
-        assert len(summary) <= 40 + 50  # some overhead for "feedback = " prefix
 
     def test_tool_schema_empty_workspace(self):
         ws = Workspace()
@@ -274,11 +255,11 @@ class TestSandboxRunner:
         ws = Workspace()
         ws.update_vars({"data": [{"x": 1}, {"x": 2}]})
         runner = SandboxRunner(ws)
-        result1 = await runner.execute('report["items"] = data\nfeedback = "stored items"')
+        result1 = await runner.execute('report["items"] = data')
         assert result1["status"] == "ok"
         assert runner.report == {"items": [{"x": 1}, {"x": 2}]}
 
-        result2 = await runner.execute('report["count"] = len(data)\nfeedback = "stored count"')
+        result2 = await runner.execute('report["count"] = len(data)')
         assert result2["status"] == "ok"
         assert runner.report == {"items": [{"x": 1}, {"x": 2}], "count": 2}
 
@@ -286,24 +267,24 @@ class TestSandboxRunner:
         ws = Workspace()
         ws.update_vars({"data": [1, 2, 3]})
         runner = SandboxRunner(ws)
-        await runner.execute('report["step1"] = "done"\nfeedback = "ok"')
-        result = await runner.execute('feedback = report.get("step1", "missing")')
+        await runner.execute('report["step1"] = "done"')
+        result = await runner.execute('val = report.get("step1", "missing")')
         assert result["status"] == "ok"
-        assert result["feedback"] == "done"
+        assert ws.user_vars["val"] == "done"
 
     async def test_user_vars_persist_across_calls(self):
         ws = Workspace()
         runner = SandboxRunner(ws)
-        r1 = await runner.execute("filtered = [1, 2, 3]\nfeedback = 'stored'")
+        r1 = await runner.execute("filtered = [1, 2, 3]")
         assert r1["status"] == "ok"
-        r2 = await runner.execute("feedback = len(filtered)")
+        r2 = await runner.execute("n = len(filtered)")
         assert r2["status"] == "ok"
-        assert r2["feedback"] == 3
+        assert ws.user_vars["n"] == 3
 
     async def test_user_vars_shown_in_schema(self):
         ws = Workspace()
         runner = SandboxRunner(ws)
-        await runner.execute("my_data = [1, 2]\nfeedback = 'ok'")
+        await runner.execute("my_data = [1, 2]")
         schema = runner.tool_schema()
         desc = schema["function"]["description"]
         assert "my_data" in desc
@@ -361,9 +342,9 @@ class TestToolCallables:
 
         ws = Workspace()
         runner = SandboxRunner(ws, registry=reg)
-        result = await runner.execute('r = gc(sequence="ATGC")\nfeedback = r["gc_percent"]')
+        result = await runner.execute('r = gc(sequence="ATGC")')
         assert result["status"] == "ok"
-        assert result["feedback"] == 50.0
+        assert ws.user_vars["r"]["gc_percent"] == 50.0
 
     async def test_tool_call_budget_exceeded(self):
         from hive.tools.base import Tool, ToolRegistry
@@ -386,7 +367,7 @@ class TestToolCallables:
         ws = Workspace()
         runner = SandboxRunner(ws, registry=reg, tool_call_budget=2)
         result = await runner.execute(
-            'results = [gc(sequence="ATGC") for _ in range(3)]\nfeedback = len(results)'
+            'results = [gc(sequence="ATGC") for _ in range(3)]'
         )
         assert result["status"] == "error"
         assert "budget exceeded" in result["error"]
@@ -399,9 +380,9 @@ class TestDescBuiltin:
         ws = Workspace()
         ws.update_vars({"results": [{"sid": 1, "name": "GFP"}]})
         runner = SandboxRunner(ws)
-        result = await runner.execute('feedback = desc(results, name="results")')
+        result = await runner.execute('detail = desc(results, name="results")')
         assert result["status"] == "ok"
-        assert "sid" in result["feedback"]
+        assert "sid" in ws.user_vars["detail"]
         assert len(ws._desc_results) == 1
         assert ws._desc_results[0][0] == "results"
 

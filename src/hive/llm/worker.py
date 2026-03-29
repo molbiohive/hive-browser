@@ -34,9 +34,7 @@ You are Hive Browser, a lab sequence search assistant. Be FAST and DIRECT.
 - python(code) -- run Python on workspace data. All tools (search, blast, profile, parts, ...) are callable inside python.
 
 ## Sandbox
-- MUST assign `feedback = "short caption"`.
 - `report["key"] = list_of_dicts` -> table widget for user.
-- Handles (p0, p1, ...) are pre-injected as variables.
 - No import/exec/eval/open. Builtins only: len, sum, min, max, sorted, reversed,
   enumerate, zip, range, filter, map, any, all, isinstance, int, float, str, bool,
   list, dict, tuple, set, next, iter, repr, hasattr, getattr, print.
@@ -46,10 +44,6 @@ You are Hive Browser, a lab sequence search assistant. Be FAST and DIRECT.
 ## Identifiers
 SID = Sequence ID. PID = Part ID (canonical across files).
 Tools accept raw sequence, sid:N, or pid:N.
-
-## Workspace
-Results stored as p0, p1, ... (current message) and r0, r1, ... (persist).
-report["key"] = data -> widget. feedback = caption (required).
 
 ## Rules
 - Never fabricate data. Use blast for sequence similarity, not search.
@@ -98,7 +92,6 @@ class Worker(LLMAgent):
         self._last_result: dict | None = None
         self._last_tool: str | None = None
         self._last_params: dict = {}
-        self._last_feedback: str = ""
         self._sandbox: SandboxRunner | None = None
 
     def prepare(
@@ -124,7 +117,6 @@ class Worker(LLMAgent):
         self._last_result = None
         self._last_tool = None
         self._last_params = {}
-        self._last_feedback = ""
         self._workspace.reset_loop()
         self._sandbox = SandboxRunner(
             self._workspace,
@@ -225,7 +217,6 @@ class Worker(LLMAgent):
             self._sandbox.flush_report()
             self._last_result = self._sandbox.report
             self._last_tool = "python"
-            self._last_params = {"feedback": self._last_feedback} if self._last_feedback else {}
 
         if self._last_result and self._last_tool:
             resp = self._result(
@@ -262,8 +253,6 @@ class Worker(LLMAgent):
         if not fallback:
             if self._error:
                 fallback = f"Analysis stopped due to an error: {self._error}"
-            elif self._last_feedback:
-                fallback = self._last_feedback
             elif self._chain:
                 fallback = self._chain[-1]["summary"]
             else:
@@ -274,7 +263,6 @@ class Worker(LLMAgent):
                 self._sandbox.flush_report()
             self._last_result = self._sandbox.report
             self._last_tool = "python"
-            self._last_params = {"feedback": self._last_feedback} if self._last_feedback else {}
 
         if self._last_result and self._last_tool:
             resp = self._result(
@@ -306,11 +294,9 @@ class Worker(LLMAgent):
             ws.add_step("python", err_text, code=code, error=err_text, hint=hint)
             display = f"Error: {err_text}"
         else:
-            fb = str(sb_result.get("feedback", ""))[:100]
-            self._last_feedback = fb
             produced = _build_produced(ws, self._sandbox)
-            ws.add_step("python", fb, code=code, produced=produced)
-            display = fb
+            ws.add_step("python", compact, code=code, produced=produced)
+            display = compact
 
         self._chain.append({"tool": "python", "params": {"code": code}, "summary": display})
         logger.info("Sandbox exec: %s", compact[:200])
