@@ -9,6 +9,9 @@
 	import DigestWidget from '$lib/DigestWidget.svelte';
 	import AlignWidget from '$lib/AlignWidget.svelte';
 	import HistoryWidget from '$lib/HistoryWidget.svelte';
+	import CompositionWidget from '$lib/CompositionWidget.svelte';
+	import ProteinWidget from '$lib/ProteinWidget.svelte';
+	import SeqLogoWidget from '$lib/SeqLogoWidget.svelte';
 	import FormWidget from '$lib/FormWidget.svelte';
 
 	let { widget, messageIndex = -1 } = $props();
@@ -27,6 +30,9 @@
 		if (d.gel_data) return DigestWidget;
 		if (d.aligned) return AlignWidget;
 		if (d.root && d.steps) return HistoryWidget;
+		if (d.logo_positions) return SeqLogoWidget;
+		if (d.protein && d.protein_length != null) return ProteinWidget;
+		if (d.gc_percent != null && d.a != null) return CompositionWidget;
 		return null;
 	});
 
