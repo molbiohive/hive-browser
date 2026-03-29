@@ -150,7 +150,8 @@
 		</span>
 	</div>
 
-	{#if expanded}
+	<div class="widget-collapse" class:open={expanded}>
+		<div class="widget-collapse-inner">
 		{#if isStale}
 			<div class="widget-body stale">
 				<button class="rerun-btn" onclick={handleRerun} disabled={loading}>
@@ -242,7 +243,8 @@
 				{/if}
 			</div>
 		{/if}
-	{/if}
+		</div>
+	</div>
 </div>
 
 <style>
@@ -310,6 +312,21 @@
 	.copy-btn:hover {
 		color: var(--text-secondary);
 		background: var(--bg-hover);
+	}
+
+	.widget-collapse {
+		display: grid;
+		grid-template-rows: 0fr;
+		transition: grid-template-rows 0.2s ease;
+	}
+
+	.widget-collapse.open {
+		grid-template-rows: 1fr;
+	}
+
+	.widget-collapse-inner {
+		overflow: hidden;
+		min-height: 0;
 	}
 
 	.widget-body {

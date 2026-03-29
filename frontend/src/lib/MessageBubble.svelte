@@ -214,6 +214,12 @@
 		overflow-x: auto;
 		max-height: 20rem;
 		overflow-y: auto;
+		animation: thinkingIn 0.15s ease;
+	}
+
+	@keyframes thinkingIn {
+		from { opacity: 0; }
+		to { opacity: 1; }
 	}
 
 	/* Markdown styles for assistant messages */

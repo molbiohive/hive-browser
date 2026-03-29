@@ -332,7 +332,7 @@
 	<WelcomeModal mode={modalMode} onCancel={showAddUser ? handleCancelAddUser : undefined} />
 {:else}
 <div class="chat-layout">
-	{#if $leftPanelOpen}
+	<div class="sidebar-wrapper" style:width={$leftPanelOpen ? '240px' : '0'}>
 	<aside class="sidebar">
 		<div class="sidebar-header">
 			<img src={dark ? "/logo-dark.svg" : "/logo.svg"} alt="Hive Browser" class="logo" />
@@ -384,7 +384,7 @@
 			</button>
 		</div>
 	</aside>
-	{/if}
+	</div>
 
 	<div class="chat-main">
 		<div class="panel-toggles">
@@ -510,9 +510,9 @@
 		</div>
 	</div>
 
-	{#if $rightPanelOpen}
+	<div class="search-wrapper" style:width={$rightPanelOpen ? '450px' : '0'}>
 		<SearchPanel />
-	{/if}
+	</div>
 </div>
 {#if showFeedback}
 	<FeedbackModal onClose={() => showFeedback = false} />
@@ -529,6 +529,18 @@
 		height: 100%;
 	}
 
+	.sidebar-wrapper {
+		overflow: hidden;
+		flex-shrink: 0;
+		transition: width 0.2s ease;
+	}
+
+	.search-wrapper {
+		overflow: hidden;
+		flex-shrink: 0;
+		transition: width 0.2s ease;
+	}
+
 	.sidebar {
 		width: 240px;
 		background: var(--bg-sidebar);
@@ -536,6 +548,7 @@
 		display: flex;
 		flex-direction: column;
 		flex-shrink: 0;
+		height: 100%;
 	}
 
 	.sidebar-header {

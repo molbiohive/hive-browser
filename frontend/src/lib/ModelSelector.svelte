@@ -145,6 +145,12 @@
 		overflow-y: auto;
 		z-index: 100;
 		padding: 0.25rem;
+		animation: dropdownIn 0.12s ease;
+	}
+
+	@keyframes dropdownIn {
+		from { opacity: 0; transform: translateY(4px); }
+		to { opacity: 1; transform: translateY(0); }
 	}
 
 	.section-label {

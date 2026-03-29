@@ -76,6 +76,12 @@
 		box-shadow: 0 -4px 16px var(--shadow);
 		max-height: 300px;
 		overflow-y: auto;
+		animation: paletteIn 0.12s ease;
+	}
+
+	@keyframes paletteIn {
+		from { opacity: 0; transform: translateY(4px); }
+		to { opacity: 1; transform: translateY(0); }
 	}
 	.cmd {
 		display: flex;
