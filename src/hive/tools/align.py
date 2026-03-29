@@ -47,33 +47,12 @@ class AlignTool(Tool):
 
             self._dep = MafftDep(config.deps.mafft.bin_dir)
 
+    advanced = {"algorithm"}
+
     def input_schema(self) -> dict:
         schema = AlignInput.model_json_schema()
         schema.pop("title", None)
         return schema
-
-    def llm_schema(self) -> dict:
-        return {
-            "type": "object",
-            "properties": {
-                "sids": {
-                    "type": "array",
-                    "items": {"type": "integer"},
-                    "description": "Sequence IDs to align",
-                },
-                "pids": {
-                    "type": "array",
-                    "items": {"type": "integer"},
-                    "description": "Part IDs to include in alignment",
-                },
-            },
-        }
-
-    def format_result(self, result: dict) -> str:
-        if error := result.get("error"):
-            return f"Error: {error}"
-        count = result.get("count", 0)
-        return f"Aligned {count} sequences."
 
     async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         if not self._dep:

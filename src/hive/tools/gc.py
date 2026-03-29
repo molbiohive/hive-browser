@@ -30,13 +30,6 @@ class GCTool(Tool):
         schema.pop("title", None)
         return schema
 
-    def format_result(self, result: dict) -> str:
-        if error := result.get("error"):
-            return f"Error: {error}"
-        gc = result.get("gc_percent", 0)
-        length = result.get("length", 0)
-        return f"GC content: {gc:.1f}% ({length} bp)"
-
     async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         inp = GCInput(**params)
         result = await resolve_and_clean(inp.sequence)

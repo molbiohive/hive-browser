@@ -31,29 +31,12 @@ class ExtractTool(Tool):
     def __init__(self, **_):
         pass
 
+    advanced = {"sequence_name", "primer_name"}
+
     def input_schema(self) -> dict:
         schema = ExtractInput.model_json_schema()
         schema.pop("title", None)
         return schema
-
-    def llm_schema(self) -> dict:
-        return {
-            "type": "object",
-            "properties": {
-                "sid": {"type": "integer", "description": "Sequence ID"},
-                "feature_name": {"type": "string", "description": "Feature name to extract"},
-                "region": {"type": "string", "description": "Region as start:end (1-based)"},
-            },
-            "required": ["sid"],
-        }
-
-    def format_result(self, result: dict) -> str:
-        if error := result.get("error"):
-            return f"Error: {error}"
-        name = result.get("name", "")
-        length = result.get("length", 0)
-        source = result.get("source", "")
-        return f"Extracted {name} from {source}: {length} bp"
 
     async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         inp = ExtractInput(**params)

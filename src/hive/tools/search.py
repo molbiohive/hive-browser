@@ -81,6 +81,7 @@ class SearchTool(Tool):
         "Search sequences by name, features, tags (directory context), and metadata.",
     )
     tags = {"search"}
+    advanced = {"filters"}
 
     def __init__(self, **_):
         pass
@@ -89,30 +90,6 @@ class SearchTool(Tool):
         schema = SearchInput.model_json_schema()
         schema.pop("title", None)
         return schema
-
-    def llm_schema(self) -> dict:
-        return {
-            "type": "object",
-            "properties": {
-                "query": {
-                    "type": "string",
-                    "description": "Keyword. Use && for AND, || for OR. Use * to list all.",
-                },
-                "tags": {"type": "string", "description": "Directory/project context"},
-            },
-            "required": ["query"],
-        }
-
-    def format_result(self, result: dict) -> str:
-        if error := result.get("error"):
-            return f"Error: {error}"
-        total = result.get("total", 0)
-        parts_total = result.get("parts_total", 0)
-        query = result.get("query", "")
-        parts_msg = f", {parts_total} part(s)" if parts_total else ""
-        if total or parts_total:
-            return f"Found {total} sequence(s){parts_msg} for '{query}'."
-        return f"No results for '{query}'."
 
     async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         """Execute search with ParadeDB BM25 full-text search.

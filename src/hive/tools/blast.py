@@ -80,6 +80,7 @@ class BlastTool(Tool):
         "Supports blastn, blastp, blastx, tblastn, tblastx.",
     )
     tags = {"search"}
+    advanced = {"evalue", "max_hits", "word_size", "matrix", "gap_open", "gap_extend", "task", "extra"}
 
     def __init__(self, config=None, **_):
         if not config:
@@ -94,25 +95,6 @@ class BlastTool(Tool):
         schema = BlastInput.model_json_schema()
         schema.pop("title", None)
         return schema
-
-    def llm_schema(self) -> dict:
-        return {
-            "type": "object",
-            "properties": {
-                "sequence": {
-                    "type": "string",
-                    "description": "DNA/protein sequence, sid:N, pid:N, or bare integer SID",
-                },
-            },
-            "required": ["sequence"],
-        }
-
-    def format_result(self, result: dict) -> str:
-        if error := result.get("error"):
-            return f"Error: {error}"
-        total = len(result.get("hits", []))
-        prog = result.get("program", "blast")
-        return f"Found {total} {prog} hit(s)." if total else f"No {prog} hits found."
 
     async def execute(
         self,

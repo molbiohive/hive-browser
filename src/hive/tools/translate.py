@@ -23,6 +23,7 @@ class TranslateTool(Tool):
     name = "translate"
     description = ("DNA to protein", "Translate a DNA or RNA sequence to protein.")
     tags = {"analysis"}
+    advanced = {"table"}
 
     def __init__(self, **_):
         pass
@@ -31,23 +32,6 @@ class TranslateTool(Tool):
         schema = TranslateInput.model_json_schema()
         schema.pop("title", None)
         return schema
-
-    def llm_schema(self) -> dict:
-        return {
-            "type": "object",
-            "properties": {
-                "sequence": {"type": "string", "description": "DNA/RNA sequence, sid:N, or pid:N"},
-            },
-            "required": ["sequence"],
-        }
-
-    def format_result(self, result: dict) -> str:
-        if error := result.get("error"):
-            return f"Error: {error}"
-        plen = result.get("protein_length", 0)
-        complete = result.get("complete", False)
-        tag = " (complete ORF)" if complete else ""
-        return f"Translated to {plen} amino acids{tag}"
 
     async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         inp = TranslateInput(**params)

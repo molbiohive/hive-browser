@@ -29,29 +29,12 @@ class PrimersTool(Tool):
     def __init__(self, **_):
         pass
 
+    advanced = {"circular"}
+
     def input_schema(self) -> dict:
         schema = PrimersInput.model_json_schema()
         schema.pop("title", None)
         return schema
-
-    def llm_schema(self) -> dict:
-        return {
-            "type": "object",
-            "properties": {
-                "sequence": {
-                    "type": "string",
-                    "description": "Raw DNA sequence, sid:N, or pid:N",
-                },
-            },
-            "required": ["sequence"],
-        }
-
-    def format_result(self, result: dict) -> str:
-        if error := result.get("error"):
-            return f"Error: {error}"
-        name = result.get("sequence_name", "")
-        count = result.get("primers_found", 0)
-        return f"{name}: {count} primer(s) found" if name else f"{count} primer(s) found"
 
     async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         inp = PrimersInput(**params)

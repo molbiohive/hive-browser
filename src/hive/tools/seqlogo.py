@@ -69,6 +69,7 @@ class SeqLogoTool(Tool):
     name = "seqlogo"
     description = ("sequence logo", "Compute sequence logo (position weight matrix) from multiple sequences.")
     tags = {"analysis"}
+    advanced = {"region_start", "region_end"}
 
     def __init__(self, config=None, **_):
         self._dep = None
@@ -83,30 +84,6 @@ class SeqLogoTool(Tool):
         schema = SeqLogoInput.model_json_schema()
         schema.pop("title", None)
         return schema
-
-    def llm_schema(self) -> dict:
-        return {
-            "type": "object",
-            "properties": {
-                "sids": {
-                    "type": "array",
-                    "items": {"type": "integer"},
-                    "description": "Sequence IDs to include",
-                },
-                "pids": {
-                    "type": "array",
-                    "items": {"type": "integer"},
-                    "description": "Part IDs to include",
-                },
-            },
-        }
-
-    def format_result(self, result: dict) -> str:
-        if error := result.get("error"):
-            return f"Error: {error}"
-        n = result.get("sequence_count", 0)
-        length = result.get("logo_length", 0)
-        return f"Sequence logo: {n} sequences, {length} positions"
 
     async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         inp = SeqLogoInput(**params)

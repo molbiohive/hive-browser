@@ -36,13 +36,6 @@ class TasksTool(Tool):
         schema.pop("title", None)
         return schema
 
-    def format_result(self, result: dict) -> str:
-        if error := result.get("error"):
-            return f"Error: {error}"
-        tasks = result.get("tasks", [])
-        done = sum(1 for t in tasks if t.get("done"))
-        return f"{len(tasks)} task(s), {done} done"
-
     async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         inp = TasksInput(**params)
         tasks = current_chat_tasks.get()

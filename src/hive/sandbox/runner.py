@@ -45,7 +45,7 @@ class SandboxRunner:
             def wrapper(*args, **kwargs):
                 # Accept first positional arg as 'query' for convenience
                 if args:
-                    schema = t.llm_schema()
+                    schema = t.input_schema()
                     required = schema.get("required", [])
                     first_param = required[0] if required else next(iter(schema.get("properties", {})), None)
                     if first_param and first_param not in kwargs:

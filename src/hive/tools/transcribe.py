@@ -31,11 +31,6 @@ class TranscribeTool(Tool):
         schema.pop("title", None)
         return schema
 
-    def format_result(self, result: dict) -> str:
-        if error := result.get("error"):
-            return f"Error: {error}"
-        return f"Transcribed to {result.get('length', 0)} nt mRNA"
-
     async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         inp = TranscribeInput(**params)
         result = await resolve_and_clean(inp.sequence)

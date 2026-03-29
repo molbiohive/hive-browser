@@ -21,15 +21,14 @@ class Tool(ABC):
                      long_description: full text for help, palette, forms.
         tags:        Group identifiers for UI categorization (e.g. "search", "analysis", "info").
         params:      Declarative param definitions for external tools (dict -> JSON Schema).
+        advanced:    Param names hidden from sandbox/LLM signatures (still in full schema).
     """
 
     name: str
     description: tuple[str, str]
     tags: set[str] = set()
     params: dict | None = None
-
-    # Injected by factory for external tools
-    db: Any = None
+    advanced: set[str] = set()
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -66,19 +65,13 @@ class Tool(ABC):
             return _params_to_schema(self.params)
         return {"type": "object", "properties": {}}
 
-    def llm_schema(self) -> dict:
-        """Minimal schema for LLM function calling.
-
-        Override to strip expert-only params. Default: input_schema().
-        Skills system will provide custom params when needed.
-        """
-        return self.input_schema()
-
-    def format_result(self, result: dict) -> str:
-        """Short summary for direct execution (no LLM). Override in subclasses."""
-        if error := result.get("error"):
-            return f"Error: {error}"
-        return ""
+    def api_schema(self) -> dict:
+        """OpenAI-format schema for REST API docs."""
+        return {
+            "name": self.name,
+            "description": self.long_desc,
+            "parameters": self.input_schema(),
+        }
 
     @property
     def short_desc(self) -> str:
@@ -90,20 +83,14 @@ class Tool(ABC):
         """Full description text. Falls back to full description for plain strings."""
         return self.description[1] if isinstance(self.description, tuple) else self.description
 
-    def schema(self) -> dict:
-        """Full tool schema for LLM function calling."""
-        return {
-            "name": self.name,
-            "description": self.long_desc,
-            "parameters": self.input_schema(),
-        }
-
     def metadata(self) -> dict:
         """Metadata sent to the frontend on connect."""
         return {
             "name": self.name,
             "description": self.long_desc,
             "tags": sorted(self.tags),
+            "schema": self.input_schema(),
+            "advanced": sorted(self.advanced),
         }
 
     def group(self) -> str | None:
@@ -154,10 +141,13 @@ _JSON_TO_PY = {"string": "str", "integer": "int", "number": "float", "boolean": 
 
 
 def _build_signature(tool: Tool) -> tuple[str, list[str]]:
-    """Build ``name(param: type, ...)`` and param descriptions from llm_schema()."""
-    schema = tool.llm_schema()
-    props = schema.get("properties", {})
-    required = set(schema.get("required", []))
+    """Build ``name(param: type, ...)`` and param descriptions from input_schema().
+
+    Params in ``tool.advanced`` are excluded from the signature.
+    """
+    schema = tool.input_schema()
+    props = {k: v for k, v in schema.get("properties", {}).items() if k not in tool.advanced}
+    required = set(schema.get("required", [])) - tool.advanced
 
     parts = []
     descs = []

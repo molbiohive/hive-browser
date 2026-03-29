@@ -30,6 +30,7 @@ class ProfileTool(Tool):
         "plasmid map, annotated viewer, metadata, features, primers, cut sites.",
     )
     tags = {"info"}
+    advanced = {"name"}
 
     def __init__(self, **_):
         pass
@@ -38,23 +39,6 @@ class ProfileTool(Tool):
         schema = ProfileInput.model_json_schema()
         schema.pop("title", None)
         return schema
-
-    def llm_schema(self) -> dict:
-        return {
-            "type": "object",
-            "properties": {
-                "sid": {"type": "integer", "description": "Sequence ID"},
-            },
-            "required": ["sid"],
-        }
-
-    def format_result(self, result: dict) -> str:
-        if error := result.get("error"):
-            return f"Error: {error}"
-        seq = result.get("sequence")
-        if not seq:
-            return "Sequence not found."
-        return f"{seq['name']} -- {seq['size_bp']} bp, {seq['topology']}"
 
     async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         """Fetch complete sequence profile from the database."""

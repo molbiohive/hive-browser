@@ -29,26 +29,12 @@ class HistoryTool(Tool):
     def __init__(self, **_):
         pass
 
+    advanced = {"name"}
+
     def input_schema(self) -> dict:
         schema = HistoryInput.model_json_schema()
         schema.pop("title", None)
         return schema
-
-    def llm_schema(self) -> dict:
-        return {
-            "type": "object",
-            "properties": {
-                "sid": {"type": "integer", "description": "Sequence ID"},
-            },
-            "required": ["sid"],
-        }
-
-    def format_result(self, result: dict) -> str:
-        if error := result.get("error"):
-            return f"Error: {error}"
-        name = result.get("sequence_name", "?")
-        steps = result.get("steps", 0)
-        return f"{name} -- {steps} cloning step(s)"
 
     async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         inp = HistoryInput(**params)

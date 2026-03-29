@@ -39,34 +39,12 @@ class PartsTool(Tool):
     def __init__(self, config=None, **_):
         self._config = config
 
+    advanced = {"find_relatives"}
+
     def input_schema(self) -> dict:
         schema = PartsInput.model_json_schema()
         schema.pop("title", None)
         return schema
-
-    def llm_schema(self) -> dict:
-        return {
-            "type": "object",
-            "properties": {
-                "pid": {"type": "integer", "description": "Part ID"},
-                "sid": {"type": "integer", "description": "Sequence ID"},
-                "type": {"type": "string", "description": "Filter: CDS, promoter, primer_bind"},
-            },
-        }
-
-    def format_result(self, result: dict) -> str:
-        if error := result.get("error"):
-            return f"Error: {error}"
-        if "part" in result:
-            p = result["part"]
-            names = ", ".join(p.get("names", [])) or "unnamed"
-            return (
-                f"Part PID {p['pid']} ({names}): {p['length']} bp,"
-                f" {result['instances_count']} instance(s)"
-            )
-        total = result.get("total", 0)
-        seq_name = result.get("sequence_name", "")
-        return f"{total} part(s) on {seq_name}"
 
     async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         inp = PartsInput(**{k: v for k, v in params.items() if v is not None})

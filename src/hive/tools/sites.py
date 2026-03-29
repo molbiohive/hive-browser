@@ -35,31 +35,12 @@ class SitesTool(Tool):
     def __init__(self, **_):
         pass
 
+    advanced = {"circular"}
+
     def input_schema(self) -> dict:
         schema = SitesInput.model_json_schema()
         schema.pop("title", None)
         return schema
-
-    def llm_schema(self) -> dict:
-        return {
-            "type": "object",
-            "properties": {
-                "sequence": {"type": "string", "description": "DNA sequence, sid:N, or pid:N"},
-                "max_cuts": {
-                    "type": "integer",
-                    "description": "Max cuts filter (1 = unique cutters)",
-                },
-            },
-            "required": ["sequence"],
-        }
-
-    def format_result(self, result: dict) -> str:
-        if error := result.get("error"):
-            return f"Error: {error}"
-        found = result.get("cutters_found", 0)
-        total = result.get("total_enzymes_scanned", 0)
-        unique = sum(1 for c in result.get("cutters", []) if c["num_cuts"] == 1)
-        return f"Found {found} enzymes that cut ({unique} unique cutters) out of {total} scanned"
 
     async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         inp = SitesInput(**params)

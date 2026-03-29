@@ -51,9 +51,9 @@ class TestToolMetadata:
         assert "widget" not in meta
         assert sorted(meta["tags"]) == ["test"]
 
-    def test_schema(self):
+    def test_api_schema(self):
         t = DummyTool()
-        schema = t.schema()
+        schema = t.api_schema()
         assert schema["name"] == "dummy"
         assert schema["description"] == "A test tool"
         assert "properties" in schema["parameters"]
@@ -62,13 +62,11 @@ class TestToolMetadata:
         t = DummyTool()
         assert t.group() == "test"
 
-    def test_format_result_default_error(self):
+    def test_metadata_includes_schema_and_advanced(self):
         t = DummyTool()
-        assert t.format_result({"error": "fail"}) == "Error: fail"
-
-    def test_format_result_default_empty(self):
-        t = DummyTool()
-        assert t.format_result({"result": "ok"}) == ""
+        meta = t.metadata()
+        assert "schema" in meta
+        assert meta["advanced"] == []
 
 
 class TestParamsToSchema:

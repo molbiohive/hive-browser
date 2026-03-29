@@ -99,6 +99,7 @@ class DigestTool(Tool):
     name = "digest"
     description = ("restriction digest", "Find restriction enzyme cut sites and calculate fragment sizes.")
     tags = {"analysis"}
+    advanced = {"circular"}
 
     def __init__(self, **_):
         pass
@@ -107,30 +108,6 @@ class DigestTool(Tool):
         schema = DigestInput.model_json_schema()
         schema.pop("title", None)
         return schema
-
-    def llm_schema(self) -> dict:
-        return {
-            "type": "object",
-            "properties": {
-                "sequence": {"type": "string", "description": "DNA sequence, sid:N, or pid:N"},
-                "reactions": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": 'Reactions, e.g. ["EcoRI", "BsaI", "EcoRI+BsaI"]. Use + for co-digestion.',
-                },
-            },
-            "required": ["sequence", "reactions"],
-        }
-
-    def format_result(self, result: dict) -> str:
-        if error := result.get("error"):
-            return f"Error: {error}"
-        rxns = result.get("reactions", [])
-        parts = []
-        for rxn in rxns:
-            frags = rxn["fragments"]
-            parts.append(f"{rxn['name']}: {rxn['total_cuts']} cut(s), {len(frags)} fragment(s)")
-        return "; ".join(parts) if parts else "No reactions"
 
     async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
         inp = DigestInput(**params)
