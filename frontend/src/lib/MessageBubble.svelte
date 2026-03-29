@@ -7,6 +7,15 @@
 	let { message, messageIndex = -1 } = $props();
 	let thinkingExpanded = $state(false);
 	let planExpanded = $state(false);
+	let copied = $state(false);
+
+	const isTruncated = $derived(message.role === 'user' && message.content && message.content.length > 300);
+
+	function copyUserMessage() {
+		navigator.clipboard.writeText(message.content);
+		copied = true;
+		setTimeout(() => { copied = false; }, 1500);
+	}
 
 	// Configure marked for inline rendering (no wrapping <p> for short responses)
 	marked.setOptions({ breaks: true, gfm: true });
@@ -56,7 +65,16 @@
 				{/if}
 				<div class="content markdown">{@html rendered}</div>
 			{:else}
-				<div class="content">{message.content}</div>
+				<div class="content user-content" class:truncated={isTruncated}>
+					{isTruncated ? message.content.slice(0, 300) + '...' : message.content}
+				</div>
+				<button class="copy-msg-btn" onclick={copyUserMessage} title="Copy message">
+					{#if copied}
+						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+					{:else}
+						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+					{/if}
+				</button>
 			{/if}
 
 			{#if message.widget}
@@ -123,6 +141,7 @@
 		padding: 0.5rem 0.9rem;
 		max-width: 60%;
 		border-bottom-right-radius: 4px;
+		position: relative;
 	}
 
 	.bubble.assistant {
@@ -140,6 +159,33 @@
 	.content {
 		white-space: pre-wrap;
 		overflow-wrap: break-word;
+	}
+
+	.user-content.truncated {
+		opacity: 0.85;
+	}
+
+	.copy-msg-btn {
+		display: none;
+		align-items: center;
+		justify-content: center;
+		position: absolute;
+		top: 0.35rem;
+		right: 0.35rem;
+		background: var(--bg-hover);
+		border: none;
+		border-radius: 4px;
+		cursor: pointer;
+		color: var(--text-placeholder);
+		padding: 0.25rem;
+	}
+
+	.copy-msg-btn:hover {
+		color: var(--text-secondary);
+	}
+
+	.bubble.user:hover .copy-msg-btn {
+		display: block;
 	}
 
 	/* Metadata row — visible on hover */
