@@ -22,7 +22,7 @@ class FakeTool(Tool):
         self.description = description
         self._schema = schema or {"type": "object", "properties": {}}
 
-    def llm_schema(self) -> dict:
+    def input_schema(self) -> dict:
         return self._schema
 
     async def execute(self, params: dict[str, Any], **kw) -> dict[str, Any]:
@@ -37,7 +37,7 @@ class TasksStubTool(Tool):
     def __init__(self, **_):
         pass
 
-    def llm_schema(self) -> dict:
+    def input_schema(self) -> dict:
         return {
             "type": "object",
             "properties": {"action": {"type": "string"}, "text": {"type": "string"}},

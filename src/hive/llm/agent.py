@@ -514,7 +514,12 @@ class Agent:
         params = self._parse_tool_args(tc)
         tasks_tool = self._registry.get("tasks")
         result = await tasks_tool.execute(params)
-        compact = tasks_tool.format_result(result)
+        if error := result.get("error"):
+            compact = f"Error: {error}"
+        else:
+            tasks = result.get("tasks", [])
+            done = sum(1 for t in tasks if t.get("done"))
+            compact = f"{len(tasks)} task(s), {done} done"
         self._workspace.add_step("tasks", compact)
         self._chain.append({"tool": "tasks", "params": params, "summary": compact})
         logger.info("Agent tasks(%s)", json.dumps(params))

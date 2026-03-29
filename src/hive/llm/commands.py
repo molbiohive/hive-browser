@@ -55,7 +55,7 @@ def tasks_cmd(tasks_tool: Tool) -> dict[str, Any]:
         "function": {
             "name": "Tasks",
             "description": tasks_tool.short_desc,
-            "parameters": tasks_tool.llm_schema(),
+            "parameters": tasks_tool.input_schema(),
         },
     }
 

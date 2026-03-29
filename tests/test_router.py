@@ -32,7 +32,7 @@ class SearchStubTool(Tool):
     def __init__(self, **_):
         pass
 
-    def llm_schema(self) -> dict:
+    def input_schema(self) -> dict:
         return {
             "type": "object",
             "properties": {"query": {"type": "string", "description": "Query"}},
@@ -82,7 +82,7 @@ class TasksStubTool(Tool):
     def __init__(self, **_):
         pass
 
-    def llm_schema(self) -> dict:
+    def input_schema(self) -> dict:
         return {
             "type": "object",
             "properties": {

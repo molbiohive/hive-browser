@@ -62,7 +62,7 @@ async def route_input(
 
         params = _parse_args(args_text)
         result = await tool.execute(params)
-        return _tool_response(tool_name, result, params, tool.format_result(result))
+        return _tool_response(tool_name, result, params, result.get("error", ""))
 
     # -- Mode 2: Guided -- /command --
     if match := GUIDED_PATTERN.match(user_input):
@@ -79,7 +79,7 @@ async def route_input(
 
             params = _parse_args(text)
             result = await tool.execute(params)
-            return _tool_response(tool_name, result, params, tool.format_result(result))
+            return _tool_response(tool_name, result, params, result.get("error", ""))
 
         # LLM-assisted: run through unified loop with tool hint
         prompt = f"Use the {tool_name} tool: {text}" if text else f"Use the {tool_name} tool"
