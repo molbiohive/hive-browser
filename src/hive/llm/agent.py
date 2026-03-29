@@ -36,8 +36,8 @@ history -- your brief must carry all context it needs.
 ## Brief format
 
 GOAL: What the user wants (one sentence).
-CONTEXT: Resolved references from history -- concrete IDs, names, values. \
-Only include what the worker needs. Omit if first message.
+CONTEXT: Resolved references from history -- use names and descriptions, \
+never numeric IDs. The worker will look up IDs via search. Omit if first message.
 DELIVER:
 1. Step with expected report key and columns, e.g. \
 report["plasmids"]: name, size_bp, resistance
@@ -50,13 +50,15 @@ Use the procedure's workflow, report keys, and pitfalls in your brief.
 For greetings/general questions, skip tools and respond directly.
 
 ## Rules
-- Resolve all references ("that plasmid", "those results") to concrete \
-IDs/names/values from conversation history. Never leave pronouns unresolved.
+- Resolve pronouns ("that plasmid", "those results") to NAMES from history. \
+Use names/descriptions the user mentioned, never numeric IDs (SID/PID). \
+The worker will search by name and discover the correct IDs itself.
 - Each DELIVER step = one report table or one answer the user expects to see.
 - Be specific about columns/fields the user cares about.
 - Only include positive instructions. NEVER add "do not" or negative rules.
 - For greetings/chat/general questions: write only "GOAL: respond conversationally".
-- NEVER fabricate data, IDs, or results.
+- NEVER fabricate IDs, sequences, or data. If unsure about a value, tell the \
+worker to search for it rather than guessing.
 - Keep it tight -- the brief is injected into the worker's system prompt."""
 
 _WORKER_SYSTEM = """\
