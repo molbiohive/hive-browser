@@ -8,7 +8,8 @@ import pkgutil
 from inspect import isabstract
 from typing import TYPE_CHECKING
 
-from hive.tools.base import Tool, ToolRegistry
+from hive.tools.base import Tool
+from hive.tools.registry import ToolRegistry
 
 if TYPE_CHECKING:
     from hive.config import Settings
@@ -27,17 +28,14 @@ class ToolFactory:
 
 
 def _load_internal(registry: ToolRegistry, config: Settings):
-    """Scan hive.tools.* for Tool subclasses and register them."""
-    import hive.tools as tools_pkg
+    """Scan hive.tools.tools.* for Tool subclasses and register them."""
+    import hive.tools.tools as tools_pkg
 
-    skip = {"base", "factory", "resolve"}
     kwargs = {"config": config}
 
     for info in pkgutil.iter_modules(tools_pkg.__path__):
-        if info.name in skip:
-            continue
         try:
-            mod = importlib.import_module(f"hive.tools.{info.name}")
+            mod = importlib.import_module(f"hive.tools.tools.{info.name}")
         except Exception as e:
             logger.warning("Failed to import hive.tools.%s: %s", info.name, e)
             continue

@@ -170,7 +170,7 @@ class PartsTool(Tool):
     async def _find_relatives(self, part: Part) -> list[dict]:
         """BLAST the part's sequence and return top 10 hits."""
         try:
-            from hive.tools.blast import BlastTool
+            from hive.tools.tools.blast import BlastTool
 
             blast = BlastTool(config=self._config)
             result = await blast.execute(

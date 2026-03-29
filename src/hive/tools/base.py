@@ -1,4 +1,4 @@
-"""Tool interface and registry."""
+"""Tool base class -- self-describing interface for all tools."""
 
 from __future__ import annotations
 
@@ -98,43 +98,6 @@ class Tool(ABC):
         if self.tags:
             return sorted(self.tags)[0]
         return None
-
-
-class ToolRegistry:
-    """Central registry of available tools."""
-
-    def __init__(self):
-        self._tools: dict[str, Tool] = {}
-
-    def register(self, tool: Tool):
-        self._tools[tool.name] = tool
-
-    def get(self, name: str) -> Tool | None:
-        return self._tools.get(name)
-
-    def tools(self) -> list[Tool]:
-        """All registered tools."""
-        return list(self._tools.values())
-
-    def metadata(self) -> list[dict]:
-        """All tool metadata for frontend init."""
-        return [t.metadata() for t in self._tools.values()]
-
-    def signatures(self, detailed: bool = False) -> list[str]:
-        """Python-style tool signatures for LLM context.
-
-        When detailed=False (workspace):
-            ``def search(query: str, tags: str | None = None) -> dict  # fuzzy search``
-        When detailed=True (planner catalog): adds indented param descriptions.
-        """
-        lines = []
-        for tool in self._tools.values():
-            sig, descs = _build_signature(tool)
-            lines.append(f"{sig} -> dict  # {tool.short_desc}")
-            if detailed:
-                for d in descs:
-                    lines.append(f"  {d}")
-        return lines
 
 
 _JSON_TO_PY = {"string": "str", "integer": "int", "number": "float", "boolean": "bool", "array": "list", "object": "dict"}
