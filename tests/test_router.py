@@ -8,7 +8,7 @@ import pytest
 
 from hive.skills import SkillLibrary
 from hive.tools import Tool, ToolRegistry
-from hive.agent import (
+from hive.router import (
     DIRECT_PATTERN,
     GUIDED_PATTERN,
     _error,

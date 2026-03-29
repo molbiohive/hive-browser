@@ -14,7 +14,7 @@ from sqlalchemy import func, select
 from hive.context import current_chat_tasks, current_user_id
 from hive.db import IndexedFile, Part, Sequence, User
 from hive.db import session as db
-from hive.agent import route_input
+from hive.router import route_input
 from hive.users import create_feedback, get_user_by_token, update_preferences
 
 logger = logging.getLogger(__name__)
