@@ -420,30 +420,30 @@ class TestAgenticLoop:
 
 class TestErrorSanitization:
     def test_rate_limit(self):
-        from hive.llm.base import LLMAgent
+        from hive.llm.agent import Agent
 
-        assert LLMAgent._sanitize_error("Rate limit exceeded: 429") == "Rate limit reached"
+        assert Agent._sanitize_error("Rate limit exceeded: 429") == "Rate limit reached"
 
     def test_auth_error(self):
-        from hive.llm.base import LLMAgent
+        from hive.llm.agent import Agent
 
-        assert LLMAgent._sanitize_error("AuthenticationError: invalid key") == "LLM auth failed"
+        assert Agent._sanitize_error("AuthenticationError: invalid key") == "LLM auth failed"
 
     def test_timeout(self):
-        from hive.llm.base import LLMAgent
+        from hive.llm.agent import Agent
 
-        assert LLMAgent._sanitize_error("Request timeout after 30s") == "LLM request timed out"
+        assert Agent._sanitize_error("Request timeout after 30s") == "LLM request timed out"
 
     def test_connection_error(self):
-        from hive.llm.base import LLMAgent
+        from hive.llm.agent import Agent
 
-        assert LLMAgent._sanitize_error("ConnectionError: refused") == "Could not connect to LLM"
+        assert Agent._sanitize_error("ConnectionError: refused") == "Could not connect to LLM"
 
     def test_unknown_capped(self):
-        from hive.llm.base import LLMAgent
+        from hive.llm.agent import Agent
 
         long_msg = "x" * 200
-        result = LLMAgent._sanitize_error(long_msg)
+        result = Agent._sanitize_error(long_msg)
         assert len(result) <= 120
 
 

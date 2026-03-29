@@ -10,7 +10,6 @@ from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 
 from hive.context import current_chat_tasks
-from hive.llm.base import LLMAgent
 from hive.llm.commands import PLAN_CMD, PLANNER_CMDS, python_cmd, tasks_cmd
 from hive.sandbox import SandboxRunner, Workspace
 from hive.tools import ToolRegistry
@@ -101,7 +100,7 @@ Be concise and direct."""
 _MAX_PLANNER_TURNS = 4
 
 
-class Agent(LLMAgent):
+class Agent:
     """Unified agent with planner/worker mode switching.
 
     The planner reads skills and produces a brief. The worker executes
@@ -116,7 +115,8 @@ class Agent(LLMAgent):
         output_limit: int = 4000,
         tool_call_budget: int = 100,
     ):
-        super().__init__()
+        self.tokens: dict[str, int] = {"in": 0, "out": 0}
+        self._llm: LLMClient | None = None
         self._registry = registry
         self._skills = skills
         self._output_limit = output_limit
@@ -156,7 +156,7 @@ class Agent(LLMAgent):
         return self
 
     def _reset(self):
-        super()._reset()
+        self.tokens = {"in": 0, "out": 0}
         # Mode
         if self._use_planner and self._skills and len(self._skills) > 0:
             self._mode = "planner"
@@ -559,6 +559,53 @@ class Agent(LLMAgent):
             mark = "x" if t.get("done") else " "
             lines.append(f"- [{mark}] {t.get('text', '')}")
         return "Current tasks:\n" + "\n".join(lines)
+
+    # -- LLM call + utilities --
+
+    async def _chat(
+        self,
+        llm: LLMClient,
+        messages: list[dict],
+        tools: list[dict] | None = None,
+        tool_choice: str | None = None,
+    ) -> dict:
+        """Make an LLM call, accumulating token usage."""
+        response = await llm.chat(messages, tools=tools, tool_choice=tool_choice)
+        usage = response.get("usage") or {}
+        self.tokens["in"] += usage.get("prompt_tokens", 0)
+        self.tokens["out"] += usage.get("completion_tokens", 0)
+        return response
+
+    @staticmethod
+    def _msg_content(response: dict) -> str:
+        return (response["choices"][0]["message"].get("content") or "").strip()
+
+    @staticmethod
+    def _msg_tool_calls(response: dict) -> list[dict]:
+        return response["choices"][0]["message"].get("tool_calls") or []
+
+    @staticmethod
+    def _parse_tool_args(tc: dict) -> dict[str, Any]:
+        raw = tc["function"]["arguments"]
+        try:
+            params = json.loads(raw) if isinstance(raw, str) else raw
+            return {k: v for k, v in params.items() if v is not None}
+        except (json.JSONDecodeError, AttributeError):
+            return {}
+
+    @staticmethod
+    def _sanitize_error(raw: str) -> str:
+        lowered = raw.lower()
+        if "rate" in lowered and "limit" in lowered:
+            return "Rate limit reached"
+        if "auth" in lowered:
+            return "LLM auth failed"
+        if "timeout" in lowered:
+            return "LLM request timed out"
+        if "connect" in lowered:
+            return "Could not connect to LLM"
+        first = raw.split(".")[0].split("\n")[0]
+        return first[:120] if len(first) > 120 else first
 
 
 # -- Module-level helpers --
