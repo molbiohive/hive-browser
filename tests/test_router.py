@@ -316,10 +316,10 @@ class TestAgenticLoop:
         assert "Hello" in resp["content"]
 
     async def test_single_tool_call(self, registry):
-        """LLM calls tasks tool, then summarizes."""
+        """LLM calls Tasks tool, then summarizes."""
         llm = self._mock_llm(
             [
-                self._tool_call_response("tasks", {"action": "list"}),
+                self._tool_call_response("Tasks", {"action": "list"}),
                 self._text_response("Here are your tasks."),
             ]
         )
@@ -328,11 +328,11 @@ class TestAgenticLoop:
         assert "tasks" in resp["content"].lower()
 
     async def test_multi_tool_chain(self, registry):
-        """LLM chains two tasks calls before summarizing."""
+        """LLM chains two Tasks calls before summarizing."""
         llm = self._mock_llm(
             [
-                self._tool_call_response("tasks", {"action": "add", "text": "step1"}, call_id="c1"),
-                self._tool_call_response("tasks", {"action": "add", "text": "step2"}, call_id="c2"),
+                self._tool_call_response("Tasks", {"action": "add", "text": "step1"}, call_id="c1"),
+                self._tool_call_response("Tasks", {"action": "add", "text": "step2"}, call_id="c2"),
                 self._text_response("Done with both steps."),
             ]
         )
@@ -357,8 +357,8 @@ class TestAgenticLoop:
         """Loop hits max turns -> returns last result with summary attempt."""
         llm = self._mock_llm(
             [
-                self._tool_call_response("tasks", {"action": "add", "text": "t1"}, call_id="c1"),
-                self._tool_call_response("tasks", {"action": "add", "text": "t2"}, call_id="c2"),
+                self._tool_call_response("Tasks", {"action": "add", "text": "t1"}, call_id="c1"),
+                self._tool_call_response("Tasks", {"action": "add", "text": "t2"}, call_id="c2"),
                 # 3rd call: _final_summary (no tools) -> text response
                 self._text_response("Here is a summary of results."),
             ]
@@ -376,7 +376,7 @@ class TestAgenticLoop:
 
         llm = self._mock_llm(
             [
-                self._tool_call_response("tasks", {"action": "list"}),
+                self._tool_call_response("Tasks", {"action": "list"}),
                 self._text_response("Done."),
             ]
         )
@@ -452,7 +452,7 @@ class TestErrorSanitization:
 
 
 class TestPlannerIntegration:
-    """Tests for planner integration in the router."""
+    """Tests for unified agent planner/worker mode switching via router."""
 
     def _mock_llm(self, responses):
         client = AsyncMock()
@@ -465,82 +465,76 @@ class TestPlannerIntegration:
             "usage": usage or {"prompt_tokens": 100, "completion_tokens": 20},
         }
 
+    def _tool_call_response(self, name, args, call_id="1", usage=None):
+        import json as _json
+        return {
+            "choices": [{"message": {"tool_calls": [
+                {"id": call_id, "function": {"name": name, "arguments": _json.dumps(args)}},
+            ]}}],
+            "usage": usage or {"prompt_tokens": 50, "completion_tokens": 10},
+        }
+
+    def _skills(self, tmp_path):
+        (tmp_path / "basic.md").write_text("# Basic\n## When\nAlways.\n## Workflow\n1. search()\n")
+        return SkillLibrary(tmp_path)
+
     # -- Planner ON (default) --
 
-    async def test_planner_always_runs_agent_loop(self, registry, tmp_path):
-        """Planner ON always runs agent loop -- no ANSWER shortcut."""
-        from hive.llm.planner import Planner
+    async def test_planner_on_produces_plan_then_worker(self, registry, tmp_path):
+        """With skills + planner ON: planner Search -> plan text -> worker response."""
+        skills = self._skills(tmp_path)
 
-        planner = Planner(registry=registry, skills=SkillLibrary(tmp_path))
-
-        llm = self._mock_llm(
-            [
-                # Plan call
-                self._text_response("respond conversationally"),
-                # Agent loop
-                self._text_response("Hello! How can I help?"),
-            ]
-        )
+        llm = self._mock_llm([
+            # Turn 0 (planner, forced): Search tool call
+            self._tool_call_response("Search", {"query": ""}),
+            # Turn 1 (planner): plan text -> switch to worker
+            self._text_response("respond conversationally"),
+            # Turn 2 (worker): final response
+            self._text_response("Hello! How can I help?"),
+        ])
         resp = await route_input(
-            "hello",
-            registry,
-            llm_client=llm,
-            planner=planner,
-            use_planner=True,
+            "hello", registry, llm_client=llm,
+            skills=skills, use_planner=True,
         )
         assert resp["type"] == "message"
         assert "Hello" in resp["content"]
         assert resp.get("plan") == "respond conversationally"
-        assert llm.chat.call_count == 2  # plan + agent
+        assert llm.chat.call_count == 3  # search + plan + worker
 
     async def test_planner_on_injects_plan_text(self, registry, tmp_path):
-        """Planner produces task description, agent sees plan in system prompt."""
-        from hive.llm.planner import Planner
+        """Plan text appears in worker system prompt."""
+        skills = self._skills(tmp_path)
 
-        planner = Planner(registry=registry, skills=SkillLibrary(tmp_path))
-
-        llm = self._mock_llm(
-            [
-                self._text_response("Echo the input back."),
-                self._text_response("Here is your echo."),
-            ]
-        )
+        llm = self._mock_llm([
+            self._tool_call_response("Search", {"query": ""}),
+            self._text_response("Echo the input back."),
+            self._text_response("Here is your echo."),
+        ])
         resp = await route_input(
-            "echo test",
-            registry,
-            llm_client=llm,
-            planner=planner,
-            use_planner=True,
+            "echo test", registry, llm_client=llm,
+            skills=skills, use_planner=True,
         )
         assert resp["type"] == "message"
-        assert llm.chat.call_count == 2
 
-        # Agent loop (second call): plan in system prompt, user input separate
-        agent_messages = llm.chat.call_args_list[1][0][0]
-        system_msg = [m for m in agent_messages if m.get("role") == "system"][0]
+        # Worker call (third): plan in system prompt, user input separate
+        worker_messages = llm.chat.call_args_list[2][0][0]
+        system_msg = [m for m in worker_messages if m.get("role") == "system"][0]
         assert "## Plan" in system_msg["content"]
         assert "Echo the input back." in system_msg["content"]
-        user_msg = [m for m in agent_messages if m.get("role") == "user"][-1]
+        user_msg = [m for m in worker_messages if m.get("role") == "user"][-1]
         assert "echo test" in user_msg["content"]
 
     async def test_planner_on_failure_falls_through(self, registry, tmp_path):
-        """If planning call fails, agent continues without plan."""
-        from hive.llm.planner import Planner
+        """If planner LLM call fails, agent switches to worker without plan."""
+        skills = self._skills(tmp_path)
 
-        planner = Planner(registry=registry, skills=SkillLibrary(tmp_path))
-
-        llm = self._mock_llm(
-            [
-                Exception("LLM down"),
-                self._text_response("Recovered."),
-            ]
-        )
+        llm = self._mock_llm([
+            Exception("LLM down"),       # planner fails -> switch to worker
+            self._text_response("Recovered."),   # worker succeeds
+        ])
         resp = await route_input(
-            "test fallback",
-            registry,
-            llm_client=llm,
-            planner=planner,
-            use_planner=True,
+            "test fallback", registry, llm_client=llm,
+            skills=skills, use_planner=True,
         )
         assert resp["type"] == "message"
         assert "Recovered" in resp["content"]
@@ -548,38 +542,26 @@ class TestPlannerIntegration:
     # -- Planner OFF --
 
     async def test_planner_off_no_plan_call(self, registry, tmp_path):
-        """Planner OFF: no planning call, agent runs directly."""
-        from hive.llm.planner import Planner
-
-        planner = Planner(registry=registry, skills=SkillLibrary(tmp_path))
+        """use_planner=False: starts in worker mode, no planner calls."""
+        skills = self._skills(tmp_path)
 
         llm = self._mock_llm([self._text_response("Done.")])
         resp = await route_input(
-            "echo test",
-            registry,
-            llm_client=llm,
-            planner=planner,
-            use_planner=False,
+            "echo test", registry, llm_client=llm,
+            skills=skills, use_planner=False,
         )
         assert resp["type"] == "message"
-        # Only 1 LLM call (worker), no planning call
         assert llm.chat.call_count == 1
 
     async def test_planner_off_agent_sees_user_input(self, registry, tmp_path):
-        """Planner OFF: agent loop receives raw user input, not plan."""
-        from hive.llm.planner import Planner
-
-        planner = Planner(registry=registry, skills=SkillLibrary(tmp_path))
+        """use_planner=False: worker receives raw user input, no plan."""
+        skills = self._skills(tmp_path)
 
         llm = self._mock_llm([self._text_response("Hello.")])
         await route_input(
-            "find GFP sequences",
-            registry,
-            llm_client=llm,
-            planner=planner,
-            use_planner=False,
+            "find GFP sequences", registry, llm_client=llm,
+            skills=skills, use_planner=False,
         )
-        # Only one LLM call (agent loop, no planning)
         assert llm.chat.call_count == 1
         agent_messages = llm.chat.call_args_list[0][0][0]
         user_msg = [m for m in agent_messages if m.get("role") == "user"][-1]
@@ -634,7 +616,7 @@ class TestSandboxIntegration:
         return reg
 
     async def test_auto_cache_list_dict(self):
-        """Search called from python produces workspace handles."""
+        """Search called from python -> variables persist in workspace."""
 
         class SearchTool(Tool):
             name = "search"
@@ -657,8 +639,8 @@ class TestSandboxIntegration:
         llm = self._mock_llm(
             [
                 self._tool_call_response(
-                    "python",
-                    {"code": 'r = search(query="test"); feedback = f"found {len(r[\"results\"])} results"'},
+                    "Python",
+                    {"code": 'r = search(query="test")\ncount = len(r["results"])'},
                     call_id="c1",
                 ),
                 self._text_response("Found 2 results."),
@@ -701,8 +683,8 @@ class TestSandboxIntegration:
         llm = self._mock_llm(
             [
                 self._tool_call_response(
-                    "python",
-                    {"code": 'r = search(query="GFP"); feedback = str([x["sid"] for x in r["results"]])'},
+                    "Python",
+                    {"code": 'r = search(query="GFP")\nsids = [x["sid"] for x in r["results"]]'},
                     call_id="c1",
                 ),
                 self._text_response("SIDs are 1 and 2."),
@@ -721,8 +703,8 @@ class TestSandboxIntegration:
 
         first_call_tools = llm.chat.call_args_list[0][1].get("tools", [])
         tool_names_t0 = [t["function"]["name"] for t in first_call_tools]
-        assert "python" in tool_names_t0
-        assert "tasks" in tool_names_t0
+        assert "Python" in tool_names_t0
+        assert "Tasks" in tool_names_t0
 
     async def test_python_schema_always_present_despite_errors(self):
         """Python schema is never dropped, even after consecutive errors."""
@@ -730,13 +712,13 @@ class TestSandboxIntegration:
         llm = self._mock_llm(
             [
                 self._tool_call_response(
-                    "python",
-                    {"code": "feedback = undefined_var_1"},
+                    "Python",
+                    {"code": "x = undefined_var_1"},
                     call_id="c1",
                 ),
                 self._tool_call_response(
-                    "python",
-                    {"code": "feedback = undefined_var_2"},
+                    "Python",
+                    {"code": "x = undefined_var_2"},
                     call_id="c2",
                 ),
                 self._text_response("Could not process the data."),
@@ -746,4 +728,4 @@ class TestSandboxIntegration:
 
         last_call_tools = llm.chat.call_args_list[-1][1].get("tools", [])
         tool_names = [t["function"]["name"] for t in last_call_tools]
-        assert "python" in tool_names
+        assert "Python" in tool_names

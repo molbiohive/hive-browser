@@ -9,12 +9,11 @@ from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 
 from hive.llm import LLMClient
-from hive.llm.worker import Worker
-from hive.sandbox import Workspace
+from hive.llm.agent import Agent
 from hive.tools import ToolRegistry
 
 if TYPE_CHECKING:
-    from hive.llm import Planner
+    from hive.skills import SkillLibrary
 
 logger = logging.getLogger(__name__)
 
@@ -32,12 +31,10 @@ async def route_input(
     llm_client: LLMClient | None = None,
     history: list[dict] | None = None,
     max_turns: int = 5,
-    pipe_min_length: int = 200,
     sandbox_output_limit: int = 4000,
     on_progress: Callable[[dict], Awaitable[None]] | None = None,
-    planner: Planner | None = None,
+    skills: SkillLibrary | None = None,
     use_planner: bool = True,
-    workspace: Workspace | None = None,
     tool_call_budget: int = 100,
 ) -> dict[str, Any]:
     """Route user input -> tool execution -> response.
@@ -95,9 +92,8 @@ async def route_input(
             max_turns=max_turns,
             sandbox_output_limit=sandbox_output_limit,
             on_progress=on_progress,
-            planner=planner,
+            skills=skills,
             use_planner=use_planner,
-            workspace=workspace,
             tool_call_budget=tool_call_budget,
         )
 
@@ -113,9 +109,8 @@ async def route_input(
         max_turns=max_turns,
         sandbox_output_limit=sandbox_output_limit,
         on_progress=on_progress,
-        planner=planner,
+        skills=skills,
         use_planner=use_planner,
-        workspace=workspace,
         tool_call_budget=tool_call_budget,
     )
 
@@ -128,54 +123,26 @@ async def _run_agents(
     registry: ToolRegistry,
     llm_client: LLMClient,
     history: list[dict] | None = None,
-    max_turns: int = 5,
+    max_turns: int = 30,
     sandbox_output_limit: int = 4000,
     on_progress: Callable[[dict], Awaitable[None]] | None = None,
-    planner: Planner | None = None,
+    skills: SkillLibrary | None = None,
     use_planner: bool = True,
-    workspace: Workspace | None = None,
     tool_call_budget: int = 100,
 ) -> dict[str, Any]:
-    """Run planner (optional) -> worker agentic loop."""
-    if workspace is None:
-        workspace = Workspace()
-
-    # -- Optional planner --
-    plan_text = None
-    plan_tokens: dict[str, int] = {"in": 0, "out": 0}
-    if planner and use_planner:
-        logger.info("Planner: starting (use_planner=%s)", use_planner)
-        try:
-            plan_text, plan_tokens = await planner.prepare(
-                user_input, history,
-            ).run(llm_client, max_turns=4)
-            logger.info("Planner: brief=%r tokens=%s", (plan_text or "")[:120], plan_tokens)
-        except Exception as e:
-            logger.warning("Planner failed, continuing without plan: %s", e)
-    else:
-        logger.info("Planner: skipped (planner=%s, use_planner=%s)", planner is not None, use_planner)
-
-    # -- Worker --
-    worker = Worker(
-        registry, workspace,
+    """Run unified agent (planner + worker in one loop)."""
+    agent = Agent(
+        registry, skills,
         output_limit=sandbox_output_limit,
         tool_call_budget=tool_call_budget,
     )
-    worker.prepare(
+    agent.prepare(
         user_input,
-        plan=plan_text,
         history=history,
         on_progress=on_progress,
+        use_planner=use_planner,
     )
-    result = await worker.run(llm_client, max_turns=max_turns)
-
-    # Merge planner tokens into result
-    if plan_tokens.get("in") or plan_tokens.get("out"):
-        result.setdefault("tokens", {"in": 0, "out": 0})
-        result["tokens"]["in"] += plan_tokens.get("in", 0)
-        result["tokens"]["out"] += plan_tokens.get("out", 0)
-
-    return result
+    return await agent.run(llm_client, max_turns=max_turns)
 
 
 # -- Helpers --

@@ -100,6 +100,11 @@ Be concise and direct."""
 _MAX_PLANNER_TURNS = 4
 
 
+def worker_system_prompt() -> str:
+    """Return the worker system prompt (used by tests)."""
+    return _WORKER_SYSTEM
+
+
 class Agent:
     """Unified agent with planner/worker mode switching.
 

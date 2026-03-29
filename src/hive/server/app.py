@@ -79,15 +79,12 @@ async def lifespan(app: FastAPI):
     app.state.tool_registry = ToolFactory.discover(config)
     logger.info("Tool registry: %d tools", len(app.state.tool_registry.tools()))
 
-    # --- Planner (cheap LLM call for task brief) ---
-    app.state.planner = None
+    # --- Skill library (loaded by unified agent's planner mode) ---
+    app.state.skills = None
     if config.llm.use_planner:
-        from hive.llm import Planner
         from hive.skills import SkillLibrary
 
-        if app.state.tool_registry.tools():
-            skills = SkillLibrary()
-            app.state.planner = Planner(registry=app.state.tool_registry, skills=skills)
+        app.state.skills = SkillLibrary()
 
     # --- Process registry ---
     from hive.ps import (

@@ -14,7 +14,6 @@ from sqlalchemy import func, select
 from hive.context import current_chat_tasks, current_user_id
 from hive.db import IndexedFile, Part, Sequence, User
 from hive.db import session as db
-from hive.sandbox import Workspace
 from hive.agent import route_input
 from hive.users import create_feedback, get_user_by_token, update_preferences
 
@@ -104,7 +103,7 @@ async def websocket_endpoint(websocket: WebSocket):
     registry = getattr(app.state, "tool_registry", None)
     model_pool = getattr(app.state, "model_pool", None)
     chat_storage = getattr(app.state, "chat_storage", None)
-    planner = getattr(app.state, "planner", None)
+    skills = getattr(app.state, "skills", None)
     max_pairs = config.chat.max_history_pairs if config else 20
 
     # Per-connection model selection -- use user preference if valid, else default
@@ -123,7 +122,6 @@ async def websocket_endpoint(websocket: WebSocket):
         "title_generated": False,
         "model": current_model_id,
         "tasks": [],
-        "workspace": Workspace(),
     }
 
     try:
@@ -141,7 +139,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 "type": "init",
                 "config": {
                     "max_history_pairs": max_pairs,
-                    "planner_available": planner is not None,
+                    "planner_available": skills is not None,
                 },
                 "tools": registry.metadata() if registry else [],
                 "status": init_status,
@@ -263,7 +261,6 @@ async def websocket_endpoint(websocket: WebSocket):
                 chat["title_sent"] = False
                 chat["model"] = current_model_id
                 chat["tasks"] = []
-                chat["workspace"] = Workspace()
                 manager.histories[conn_id] = []
                 continue
 
@@ -276,7 +273,6 @@ async def websocket_endpoint(websocket: WebSocket):
                         chat["id"] = requested_id
                         chat["messages"] = saved.get("messages", [])
                         chat["tasks"] = saved.get("tasks", [])
-                        chat["workspace"] = Workspace()
                         chat["title_generated"] = bool(saved.get("title"))
                         manager.histories[conn_id] = [
                             {"role": m["role"], "content": m["content"]} for m in chat["messages"]
@@ -448,7 +444,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     user_slug=user_slug,
                     max_pairs=max_pairs,
                     config=config,
-                    planner=planner,
+                    skills=skills,
                     use_planner=use_planner,
                     user_id=user.id,
                 )
@@ -469,7 +465,7 @@ async def _handle_message(
     user_slug: str | None,
     max_pairs: int,
     config,
-    planner=None,
+    skills=None,
     use_planner: bool = True,
     user_id: int | None = None,
 ):
@@ -487,16 +483,12 @@ async def _handle_message(
             llm_client=llm_client,
             history=manager.get_history(conn_id)[-4:],  # last 2 pairs
             max_turns=config.llm.agent_max_turns if config else 30,
-            pipe_min_length=config.llm.pipe_min_length if config else 200,
             sandbox_output_limit=config.llm.sandbox_output_limit if config else 4000,
             on_progress=_progress,
-            planner=planner,
+            skills=skills,
             use_planner=use_planner,
-            workspace=chat["workspace"],
             tool_call_budget=config.llm.tool_call_budget if config else 100,
         )
-
-        # Nothing to trim now that handles are removed
 
         # Track user message (skip bare commands that just show a form)
         manager.append_history(conn_id, "user", content, max_pairs)
