@@ -315,7 +315,7 @@
 								<div class="collection-item">
 									<div class="col-info">
 										<span class="col-name">{col.name}</span>
-										<span class="col-meta">{col.set_type} &middot; {col.items.length} items{col.is_default ? ' &middot; default' : ''}</span>
+										<span class="col-meta">{col.set_type} / {col.items.length} items{col.is_default ? ' / default' : ''}</span>
 									</div>
 									<div class="col-actions">
 										<button class="icon-btn" onclick={() => startEdit(col)} title="Edit">
@@ -840,6 +840,7 @@
 		resize: vertical;
 		outline: none;
 		line-height: 1.5;
+		box-sizing: border-box;
 	}
 
 	.skill-textarea:focus {
