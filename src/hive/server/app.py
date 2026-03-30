@@ -81,10 +81,26 @@ async def lifespan(app: FastAPI):
 
     # --- Skill library (loaded by unified agent's planner mode) ---
     app.state.skills = None
-    if config.llm.use_planner:
-        from hive.skills import SkillLibrary
+    if config.llm.use_planner and app.state.db_ready:
+        try:
+            from hive.context.skills import bootstrap_skills, list_skills
+            from hive.db import session as db
+            from hive.skills import SkillLibrary
 
-        app.state.skills = SkillLibrary()
+            async with db.async_session_factory() as session:
+                seeded = await bootstrap_skills(session)
+                await session.commit()
+                if seeded:
+                    logger.info("Bootstrapped %d default skills", seeded)
+
+            async with db.async_session_factory() as session:
+                rows = await list_skills(session)
+                data = [{"name": s.name, "content": s.content} for s in rows]
+
+            app.state.skills = SkillLibrary(skills_data=data)
+            logger.info("Skill library: %d skills", len(app.state.skills))
+        except Exception as e:
+            logger.warning("Skill library init failed: %s", e)
 
     # --- Process registry ---
     from hive.ps import (

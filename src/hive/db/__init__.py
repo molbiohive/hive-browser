@@ -14,6 +14,7 @@ from hive.db.models import (
     PartInstance,
     PartName,
     Sequence,
+    Skill,
     User,
 )
 from hive.db.session import init_db
@@ -32,6 +33,7 @@ __all__ = [
     "PartInstance",
     "PartName",
     "Sequence",
+    "Skill",
     "User",
     "init_db",
 ]

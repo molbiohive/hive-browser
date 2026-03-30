@@ -272,6 +272,16 @@ class Collection(Base):
 # -- Feedback -----------------------------------------------------
 
 
+class Skill(Base):
+    __tablename__ = "skills"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(Text, unique=True)
+    content: Mapped[str] = mapped_column(Text)
+    is_default: Mapped[bool] = mapped_column(Boolean, server_default="false")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class Feedback(Base):
     __tablename__ = "feedback"
 

@@ -1,4 +1,8 @@
-"""Skill library -- loads .md skill procedures for the planner."""
+"""Skill library -- serves skill procedures for the planner.
+
+Primary mode: load from DB rows (list of dicts with name/content).
+Fallback: load from disk directory (for tests or standalone use).
+"""
 
 from __future__ import annotations
 
@@ -23,24 +27,44 @@ def _extract_when(content: str) -> str:
 
 
 class SkillLibrary:
-    """Load and serve .md skill files from a directory."""
+    """Serve skill procedures from DB data or a disk directory."""
 
-    def __init__(self, skills_dir: str | Path | None = None):
-        if skills_dir is None:
-            # Default: extras/skills/ at project root
-            skills_dir = Path(__file__).resolve().parents[3] / "extras" / "skills"
-        self._dir = Path(skills_dir)
+    def __init__(
+        self,
+        skills_dir: str | Path | None = None,
+        *,
+        skills_data: list[dict] | None = None,
+    ):
         self._skills: dict[str, Skill] = {}
-        self._load()
+        if skills_data is not None:
+            self._load_from_data(skills_data)
+        elif skills_dir is not None:
+            self._load_from_disk(Path(skills_dir))
 
-    def _load(self) -> None:
-        if not self._dir.is_dir():
+    def _load_from_data(self, rows: list[dict]) -> None:
+        """Load from DB rows: [{"name": ..., "content": ...}, ...]."""
+        for row in rows:
+            name = row["name"]
+            content = row["content"]
+            self._skills[name] = Skill(
+                name=name, when=_extract_when(content), content=content,
+            )
+
+    def _load_from_disk(self, path: Path) -> None:
+        """Load from a directory of .md files (tests/fallback)."""
+        if not path.is_dir():
             return
-        for path in sorted(self._dir.glob("*.md")):
-            content = path.read_text()
-            name = path.stem
-            when = _extract_when(content)
-            self._skills[name] = Skill(name=name, when=when, content=content)
+        for fp in sorted(path.glob("*.md")):
+            content = fp.read_text()
+            name = fp.stem
+            self._skills[name] = Skill(
+                name=name, when=_extract_when(content), content=content,
+            )
+
+    def reload(self, skills_data: list[dict]) -> None:
+        """Replace all skills from fresh DB data."""
+        self._skills.clear()
+        self._load_from_data(skills_data)
 
     def catalog(self) -> list[dict]:
         """Return name + when for all skills."""

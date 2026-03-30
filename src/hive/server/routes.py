@@ -6,7 +6,19 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
 
-from hive.db import IndexedFile, Part, PartInstance, Sequence
+from hive.context.collections import (
+    create_collection,
+    delete_collection,
+    list_collections,
+    update_collection,
+)
+from hive.context.skills import (
+    create_skill,
+    delete_skill,
+    list_skills,
+    update_skill,
+)
+from hive.db import Enzyme, IndexedFile, Part, PartInstance, Sequence
 from hive.db import session as db
 from hive.users import (
     create_user,
@@ -186,8 +198,6 @@ async def _discover_ollama(base_url: str, configured: list[dict]) -> list[dict]:
 
 @router.get("/collections")
 async def list_collections_endpoint(request: Request, type: str | None = None):
-    from hive.context.collections import list_collections
-
     if not db.async_session_factory:
         return []
     async with db.async_session_factory() as s:
@@ -206,8 +216,6 @@ async def list_collections_endpoint(request: Request, type: str | None = None):
 
 @router.post("/collections")
 async def create_collection_endpoint(request: Request):
-    from hive.context.collections import create_collection
-
     if not db.async_session_factory:
         return JSONResponse({"error": "Database not available"}, status_code=503)
     body = await request.json()
@@ -233,8 +241,6 @@ async def create_collection_endpoint(request: Request):
 
 @router.put("/collections/{collection_id}")
 async def update_collection_endpoint(collection_id: int, request: Request):
-    from hive.context.collections import update_collection
-
     if not db.async_session_factory:
         return JSONResponse({"error": "Database not available"}, status_code=503)
     body = await request.json()
@@ -260,14 +266,111 @@ async def update_collection_endpoint(collection_id: int, request: Request):
 
 @router.delete("/collections/{collection_id}")
 async def delete_collection_endpoint(collection_id: int):
-    from hive.context.collections import delete_collection
-
     if not db.async_session_factory:
         return JSONResponse({"error": "Database not available"}, status_code=503)
     async with db.async_session_factory() as s:
         deleted = await delete_collection(s, collection_id)
         await s.commit()
         return {"deleted": deleted}
+
+
+# -- Skills ------------------------------------------------
+
+
+@router.get("/skills")
+async def list_skills_endpoint(request: Request):
+    if not db.async_session_factory:
+        return []
+    async with db.async_session_factory() as s:
+        skills = await list_skills(s)
+        return [
+            {
+                "id": sk.id,
+                "name": sk.name,
+                "content": sk.content,
+                "is_default": sk.is_default,
+            }
+            for sk in skills
+        ]
+
+
+@router.post("/skills")
+async def create_skill_endpoint(request: Request):
+    if not db.async_session_factory:
+        return JSONResponse({"error": "Database not available"}, status_code=503)
+    body = await request.json()
+    name = body.get("name", "").strip()
+    content = body.get("content", "").strip()
+    if not name or not content:
+        return JSONResponse({"error": "name and content required"}, status_code=422)
+    try:
+        async with db.async_session_factory() as s:
+            sk = await create_skill(s, name=name, content=content)
+            await s.commit()
+            _reload_skills(request.app)
+            return {
+                "id": sk.id,
+                "name": sk.name,
+                "content": sk.content,
+                "is_default": sk.is_default,
+            }
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=422)
+
+
+@router.put("/skills/{skill_id}")
+async def update_skill_endpoint(skill_id: int, request: Request):
+    if not db.async_session_factory:
+        return JSONResponse({"error": "Database not available"}, status_code=503)
+    body = await request.json()
+    try:
+        async with db.async_session_factory() as s:
+            sk = await update_skill(
+                s, skill_id,
+                name=body.get("name"),
+                content=body.get("content"),
+            )
+            await s.commit()
+            _reload_skills(request.app)
+            return {
+                "id": sk.id,
+                "name": sk.name,
+                "content": sk.content,
+                "is_default": sk.is_default,
+            }
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=404)
+
+
+@router.delete("/skills/{skill_id}")
+async def delete_skill_endpoint(skill_id: int, request: Request):
+    if not db.async_session_factory:
+        return JSONResponse({"error": "Database not available"}, status_code=503)
+    try:
+        async with db.async_session_factory() as s:
+            deleted = await delete_skill(s, skill_id)
+            await s.commit()
+            _reload_skills(request.app)
+            return {"deleted": deleted}
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=422)
+
+
+def _reload_skills(app) -> None:
+    """Reload SkillLibrary from DB after mutation (fire-and-forget)."""
+    import asyncio
+
+    async def _do_reload():
+        try:
+            async with db.async_session_factory() as s:
+                rows = await list_skills(s)
+                data = [{"name": sk.name, "content": sk.content} for sk in rows]
+            if app.state.skills:
+                app.state.skills.reload(data)
+        except Exception:
+            pass
+
+    asyncio.ensure_future(_do_reload())
 
 
 # -- Enzyme / Primer item lists (for collection picker) ----
@@ -278,8 +381,6 @@ async def list_enzymes():
     """Return all enzyme names for the collection item picker."""
     if not db.async_session_factory:
         return []
-    from hive.db import Enzyme
-
     async with db.async_session_factory() as s:
         rows = (
             await s.execute(select(Enzyme.name, Enzyme.site, Enzyme.length).order_by(Enzyme.name))
@@ -293,8 +394,6 @@ async def list_primer_parts():
     if not db.async_session_factory:
         return []
     from sqlalchemy.orm import selectinload
-
-    from hive.db import Part, PartInstance
 
     async with db.async_session_factory() as s:
         parts = (
