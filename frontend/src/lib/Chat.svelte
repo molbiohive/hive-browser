@@ -1,6 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
-	import { chatStore, chatList, appConfig, statusBar, tasks, connect, sendMessage, cancelRequest, loadChat, newChat, fetchChatList, deleteChat, setPreference } from '$lib/stores/chat.ts';
+	import { chatStore, chatList, appConfig, statusBar, connect, sendMessage, cancelRequest, loadChat, newChat, fetchChatList, deleteChat, setPreference } from '$lib/stores/chat.ts';
 	import { currentUser, needsAuth, setToken, getUserToken } from '$lib/stores/user.ts';
 	import { leftPanelOpen, rightPanelOpen, sidebarWidth, searchPanelWidth } from '$lib/stores/panels.ts';
 	import MessageBubble from '$lib/MessageBubble.svelte';
@@ -11,8 +11,6 @@
 	import FeedbackModal from '$lib/FeedbackModal.svelte';
 	import SettingsModal from '$lib/SettingsModal.svelte';
 	import SearchPanel from '$lib/SearchPanel.svelte';
-	import TasksPanel from '$lib/TasksPanel.svelte';
-
 	let inputText = $state('');
 	let pasteSlots = $state([]); // [{text, lines, chars}, ...] for inline paste tokens
 	let textareaEl = $state(undefined);
@@ -461,7 +459,6 @@
 				{#each $chatStore.messages as message, i}
 					<MessageBubble {message} messageIndex={i} />
 				{/each}
-				<TasksPanel />
 				{#if $chatStore.isWaiting && $chatStore.messages.at(-1)?.widget?.type !== 'form'}
 					<div class="progress-indicator">
 						<span class="progress-word">{progressWord}...</span>
