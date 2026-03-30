@@ -1,6 +1,7 @@
 services:
   postgres:
     image: paradedb/paradedb:latest-pg16
+    command: postgres -c shared_preload_libraries=pg_search
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
