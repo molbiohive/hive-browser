@@ -3,7 +3,7 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from hive.molbio.collections import (
+from hive.context.collections import (
     create_collection,
     delete_collection,
     get_active_enzyme_names,
