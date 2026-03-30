@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from hive.context import current_user_id
 from hive.db import session as db
-from hive.libs.classify import analyze_primer
+from hive.molbio.classify import analyze_primer
 from hive.tools.base import Tool
 from hive.tools.resolve import dedup_primers, resolve_input, resolve_sequence
 
