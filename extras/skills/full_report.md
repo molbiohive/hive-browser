@@ -9,6 +9,8 @@ Comprehensive report on a sequence: "give me full report on pX", "everything abo
 - parts
 - sites
 - history
+- orf_find
+- protparam
 
 ## Workflow
 1. search() to resolve name to SID
@@ -43,6 +45,7 @@ report["history"] = h
 - Batch all tool calls in ONE Python call — do not call one-by-one
 - history() returns widget-ready data — pass through to report as-is
 - Do not put sequence_data in report
+- For DNA sequences, include orf_find() and protparam() for the main CDS if relevant
 
 ## Rules
 - 2 Python calls max: resolve name + fetch all & build report
