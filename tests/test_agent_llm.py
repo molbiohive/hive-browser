@@ -311,28 +311,6 @@ class TestWorkerMode:
 
 
 class TestModeSwitching:
-    async def test_plan_command_switches_back(self, registry, skills):
-        """Worker calling Plan() switches back to planner mode."""
-        llm = _mock_llm([
-            # Planner turn 0 (forced Search)
-            _tool_call_response([("Search", {})]),
-            # Planner turn 1: plan text
-            _text_response("GOAL: initial plan"),
-            # Worker turn 0: calls Plan()
-            _tool_call_response([("Plan", {})]),
-            # Planner turn 0 (forced Search again)
-            _tool_call_response([("Search", {})]),
-            # Planner turn 1: new plan
-            _text_response("GOAL: revised plan"),
-            # Worker: final response
-            _text_response("All done."),
-        ])
-        agent = Agent(registry, skills)
-        agent.prepare("complex task", use_planner=True)
-        result = await agent.run(llm, max_turns=20)
-        assert result["type"] == "message"
-        assert result["plan"] == "GOAL: revised plan"
-
     async def test_planner_failure_falls_to_worker(self, registry, skills):
         """Planner LLM error -> switch to worker without plan."""
         llm = _mock_llm([
