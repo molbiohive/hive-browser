@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { currentUser } from '$lib/stores/user.ts';
 	import { setPreference } from '$lib/stores/chat.ts';
+	import PickerTable from '$lib/PickerTable.svelte';
 
 	let { onClose } = $props();
 
@@ -12,7 +13,7 @@
 	let loading = $state(true);
 
 	// Create/edit mode
-	let mode = $state('list'); // 'list' | 'create' | 'edit' | 'create-skill' | 'edit-skill'
+	let mode = $state('list'); // 'list' | 'create' | 'edit' | 'view-skill' | 'create-skill' | 'edit-skill'
 	let editId = $state(null);
 	let formName = $state('');
 	let formType = $state('enzymes');
@@ -26,20 +27,10 @@
 	// Item picker state
 	let allItems = $state([]);
 	let itemsLoading = $state(false);
-	let searchQuery = $state('');
+	let pickerFiltered = $state([]);
 	let selected = $state(new Set());
 	const enzymeCollectionId = $derived($currentUser?.preferences?.enzyme_collection_id ?? null);
 	const primerCollectionId = $derived($currentUser?.preferences?.primer_collection_id ?? null);
-
-	const filteredItems = $derived.by(() => {
-		if (!searchQuery.trim()) return allItems;
-		const q = searchQuery.toLowerCase();
-		return allItems.filter(item => {
-			const name = (item.name || '').toLowerCase();
-			const site = (item.site || '').toLowerCase();
-			return name.includes(q) || site.includes(q);
-		});
-	});
 
 	const selectedCount = $derived(selected.size);
 
@@ -91,14 +82,13 @@
 		setPreference('primer_collection_id', val ? parseInt(val) : null);
 	}
 
-	// ── Create/Edit ──
+	// ── Collection create/edit ──
 
 	function startCreate() {
 		mode = 'create';
 		formName = '';
 		formType = 'enzymes';
 		selected = new Set();
-		searchQuery = '';
 		fetchItems('enzymes');
 	}
 
@@ -108,7 +98,6 @@
 		formName = col.name;
 		formType = col.set_type;
 		selected = new Set(col.items.map(String));
-		searchQuery = '';
 		fetchItems(col.set_type);
 	}
 
@@ -116,42 +105,30 @@
 		mode = 'list';
 		editId = null;
 		allItems = [];
-		searchQuery = '';
 	}
 
 	function handleTypeChange(e) {
 		formType = e.target.value;
 		selected = new Set();
-		searchQuery = '';
 		fetchItems(formType);
 	}
 
 	function toggleItem(key) {
 		const next = new Set(selected);
-		if (next.has(key)) {
-			next.delete(key);
-		} else {
-			next.add(key);
-		}
+		if (next.has(key)) next.delete(key);
+		else next.add(key);
 		selected = next;
 	}
 
 	function toggleAll() {
-		if (selected.size === filteredItems.length) {
-			// Deselect all visible
-			const next = new Set(selected);
-			for (const item of filteredItems) {
-				next.delete(itemKey(item));
-			}
-			selected = next;
-		} else {
-			// Select all visible
-			const next = new Set(selected);
-			for (const item of filteredItems) {
-				next.add(itemKey(item));
-			}
-			selected = next;
+		const allKeys = pickerFiltered.map(itemKey);
+		const allSelected = allKeys.length > 0 && allKeys.every(k => selected.has(k));
+		const next = new Set(selected);
+		for (const k of allKeys) {
+			if (allSelected) next.delete(k);
+			else next.add(k);
 		}
+		selected = next;
 	}
 
 	function itemKey(item) {
@@ -207,6 +184,14 @@
 		skillName = '';
 		skillContent = '';
 		skillIssues = [];
+	}
+
+	function viewSkill(sk) {
+		mode = 'view-skill';
+		editSkillId = sk.id;
+		skillName = sk.name;
+		skillContent = sk.content;
+		skillIssues = sk.issues || [];
 	}
 
 	function startEditSkill(sk) {
@@ -265,6 +250,10 @@
 			console.error('Failed to delete skill:', e);
 		}
 	}
+
+	function isSkillMode(m) {
+		return m === 'view-skill' || m === 'create-skill' || m === 'edit-skill';
+	}
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -276,12 +265,13 @@
 				mode === 'list' ? 'Settings'
 				: mode === 'create' ? 'New Collection'
 				: mode === 'edit' ? 'Edit Collection'
+				: mode === 'view-skill' ? skillName
 				: mode === 'create-skill' ? 'New Skill'
 				: 'Edit Skill'
 			}</h2>
 			<button class="close-btn" onclick={
 				mode === 'list' ? onClose
-				: mode.startsWith('create-skill') || mode.startsWith('edit-skill') ? cancelSkillForm
+				: isSkillMode(mode) ? cancelSkillForm
 				: cancelForm
 			}>{mode === 'list' ? '\u00d7' : '\u2190'}</button>
 		</div>
@@ -323,28 +313,35 @@
 					{:else if collections.length === 0}
 						<div class="placeholder">No collections yet</div>
 					{:else}
-						<div class="collection-list">
-							{#each collections as col}
-								<div class="collection-item">
-									<div class="col-info">
-										<span class="col-name">{col.name}</span>
-										<span class="col-meta">{col.set_type} / {col.items.length} items{col.is_default ? ' / default' : ''}</span>
-									</div>
-									<div class="col-actions">
-										<button class="icon-btn" onclick={() => startEdit(col)} title="Edit">
-											<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-										</button>
-										{#if !col.is_default}
-											<button class="icon-btn danger" onclick={() => deleteCollection(col.id)} title="Delete">&times;</button>
-										{/if}
-									</div>
-								</div>
-							{/each}
-						</div>
+						<PickerTable
+							items={collections}
+							searchFields={['name']}
+							placeholder="Search collections..."
+							onRowClick={(col) => startEdit(col)}
+						>
+							{#snippet head()}
+								<tr>
+									<th>Name</th>
+									<th>Type</th>
+									<th>Items</th>
+									<th class="actions-col"></th>
+								</tr>
+							{/snippet}
+							{#snippet row(col)}
+								<td class="item-name">{col.name}</td>
+								<td>{col.set_type}</td>
+								<td>{col.items.length}</td>
+								<td class="actions-col">
+									{#if !col.is_default}
+										<button class="icon-btn danger" onclick={(e) => { e.stopPropagation(); deleteCollection(col.id); }} title="Delete">&times;</button>
+									{/if}
+								</td>
+							{/snippet}
+						</PickerTable>
 					{/if}
 				</section>
 
-				<!-- Skills list -->
+				<!-- Skills table -->
 				<section>
 					<div class="section-header">
 						<h3>Skills</h3>
@@ -354,26 +351,43 @@
 					{#if skills.length === 0}
 						<div class="placeholder">No skills yet</div>
 					{:else}
-						<div class="collection-list">
-							{#each skills as sk}
-								<div class="collection-item">
-									<div class="col-info">
-										<span class="col-name">{sk.name}</span>
-										<span class="col-meta">{sk.is_default ? 'built-in' : 'custom'}{sk.issues?.length ? ` / ${sk.issues.length} issue${sk.issues.length > 1 ? 's' : ''}` : ''}</span>
-									</div>
-									<div class="col-actions">
-										<button class="icon-btn" onclick={() => startEditSkill(sk)} title="Edit">
-											<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-										</button>
-										{#if !sk.is_default}
-											<button class="icon-btn danger" onclick={() => deleteSkill(sk.id)} title="Delete">&times;</button>
-										{/if}
-									</div>
-								</div>
-							{/each}
-						</div>
+						<PickerTable
+							items={skills}
+							searchFields={['name']}
+							placeholder="Search skills..."
+							onRowClick={(sk) => sk.is_default ? viewSkill(sk) : startEditSkill(sk)}
+						>
+							{#snippet head()}
+								<tr>
+									<th>Name</th>
+									<th>Type</th>
+									<th class="actions-col"></th>
+								</tr>
+							{/snippet}
+							{#snippet row(sk)}
+								<td class="item-name">
+									{sk.name}
+									{#if sk.issues?.length}
+										<span class="issue-badge" title={sk.issues.join(', ')}>{sk.issues.length}</span>
+									{/if}
+								</td>
+								<td><span class="skill-badge" class:builtin={sk.is_default}>{sk.is_default ? 'built-in' : 'custom'}</span></td>
+								<td class="actions-col">
+									{#if !sk.is_default}
+										<button class="icon-btn danger" onclick={(e) => { e.stopPropagation(); deleteSkill(sk.id); }} title="Delete">&times;</button>
+									{/if}
+								</td>
+							{/snippet}
+						</PickerTable>
 					{/if}
 				</section>
+
+			{:else if mode === 'view-skill'}
+				<!-- Read-only skill view (built-in) -->
+				<pre class="skill-view">{skillContent}</pre>
+				<div class="form-actions">
+					<button class="btn-secondary" onclick={cancelSkillForm}>Back</button>
+				</div>
 
 			{:else if mode === 'create-skill' || mode === 'edit-skill'}
 				<!-- Skill create/edit form -->
@@ -396,7 +410,7 @@
 						id="skill-content"
 						class="skill-textarea"
 						bind:value={skillContent}
-						placeholder={"# Skill Name\n\n## When\nDescribe when to use this skill.\n\n## Workflow\n1. Step one.\n2. Step two."}
+						placeholder={"# Skill Name\n\n## When\nDescribe trigger.\n\n## Tools\n- tool_name\n\n## Workflow\n1. Step one.\n\n## Report\n```python\nreport[\"key\"] = []\n```\n\n## Rules\n- Rule one"}
 						rows="14"
 					></textarea>
 				</div>
@@ -408,7 +422,7 @@
 				</div>
 
 			{:else}
-				<!-- Create / Edit form with table picker -->
+				<!-- Collection create/edit with item picker -->
 				<div class="form-top">
 					<div class="form-row">
 						<label for="col-name">Name</label>
@@ -425,67 +439,60 @@
 					{/if}
 				</div>
 
-				<!-- Search + count -->
-				<div class="picker-toolbar">
-					<input
-						type="text"
-						class="picker-search"
-						bind:value={searchQuery}
+				{#if itemsLoading}
+					<div class="placeholder">Loading...</div>
+				{:else if allItems.length === 0}
+					<div class="placeholder">No {formType} found</div>
+				{:else}
+					<PickerTable
+						items={allItems}
+						searchFields={formType === 'enzymes' ? ['name', 'site'] : ['name']}
 						placeholder={formType === 'enzymes' ? 'Search enzymes...' : 'Search primers...'}
-					/>
-					<span class="picker-count">{selectedCount} selected</span>
-				</div>
-
-				<!-- Item table -->
-				<div class="picker-table-wrap">
-					{#if itemsLoading}
-						<div class="placeholder">Loading...</div>
-					{:else if allItems.length === 0}
-						<div class="placeholder">No {formType} found</div>
-					{:else}
-						<table class="picker-table">
-							<thead>
-								<tr>
-									<th class="check-col">
-										<input
-											type="checkbox"
-											checked={filteredItems.length > 0 && filteredItems.every(i => selected.has(itemKey(i)))}
-											onchange={toggleAll}
-										/>
-									</th>
-									{#if formType === 'enzymes'}
-										<th>Name</th>
-										<th>Site</th>
-										<th>Length</th>
-									{:else}
-										<th>ID</th>
-										<th>Name</th>
-										<th>Length</th>
-									{/if}
-								</tr>
-							</thead>
-							<tbody>
-								{#each filteredItems as item}
-									{@const key = itemKey(item)}
-									<tr class:selected={selected.has(key)} onclick={() => toggleItem(key)}>
-										<td class="check-col">
-											<input type="checkbox" checked={selected.has(key)} onclick={(e) => e.stopPropagation()} onchange={() => toggleItem(key)} />
-										</td>
-										{#if formType === 'enzymes'}
-											<td class="item-name">{item.name}</td>
-											<td class="item-site">{item.site}</td>
-											<td>{item.length}</td>
-										{:else}
-											<td>{item.id}</td>
-											<td class="item-name">{item.name}</td>
-											<td>{item.length}</td>
-										{/if}
-									</tr>
-								{/each}
-							</tbody>
-						</table>
-					{/if}
-				</div>
+						searchThreshold={0}
+						bind:filtered={pickerFiltered}
+						onRowClick={(item) => toggleItem(itemKey(item))}
+						rowClass={(item) => selected.has(itemKey(item)) ? 'selected' : ''}
+					>
+						{#snippet toolbar()}
+							<span class="picker-count">{selectedCount} selected</span>
+						{/snippet}
+						{#snippet head()}
+							<tr>
+								<th class="check-col">
+									<input
+										type="checkbox"
+										checked={pickerFiltered.length > 0 && pickerFiltered.every(i => selected.has(itemKey(i)))}
+										onchange={toggleAll}
+									/>
+								</th>
+								{#if formType === 'enzymes'}
+									<th>Name</th>
+									<th>Site</th>
+									<th>Length</th>
+								{:else}
+									<th>ID</th>
+									<th>Name</th>
+									<th>Length</th>
+								{/if}
+							</tr>
+						{/snippet}
+						{#snippet row(item)}
+							{@const key = itemKey(item)}
+							<td class="check-col">
+								<input type="checkbox" checked={selected.has(key)} onclick={(e) => e.stopPropagation()} onchange={() => toggleItem(key)} />
+							</td>
+							{#if formType === 'enzymes'}
+								<td class="item-name">{item.name}</td>
+								<td class="item-site">{item.site}</td>
+								<td>{item.length}</td>
+							{:else}
+								<td>{item.id}</td>
+								<td class="item-name">{item.name}</td>
+								<td>{item.length}</td>
+							{/if}
+						{/snippet}
+					</PickerTable>
+				{/if}
 
 				<div class="form-actions">
 					<button class="btn-secondary" onclick={cancelForm}>Cancel</button>
@@ -623,46 +630,6 @@
 		text-align: center;
 	}
 
-	.collection-list {
-		display: flex;
-		flex-direction: column;
-		gap: 4px;
-	}
-
-	.collection-item {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		padding: 0.5rem;
-		border-radius: 6px;
-		transition: background 0.1s;
-	}
-
-	.collection-item:hover {
-		background: var(--bg-hover);
-	}
-
-	.col-info {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-	}
-
-	.col-name {
-		font-size: 0.85rem;
-		color: var(--text);
-	}
-
-	.col-meta {
-		font-size: 0.72rem;
-		color: var(--text-placeholder);
-	}
-
-	.col-actions {
-		display: flex;
-		gap: 4px;
-	}
-
 	.icon-btn {
 		background: none;
 		border: none;
@@ -714,82 +681,10 @@
 		font-family: inherit;
 	}
 
-	.picker-toolbar {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-	}
-
-	.picker-search {
-		flex: 1;
-		padding: 0.45rem 0.75rem;
-		border: 1px solid var(--border);
-		border-radius: 8px;
-		background: var(--bg-app);
-		color: var(--text);
-		font-size: 0.85rem;
-		font-family: inherit;
-		outline: none;
-	}
-
-	.picker-search:focus {
-		border-color: var(--color-accent);
-	}
-
 	.picker-count {
 		font-size: 0.78rem;
 		color: var(--text-faint);
 		white-space: nowrap;
-	}
-
-	.picker-table-wrap {
-		max-height: 320px;
-		overflow-y: auto;
-		border: 1px solid var(--border);
-		border-radius: 8px;
-	}
-
-	.picker-table {
-		width: 100%;
-		border-collapse: collapse;
-		font-size: 0.82rem;
-	}
-
-	.picker-table thead {
-		position: sticky;
-		top: 0;
-		background: var(--bg-surface);
-		z-index: 1;
-	}
-
-	.picker-table th {
-		text-align: left;
-		padding: 0.4rem 0.6rem;
-		font-weight: 600;
-		color: var(--text-faint);
-		font-size: 0.75rem;
-		text-transform: uppercase;
-		letter-spacing: 0.03em;
-		border-bottom: 1px solid var(--border);
-	}
-
-	.picker-table td {
-		padding: 0.35rem 0.6rem;
-		color: var(--text);
-		border-bottom: 1px solid var(--border-muted, var(--border));
-	}
-
-	.picker-table tbody tr {
-		cursor: pointer;
-		transition: background 0.1s;
-	}
-
-	.picker-table tbody tr:hover {
-		background: var(--bg-hover);
-	}
-
-	.picker-table tbody tr.selected {
-		background: var(--bg-active);
 	}
 
 	.check-col {
@@ -805,6 +700,11 @@
 		font-family: var(--font-mono);
 		font-size: 0.78rem;
 		color: var(--text-secondary);
+	}
+
+	.actions-col {
+		width: 32px;
+		text-align: center;
 	}
 
 	.form-actions {
@@ -845,6 +745,44 @@
 
 	.btn-secondary:hover {
 		background: var(--bg-hover);
+	}
+
+	/* ── Skill styles ── */
+
+	.skill-badge {
+		font-size: 0.72rem;
+		color: var(--text-faint);
+	}
+
+	.skill-badge.builtin {
+		color: var(--color-accent, var(--text-faint));
+	}
+
+	.issue-badge {
+		display: inline-block;
+		background: var(--color-warn, #c59a00);
+		color: var(--bg-surface);
+		font-size: 0.65rem;
+		font-weight: 600;
+		border-radius: 8px;
+		padding: 0 0.35rem;
+		margin-left: 0.4rem;
+		vertical-align: middle;
+	}
+
+	.skill-view {
+		background: var(--bg-app);
+		border: 1px solid var(--border);
+		border-radius: 6px;
+		padding: 0.75rem 1rem;
+		font-size: 0.82rem;
+		font-family: var(--font-mono);
+		line-height: 1.5;
+		white-space: pre-wrap;
+		word-wrap: break-word;
+		max-height: 400px;
+		overflow-y: auto;
+		margin: 0;
 	}
 
 	.skill-issues {
