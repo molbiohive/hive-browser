@@ -186,7 +186,7 @@ async def _discover_ollama(base_url: str, configured: list[dict]) -> list[dict]:
 
 @router.get("/collections")
 async def list_collections_endpoint(request: Request, type: str | None = None):
-    from hive.molbio.collections import list_collections
+    from hive.context.collections import list_collections
 
     if not db.async_session_factory:
         return []
@@ -206,7 +206,7 @@ async def list_collections_endpoint(request: Request, type: str | None = None):
 
 @router.post("/collections")
 async def create_collection_endpoint(request: Request):
-    from hive.molbio.collections import create_collection
+    from hive.context.collections import create_collection
 
     if not db.async_session_factory:
         return JSONResponse({"error": "Database not available"}, status_code=503)
@@ -233,7 +233,7 @@ async def create_collection_endpoint(request: Request):
 
 @router.put("/collections/{collection_id}")
 async def update_collection_endpoint(collection_id: int, request: Request):
-    from hive.molbio.collections import update_collection
+    from hive.context.collections import update_collection
 
     if not db.async_session_factory:
         return JSONResponse({"error": "Database not available"}, status_code=503)
@@ -260,7 +260,7 @@ async def update_collection_endpoint(collection_id: int, request: Request):
 
 @router.delete("/collections/{collection_id}")
 async def delete_collection_endpoint(collection_id: int):
-    from hive.molbio.collections import delete_collection
+    from hive.context.collections import delete_collection
 
     if not db.async_session_factory:
         return JSONResponse({"error": "Database not available"}, status_code=503)

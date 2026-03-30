@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from hive.tools.base import Tool
+from typing import Any
 
 SEARCH_CMD: dict[str, Any] = {
     "type": "function",
@@ -48,16 +45,25 @@ PLAN_CMD: dict[str, Any] = {
 PLANNER_CMDS: list[dict[str, Any]] = [SEARCH_CMD, READ_CMD]
 
 
-def tasks_cmd(tasks_tool: Tool) -> dict[str, Any]:
-    """Build Tasks command schema from the registered tasks tool."""
-    return {
-        "type": "function",
-        "function": {
-            "name": "Tasks",
-            "description": tasks_tool.short_desc,
-            "parameters": tasks_tool.input_schema(),
+TASKS_CMD: dict[str, Any] = {
+    "type": "function",
+    "function": {
+        "name": "Tasks",
+        "description": "Manage the chat task list.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "description": "Action: add, toggle, remove, or list",
+                    "default": "list",
+                },
+                "text": {"type": "string", "description": "Task text (for add)"},
+                "task_id": {"type": "string", "description": "Task ID (for toggle/remove)"},
+            },
         },
-    }
+    },
+}
 
 
 def python_cmd(description: str) -> dict[str, Any]:

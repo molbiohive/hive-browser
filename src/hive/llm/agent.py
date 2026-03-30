@@ -10,7 +10,7 @@ from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 
 from hive.context import current_chat_tasks
-from hive.llm.commands import PLAN_CMD, PLANNER_CMDS, python_cmd, tasks_cmd
+from hive.llm.commands import PLAN_CMD, PLANNER_CMDS, TASKS_CMD, python_cmd
 from hive.sandbox import SandboxRunner, Workspace
 from hive.tools import ToolRegistry
 
@@ -495,10 +495,7 @@ class Agent:
         return msgs
 
     def _build_worker_tools(self) -> list[dict]:
-        tools = []
-        tasks_tool = self._registry.get("tasks")
-        if tasks_tool:
-            tools.append(tasks_cmd(tasks_tool))
+        tools = [TASKS_CMD]
         py_tool = self._sandbox.tool_schema()
         py_tool["function"]["name"] = "Python"
         tools.append(py_tool)
@@ -552,15 +549,22 @@ class Agent:
     # -- Worker commands --
 
     async def _cmd_tasks(self, tc: dict) -> None:
+        from hive.context import tasks as ctx_tasks
+
         params = self._parse_tool_args(tc)
-        tasks_tool = self._registry.get("tasks")
-        result = await tasks_tool.execute(params)
-        if error := result.get("error"):
-            compact = f"Error: {error}"
-        else:
-            tasks = result.get("tasks", [])
+        action = params.get("action", "list")
+        try:
+            if action == "add":
+                ctx_tasks.add_task(params.get("text", ""))
+            elif action == "toggle":
+                ctx_tasks.toggle_task(params.get("task_id", ""))
+            elif action == "remove":
+                ctx_tasks.remove_task(params.get("task_id", ""))
+            tasks = ctx_tasks.list_tasks()
             done = sum(1 for t in tasks if t.get("done"))
             compact = f"{len(tasks)} task(s), {done} done"
+        except RuntimeError as e:
+            compact = f"Error: {e}"
         self._workspace.add_step("tasks", compact)
         self._chain.append({"tool": "tasks", "params": params, "summary": compact})
         logger.info("Agent tasks(%s)", json.dumps(params))
