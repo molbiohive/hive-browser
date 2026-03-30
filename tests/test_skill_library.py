@@ -78,7 +78,31 @@ class TestSkillLibrary:
         assert len(lib) == 1
         assert lib.names() == ["skill"]
 
-    def test_default_dir_loads_real_skills(self):
-        """SkillLibrary() with no args loads from the skills package directory."""
+    def test_no_args_empty(self):
+        """SkillLibrary() with no args yields empty library."""
         lib = SkillLibrary()
-        assert len(lib) >= 1
+        assert len(lib) == 0
+
+    def test_load_from_data(self):
+        """SkillLibrary with skills_data loads from dicts."""
+        data = [
+            {"name": "alpha", "content": "# Alpha\n## When\nDo alpha.\n## End"},
+            {"name": "beta", "content": "# Beta\n## When\nDo beta.\n## End"},
+        ]
+        lib = SkillLibrary(skills_data=data)
+        assert len(lib) == 2
+        assert set(lib.names()) == {"alpha", "beta"}
+        assert lib.read("alpha").startswith("# Alpha")
+
+    def test_reload(self):
+        """reload() replaces all skills."""
+        lib = SkillLibrary(skills_data=[
+            {"name": "old", "content": "# Old\n## When\nBefore.\n## End"},
+        ])
+        assert len(lib) == 1
+        lib.reload([
+            {"name": "new", "content": "# New\n## When\nAfter.\n## End"},
+        ])
+        assert len(lib) == 1
+        assert lib.names() == ["new"]
+        assert lib.read("old") is None
