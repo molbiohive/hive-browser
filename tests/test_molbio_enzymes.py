@@ -1,14 +1,14 @@
-"""Tests for cloning/enzymes -- IUPAC cut site scanner."""
+"""Tests for molbio/enzymes -- IUPAC cut site scanner."""
 
 from types import SimpleNamespace
 
 import pytest
 
-from hive.cloning.enzymes import (
+from hive.molbio.enzymes import (
     _site_to_regex,
     find_cut_sites,
 )
-from hive.cloning.seq import reverse_complement
+from hive.molbio.seq import reverse_complement
 
 
 def _make_enzyme(**kwargs):

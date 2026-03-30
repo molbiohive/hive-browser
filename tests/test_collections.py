@@ -1,9 +1,9 @@
-"""Tests for cloning/collections -- collection CRUD and active resolvers."""
+"""Tests for molbio/collections -- collection CRUD and active resolvers."""
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from hive.cloning.collections import (
+from hive.molbio.collections import (
     create_collection,
     delete_collection,
     get_active_enzyme_names,

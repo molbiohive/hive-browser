@@ -1,6 +1,6 @@
-"""Tests for cloning/primers -- primer binding site prediction."""
+"""Tests for molbio/primers -- primer binding site prediction."""
 
-from hive.cloning.primers import find_primer_sites
+from hive.molbio.primers import find_primer_sites
 
 
 def _primer(id: int, name: str, sequence: str) -> dict:

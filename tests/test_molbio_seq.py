@@ -1,8 +1,8 @@
-"""Tests for hive.cloning.seq -- pure sequence operations."""
+"""Tests for hive.molbio.seq -- pure sequence operations."""
 
 import pytest
 
-from hive.cloning.seq import back_transcribe, transcribe, translate
+from hive.molbio.seq import back_transcribe, transcribe, translate
 
 
 class TestTranscribe:
