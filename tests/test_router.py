@@ -72,30 +72,6 @@ class RequiredTool(Tool):
         return {"result": params.get("query", "")}
 
 
-class TasksStubTool(Tool):
-    """Minimal tasks tool stub required by the agentic loop."""
-
-    name = "tasks"
-    description = ("task list", "Manage tasks")
-    tags = set()
-
-    def __init__(self, **_):
-        pass
-
-    def input_schema(self) -> dict:
-        return {
-            "type": "object",
-            "properties": {
-                "action": {"type": "string"},
-                "text": {"type": "string"},
-            },
-            "required": ["action"],
-        }
-
-    async def execute(self, params: dict[str, Any]) -> dict[str, Any]:
-        return {"ok": True, "action": params.get("action", "")}
-
-
 class DirectOnlyTool(Tool):
     """Tool for direct-only testing."""
 
@@ -114,7 +90,6 @@ class DirectOnlyTool(Tool):
 def registry():
     reg = ToolRegistry()
     reg.register(SearchStubTool())
-    reg.register(TasksStubTool())
     reg.register(EchoTool())
     reg.register(RequiredTool())
     reg.register(DirectOnlyTool())
@@ -316,30 +291,29 @@ class TestAgenticLoop:
         assert "Hello" in resp["content"]
 
     async def test_single_tool_call(self, registry):
-        """LLM calls Tasks tool, then summarizes."""
+        """LLM calls Python tool, then summarizes."""
         llm = self._mock_llm(
             [
-                self._tool_call_response("Tasks", {"action": "list"}),
-                self._text_response("Here are your tasks."),
+                self._tool_call_response("Python", {"code": "x = 1 + 1"}),
+                self._text_response("x is 2."),
             ]
         )
-        resp = await route_input("show tasks", registry, llm_client=llm)
+        resp = await route_input("compute x", registry, llm_client=llm)
         assert resp["type"] == "message"
-        assert "tasks" in resp["content"].lower()
 
     async def test_multi_tool_chain(self, registry):
-        """LLM chains two Tasks calls before summarizing."""
+        """LLM chains two Python calls before summarizing."""
         llm = self._mock_llm(
             [
-                self._tool_call_response("Tasks", {"action": "add", "text": "step1"}, call_id="c1"),
-                self._tool_call_response("Tasks", {"action": "add", "text": "step2"}, call_id="c2"),
+                self._tool_call_response("Python", {"code": "x = 1"}, call_id="c1"),
+                self._tool_call_response("Python", {"code": "y = 2"}, call_id="c2"),
                 self._text_response("Done with both steps."),
             ]
         )
-        resp = await route_input("add two tasks", registry, llm_client=llm)
+        resp = await route_input("compute values", registry, llm_client=llm)
         assert len(resp["chain"]) == 2
-        assert resp["chain"][0]["tool"] == "tasks"
-        assert resp["chain"][1]["tool"] == "tasks"
+        assert resp["chain"][0]["tool"] == "python"
+        assert resp["chain"][1]["tool"] == "python"
 
     async def test_unknown_tool_from_llm(self, registry):
         """LLM hallucinates a tool name -> error message sent back, then text."""
@@ -357,8 +331,8 @@ class TestAgenticLoop:
         """Loop hits max turns -> returns last result with summary attempt."""
         llm = self._mock_llm(
             [
-                self._tool_call_response("Tasks", {"action": "add", "text": "t1"}, call_id="c1"),
-                self._tool_call_response("Tasks", {"action": "add", "text": "t2"}, call_id="c2"),
+                self._tool_call_response("Python", {"code": "x = 1"}, call_id="c1"),
+                self._tool_call_response("Python", {"code": "y = 2"}, call_id="c2"),
                 # 3rd call: _final_summary (no tools) -> text response
                 self._text_response("Here is a summary of results."),
             ]
@@ -376,7 +350,7 @@ class TestAgenticLoop:
 
         llm = self._mock_llm(
             [
-                self._tool_call_response("Tasks", {"action": "list"}),
+                self._tool_call_response("Python", {"code": "x = 1"}),
                 self._text_response("Done."),
             ]
         )
@@ -384,8 +358,8 @@ class TestAgenticLoop:
         phases = [e["phase"] for e in events]
         assert phases[0] == "thinking"
 
-    async def test_non_tasks_tool_rejected(self, registry):
-        """Non-tasks tool called via function calling -> error pointing to sandbox."""
+    async def test_non_python_tool_rejected(self, registry):
+        """Non-python tool called via function calling -> error pointing to sandbox."""
         llm = self._mock_llm(
             [
                 self._tool_call_response("search", {"query": "test"}),
@@ -608,9 +582,8 @@ class TestSandboxIntegration:
         }
 
     def _make_registry(self, *extra_tools):
-        """Create a registry with tasks (required) + any extra tools."""
+        """Create a registry with any extra tools."""
         reg = ToolRegistry()
-        reg.register(TasksStubTool())
         for t in extra_tools:
             reg.register(t)
         return reg
@@ -704,7 +677,6 @@ class TestSandboxIntegration:
         first_call_tools = llm.chat.call_args_list[0][1].get("tools", [])
         tool_names_t0 = [t["function"]["name"] for t in first_call_tools]
         assert "Python" in tool_names_t0
-        assert "Tasks" in tool_names_t0
 
     async def test_python_schema_always_present_despite_errors(self):
         """Python schema is never dropped, even after consecutive errors."""

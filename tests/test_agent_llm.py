@@ -30,25 +30,6 @@ class FakeTool(Tool):
         return {"ok": True}
 
 
-class TasksStubTool(Tool):
-    name = "tasks"
-    description = ("task list", "Manage tasks")
-    tags = set()
-
-    def __init__(self, **_):
-        pass
-
-    def input_schema(self) -> dict:
-        return {
-            "type": "object",
-            "properties": {"action": {"type": "string"}, "text": {"type": "string"}},
-            "required": ["action"],
-        }
-
-    async def execute(self, params: dict[str, Any], **kw) -> dict[str, Any]:
-        return {"ok": True, "action": params.get("action", "")}
-
-
 @pytest.fixture()
 def tools():
     return [
@@ -71,7 +52,6 @@ def tools():
                 "required": ["sequence"],
             },
         ),
-        TasksStubTool(),
     ]
 
 
