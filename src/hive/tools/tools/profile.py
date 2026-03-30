@@ -87,11 +87,8 @@ class ProfileTool(Tool):
             if seq.sequence and seq.molecule in (None, "DNA", "dna"):
                 try:
                     from hive.context.collections import get_active_enzyme_names
-                    from hive.molbio.enzymes import (
-                        find_all_cutters,
-                        find_cut_sites,
-                        load_enzymes,
-                    )
+                    from hive.libs.enzymes import load_enzymes
+                    from hive.molbio.enzymes import find_all_cutters, find_cut_sites
 
                     enzymes = await load_enzymes(session)
                     user_id = current_user_id.get()

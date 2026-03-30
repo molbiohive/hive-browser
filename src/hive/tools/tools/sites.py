@@ -52,7 +52,8 @@ class SitesTool(Tool):
         if len(cleaned) < 1:
             return {"error": "Empty sequence"}
 
-        from hive.molbio.enzymes import find_all_cutters, load_enzymes
+        from hive.libs.enzymes import load_enzymes
+        from hive.molbio.enzymes import find_all_cutters
 
         if not db.async_session_factory:
             return {"error": "Database not available"}
