@@ -8,13 +8,19 @@
 	// ── State ──
 
 	let collections = $state([]);
+	let skills = $state([]);
 	let loading = $state(true);
 
 	// Create/edit mode
-	let mode = $state('list'); // 'list' | 'create' | 'edit'
+	let mode = $state('list'); // 'list' | 'create' | 'edit' | 'create-skill' | 'edit-skill'
 	let editId = $state(null);
 	let formName = $state('');
 	let formType = $state('enzymes');
+
+	// Skill form state
+	let skillName = $state('');
+	let skillContent = $state('');
+	let editSkillId = $state(null);
 
 	// Item picker state
 	let allItems = $state([]);
@@ -36,7 +42,7 @@
 
 	const selectedCount = $derived(selected.size);
 
-	onMount(fetchCollections);
+	onMount(() => { fetchCollections(); fetchSkills(); });
 
 	// ── API ──
 
@@ -183,6 +189,69 @@
 			console.error('Failed to delete collection:', e);
 		}
 	}
+
+	// ── Skills API ──
+
+	async function fetchSkills() {
+		try {
+			const res = await fetch('/api/skills');
+			if (res.ok) skills = await res.json();
+		} catch (e) {
+			console.error('Failed to fetch skills:', e);
+		}
+	}
+
+	function startCreateSkill() {
+		mode = 'create-skill';
+		skillName = '';
+		skillContent = '';
+	}
+
+	function startEditSkill(sk) {
+		mode = 'edit-skill';
+		editSkillId = sk.id;
+		skillName = sk.name;
+		skillContent = sk.content;
+	}
+
+	function cancelSkillForm() {
+		mode = 'list';
+		editSkillId = null;
+		skillName = '';
+		skillContent = '';
+	}
+
+	async function saveSkill() {
+		if (!skillName.trim() || !skillContent.trim()) return;
+		try {
+			if (mode === 'create-skill') {
+				await fetch('/api/skills', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ name: skillName.trim(), content: skillContent }),
+				});
+			} else {
+				await fetch(`/api/skills/${editSkillId}`, {
+					method: 'PUT',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ name: skillName.trim(), content: skillContent }),
+				});
+			}
+			cancelSkillForm();
+			await fetchSkills();
+		} catch (e) {
+			console.error('Failed to save skill:', e);
+		}
+	}
+
+	async function deleteSkill(id) {
+		try {
+			await fetch(`/api/skills/${id}`, { method: 'DELETE' });
+			await fetchSkills();
+		} catch (e) {
+			console.error('Failed to delete skill:', e);
+		}
+	}
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -190,8 +259,18 @@
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div class="modal" class:wide={mode !== 'list'} onclick={(e) => e.stopPropagation()} onkeydown={() => {}}>
 		<div class="modal-header">
-			<h2>{mode === 'list' ? 'Settings' : mode === 'create' ? 'New Collection' : 'Edit Collection'}</h2>
-			<button class="close-btn" onclick={mode === 'list' ? onClose : cancelForm}>{mode === 'list' ? '\u00d7' : '\u2190'}</button>
+			<h2>{
+				mode === 'list' ? 'Settings'
+				: mode === 'create' ? 'New Collection'
+				: mode === 'edit' ? 'Edit Collection'
+				: mode === 'create-skill' ? 'New Skill'
+				: 'Edit Skill'
+			}</h2>
+			<button class="close-btn" onclick={
+				mode === 'list' ? onClose
+				: mode.startsWith('create-skill') || mode.startsWith('edit-skill') ? cancelSkillForm
+				: cancelForm
+			}>{mode === 'list' ? '\u00d7' : '\u2190'}</button>
 		</div>
 
 		<div class="modal-body">
@@ -251,6 +330,62 @@
 						</div>
 					{/if}
 				</section>
+
+				<!-- Skills list -->
+				<section>
+					<div class="section-header">
+						<h3>Skills</h3>
+						<button class="add-btn" onclick={startCreateSkill}>+ New</button>
+					</div>
+
+					{#if skills.length === 0}
+						<div class="placeholder">No skills yet</div>
+					{:else}
+						<div class="collection-list">
+							{#each skills as sk}
+								<div class="collection-item">
+									<div class="col-info">
+										<span class="col-name">{sk.name}</span>
+										<span class="col-meta">{sk.is_default ? 'built-in' : 'custom'}</span>
+									</div>
+									<div class="col-actions">
+										<button class="icon-btn" onclick={() => startEditSkill(sk)} title="Edit">
+											<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+										</button>
+										{#if !sk.is_default}
+											<button class="icon-btn danger" onclick={() => deleteSkill(sk.id)} title="Delete">&times;</button>
+										{/if}
+									</div>
+								</div>
+							{/each}
+						</div>
+					{/if}
+				</section>
+
+			{:else if mode === 'create-skill' || mode === 'edit-skill'}
+				<!-- Skill create/edit form -->
+				<div class="form-top">
+					<div class="form-row" style="flex:1">
+						<label for="skill-name">Name</label>
+						<input id="skill-name" type="text" bind:value={skillName} placeholder="skill_name" />
+					</div>
+				</div>
+				<div class="form-row">
+					<label for="skill-content">Content (markdown)</label>
+					<textarea
+						id="skill-content"
+						class="skill-textarea"
+						bind:value={skillContent}
+						placeholder={"# Skill Name\n\n## When\nDescribe when to use this skill.\n\n## Workflow\n1. Step one.\n2. Step two."}
+						rows="14"
+					></textarea>
+				</div>
+				<div class="form-actions">
+					<button class="btn-secondary" onclick={cancelSkillForm}>Cancel</button>
+					<button class="btn-primary" onclick={saveSkill} disabled={!skillName.trim() || !skillContent.trim()}>
+						{mode === 'create-skill' ? 'Create' : 'Save'}
+					</button>
+				</div>
 
 			{:else}
 				<!-- Create / Edit form with table picker -->
@@ -690,5 +825,24 @@
 
 	.btn-secondary:hover {
 		background: var(--bg-hover);
+	}
+
+	.skill-textarea {
+		width: 100%;
+		min-height: 200px;
+		padding: 0.5rem 0.6rem;
+		border: 1px solid var(--border);
+		border-radius: 6px;
+		background: var(--bg-app);
+		color: var(--text);
+		font-size: 0.82rem;
+		font-family: var(--font-mono);
+		resize: vertical;
+		outline: none;
+		line-height: 1.5;
+	}
+
+	.skill-textarea:focus {
+		border-color: var(--color-accent);
 	}
 </style>
