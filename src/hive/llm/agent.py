@@ -95,7 +95,9 @@ All tools (search, blast, profile, parts, ...) are callable inside python.
 
 ## Identifiers
 SID = Sequence ID. PID = Part ID (canonical across files).
-Tools accept raw sequence, sid:N, or pid:N.
+Tools with a `sequence` parameter accept a string: raw sequence, "sid:N", or "pid:N".
+Example: digest(sequence="sid:2266", reactions=["EcoRI"]) -- NOT profile(sid=2266)["sequence"].
+Never pass a dict as sequence. Always use the "sid:N" string shorthand.
 
 ## Rules
 - Never fabricate data. Use blast for sequence similarity, not search.

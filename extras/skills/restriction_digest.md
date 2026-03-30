@@ -8,7 +8,7 @@ Digest a sequence with specific enzymes: "cut pX with EcoRI and BamHI", "digest 
 - digest
 
 ## Workflow
-1. digest(sequence=..., reactions=["EcoRI", "BamHI"]) — use + for co-digestion: "EcoRI+BamHI"
+1. digest(sequence="sid:N", reactions=["EcoRI", "BamHI"]) — use + for co-digestion: "EcoRI+BamHI"
 
 ## Report
 ```python
