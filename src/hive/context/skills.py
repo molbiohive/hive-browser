@@ -2,12 +2,27 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from hive.db import Skill
+
+_REQUIRED_SECTIONS = ("When", "Tools", "Workflow", "Report", "Rules")
+
+
+def validate_skill_content(content: str) -> list[str]:
+    """Validate skill markdown structure. Returns list of errors (empty = valid)."""
+    errors: list[str] = []
+    if not re.match(r"^# .+", content):
+        errors.append("Must start with # Title")
+    headings = {h.strip() for h in re.findall(r"^## (.+)$", content, re.MULTILINE)}
+    for section in _REQUIRED_SECTIONS:
+        if section not in headings:
+            errors.append(f"Missing required section: ## {section}")
+    return errors
 
 
 async def list_skills(session: AsyncSession) -> list[Skill]:
@@ -64,7 +79,7 @@ async def delete_skill(session: AsyncSession, skill_id: int) -> bool:
 
 async def bootstrap_skills(session: AsyncSession) -> int:
     """Seed default skills from extras/skills/*.md. Idempotent."""
-    skills_dir = Path(__file__).resolve().parents[2] / "extras" / "skills"
+    skills_dir = Path(__file__).resolve().parents[3] / "extras" / "skills"
     if not skills_dir.is_dir():
         return 0
 

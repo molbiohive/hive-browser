@@ -17,6 +17,7 @@ from hive.context.skills import (
     delete_skill,
     list_skills,
     update_skill,
+    validate_skill_content,
 )
 from hive.db import Enzyme, IndexedFile, Part, PartInstance, Sequence
 from hive.db import session as db
@@ -277,21 +278,24 @@ async def delete_collection_endpoint(collection_id: int):
 # -- Skills ------------------------------------------------
 
 
+def _skill_response(sk) -> dict:
+    """Build skill response dict with validation issues."""
+    return {
+        "id": sk.id,
+        "name": sk.name,
+        "content": sk.content,
+        "is_default": sk.is_default,
+        "issues": validate_skill_content(sk.content),
+    }
+
+
 @router.get("/skills")
 async def list_skills_endpoint(request: Request):
     if not db.async_session_factory:
         return []
     async with db.async_session_factory() as s:
         skills = await list_skills(s)
-        return [
-            {
-                "id": sk.id,
-                "name": sk.name,
-                "content": sk.content,
-                "is_default": sk.is_default,
-            }
-            for sk in skills
-        ]
+        return [_skill_response(sk) for sk in skills]
 
 
 @router.post("/skills")
@@ -308,12 +312,7 @@ async def create_skill_endpoint(request: Request):
             sk = await create_skill(s, name=name, content=content)
             await s.commit()
             _reload_skills(request.app)
-            return {
-                "id": sk.id,
-                "name": sk.name,
-                "content": sk.content,
-                "is_default": sk.is_default,
-            }
+            return _skill_response(sk)
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=422)
 
@@ -332,12 +331,7 @@ async def update_skill_endpoint(skill_id: int, request: Request):
             )
             await s.commit()
             _reload_skills(request.app)
-            return {
-                "id": sk.id,
-                "name": sk.name,
-                "content": sk.content,
-                "is_default": sk.is_default,
-            }
+            return _skill_response(sk)
     except ValueError as e:
         return JSONResponse({"error": str(e)}, status_code=404)
 

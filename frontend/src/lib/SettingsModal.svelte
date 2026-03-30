@@ -21,6 +21,7 @@
 	let skillName = $state('');
 	let skillContent = $state('');
 	let editSkillId = $state(null);
+	let skillIssues = $state([]);
 
 	// Item picker state
 	let allItems = $state([]);
@@ -205,6 +206,7 @@
 		mode = 'create-skill';
 		skillName = '';
 		skillContent = '';
+		skillIssues = [];
 	}
 
 	function startEditSkill(sk) {
@@ -212,6 +214,7 @@
 		editSkillId = sk.id;
 		skillName = sk.name;
 		skillContent = sk.content;
+		skillIssues = sk.issues || [];
 	}
 
 	function cancelSkillForm() {
@@ -219,25 +222,35 @@
 		editSkillId = null;
 		skillName = '';
 		skillContent = '';
+		skillIssues = [];
 	}
 
 	async function saveSkill() {
 		if (!skillName.trim() || !skillContent.trim()) return;
 		try {
+			let res;
 			if (mode === 'create-skill') {
-				await fetch('/api/skills', {
+				res = await fetch('/api/skills', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({ name: skillName.trim(), content: skillContent }),
 				});
 			} else {
-				await fetch(`/api/skills/${editSkillId}`, {
+				res = await fetch(`/api/skills/${editSkillId}`, {
 					method: 'PUT',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({ name: skillName.trim(), content: skillContent }),
 				});
 			}
-			cancelSkillForm();
+			if (!res.ok) return;
+			const saved = await res.json();
+			if (saved.issues?.length) {
+				skillIssues = saved.issues;
+				editSkillId = saved.id;
+				mode = 'edit-skill';
+			} else {
+				cancelSkillForm();
+			}
 			await fetchSkills();
 		} catch (e) {
 			console.error('Failed to save skill:', e);
@@ -346,7 +359,7 @@
 								<div class="collection-item">
 									<div class="col-info">
 										<span class="col-name">{sk.name}</span>
-										<span class="col-meta">{sk.is_default ? 'built-in' : 'custom'}</span>
+										<span class="col-meta">{sk.is_default ? 'built-in' : 'custom'}{sk.issues?.length ? ` / ${sk.issues.length} issue${sk.issues.length > 1 ? 's' : ''}` : ''}</span>
 									</div>
 									<div class="col-actions">
 										<button class="icon-btn" onclick={() => startEditSkill(sk)} title="Edit">
@@ -370,6 +383,13 @@
 						<input id="skill-name" type="text" bind:value={skillName} placeholder="skill_name" />
 					</div>
 				</div>
+				{#if skillIssues.length > 0}
+					<div class="skill-issues">
+						{#each skillIssues as issue}
+							<div class="skill-issue">{issue}</div>
+						{/each}
+					</div>
+				{/if}
 				<div class="form-row">
 					<label for="skill-content">Content (markdown)</label>
 					<textarea
@@ -825,6 +845,18 @@
 
 	.btn-secondary:hover {
 		background: var(--bg-hover);
+	}
+
+	.skill-issues {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+
+	.skill-issue {
+		font-size: 0.78rem;
+		color: var(--color-warn, #c59a00);
+		padding: 0.2rem 0;
 	}
 
 	.skill-textarea {
