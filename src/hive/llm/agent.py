@@ -9,7 +9,7 @@ import re
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 
-from hive.llm.commands import PLAN_CMD, PLANNER_CMDS, python_cmd
+from hive.llm.commands import PLANNER_CMDS, python_cmd
 from hive.sandbox import SandboxRunner, Workspace
 from hive.tools import ToolRegistry
 
@@ -82,7 +82,6 @@ print, inspect, or reformat. The report is already visible to the user.
 ## Tools
 - Python(description, code) -- describe what you plan to do, then write the code. \
 All tools (search, blast, profile, parts, ...) are callable inside python.
-- Plan() -- switch to planner mode to research skills.
 
 ## Sandbox
 - `report["key"] = list_of_dicts` -> table widget for user. This is how you deliver results.
@@ -354,8 +353,6 @@ class Agent:
             self._cmd_read(tc)
         elif name == "Python":
             await self._cmd_python(tc)
-        elif name == "Plan":
-            self._cmd_plan()
         else:
             err = f"'{name}' is callable from python: {name}(param=value)"
             self._workspace.add_step(name, err, error=err)
@@ -499,13 +496,9 @@ class Agent:
         return msgs
 
     def _build_worker_tools(self) -> list[dict]:
-        tools = []
         py_tool = self._sandbox.tool_schema()
         py_tool["function"]["name"] = "Python"
-        tools.append(py_tool)
-        if self._skills and len(self._skills) > 0:
-            tools.append(PLAN_CMD)
-        return tools
+        return [py_tool]
 
     # -- Planner commands --
 
@@ -571,15 +564,6 @@ class Agent:
         summary = step_desc or compact[:120]
         self._chain.append({"tool": "python", "params": {"code": code}, "summary": summary})
         logger.info("Python [%s]: %s", step_desc or "no desc", compact[:200])
-
-    def _cmd_plan(self) -> None:
-        """Switch back to planner mode."""
-        logger.info("Agent: Plan() called, switching to planner mode")
-        self._mode = "planner"
-        self._planner_turns = 0
-        self._conv = []
-        self._turn_calls = []
-        self._turn_results = []
 
     # -- Final summary --
 

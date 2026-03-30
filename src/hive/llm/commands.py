@@ -33,15 +33,6 @@ READ_CMD: dict[str, Any] = {
     },
 }
 
-PLAN_CMD: dict[str, Any] = {
-    "type": "function",
-    "function": {
-        "name": "Plan",
-        "description": "Switch to planner mode to research skills.",
-        "parameters": {"type": "object", "properties": {}},
-    },
-}
-
 PLANNER_CMDS: list[dict[str, Any]] = [SEARCH_CMD, READ_CMD]
 
 
