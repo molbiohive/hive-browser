@@ -40,7 +40,6 @@ class ChatStorage:
         title: str | None = None,
         created: datetime | None = None,
         model: str | None = None,
-        tasks: list[dict] | None = None,
         workspace: list[dict] | None = None,
     ):
         if created is None:
@@ -48,7 +47,7 @@ class ChatStorage:
 
         filepath = self._filepath(chat_id, user_slug)
 
-        # Preserve existing title/created/model/tasks/workspace if updating
+        # Preserve existing title/created/model/workspace if updating
         existing = self.load(chat_id, user_slug)
         if existing:
             created = datetime.fromisoformat(existing["created"])
@@ -56,8 +55,6 @@ class ChatStorage:
                 title = existing.get("title")
             if model is None:
                 model = existing.get("model")
-            if tasks is None:
-                tasks = existing.get("tasks")
             if workspace is None:
                 workspace = existing.get("workspace")
 
@@ -67,7 +64,6 @@ class ChatStorage:
             "created": created.isoformat(),
             "model": model,
             "messages": messages,
-            "tasks": tasks or [],
             "workspace": workspace or [],
         }
 

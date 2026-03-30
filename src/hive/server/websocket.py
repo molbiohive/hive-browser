@@ -11,7 +11,7 @@ from uuid import uuid4
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy import func, select
 
-from hive.context import current_chat_tasks, current_user_id
+from hive.context import current_user_id
 from hive.db import IndexedFile, Part, Sequence, User
 from hive.db import session as db
 from hive.router import route_input
@@ -121,7 +121,6 @@ async def websocket_endpoint(websocket: WebSocket):
         "messages": [],
         "title_generated": False,
         "model": current_model_id,
-        "tasks": [],
     }
 
     try:
@@ -260,7 +259,6 @@ async def websocket_endpoint(websocket: WebSocket):
                 chat["title_generated"] = False
                 chat["title_sent"] = False
                 chat["model"] = current_model_id
-                chat["tasks"] = []
                 manager.histories[conn_id] = []
                 continue
 
@@ -272,7 +270,6 @@ async def websocket_endpoint(websocket: WebSocket):
                     if saved:
                         chat["id"] = requested_id
                         chat["messages"] = saved.get("messages", [])
-                        chat["tasks"] = saved.get("tasks", [])
                         chat["title_generated"] = bool(saved.get("title"))
                         manager.histories[conn_id] = [
                             {"role": m["role"], "content": m["content"]} for m in chat["messages"]
@@ -292,7 +289,6 @@ async def websocket_endpoint(websocket: WebSocket):
                                 "messages": chat["messages"],
                                 "title": saved.get("title"),
                                 "model": current_model_id,
-                                "tasks": chat["tasks"],
                             },
                         )
                         # Auto-rerun stale widgets in background
@@ -342,72 +338,6 @@ async def websocket_endpoint(websocket: WebSocket):
                                 "data": {"error": "Tool execution failed. Check server logs."},
                             },
                         )
-                continue
-
-            # Handle task operations (user-driven, no LLM)
-            if data.get("type") == "task_add":
-                text = data.get("text", "").strip()
-                if text:
-                    from uuid import uuid4
-
-                    chat["tasks"].append({"id": uuid4().hex[:8], "text": text, "done": False})
-                    if chat_storage and chat["id"]:
-                        chat_storage.save(
-                            chat["id"],
-                            chat["messages"],
-                            user_slug=user_slug,
-                            tasks=chat["tasks"],
-                        )
-                    await manager.send_json(
-                        conn_id,
-                        {
-                            "type": "tasks_updated",
-                            "tasks": chat["tasks"],
-                        },
-                    )
-                continue
-
-            if data.get("type") == "task_toggle":
-                task_id = data.get("taskId")
-                if task_id:
-                    for t in chat["tasks"]:
-                        if t["id"] == task_id:
-                            t["done"] = not t["done"]
-                            break
-                    if chat_storage and chat["id"]:
-                        chat_storage.save(
-                            chat["id"],
-                            chat["messages"],
-                            user_slug=user_slug,
-                            tasks=chat["tasks"],
-                        )
-                    await manager.send_json(
-                        conn_id,
-                        {
-                            "type": "tasks_updated",
-                            "tasks": chat["tasks"],
-                        },
-                    )
-                continue
-
-            if data.get("type") == "task_remove":
-                task_id = data.get("taskId")
-                if task_id:
-                    chat["tasks"] = [t for t in chat["tasks"] if t["id"] != task_id]
-                    if chat_storage and chat["id"]:
-                        chat_storage.save(
-                            chat["id"],
-                            chat["messages"],
-                            user_slug=user_slug,
-                            tasks=chat["tasks"],
-                        )
-                    await manager.send_json(
-                        conn_id,
-                        {
-                            "type": "tasks_updated",
-                            "tasks": chat["tasks"],
-                        },
-                    )
                 continue
 
             content = data.get("content", "").strip()
@@ -472,7 +402,6 @@ async def _handle_message(
     """Process a user message -- runs as a cancellable background task."""
     try:
         current_user_id.set(user_id)
-        current_chat_tasks.set(chat.get("tasks", []))
 
         async def _progress(data: dict):
             await manager.send_json(conn_id, {"type": "progress", **data})
@@ -555,16 +484,6 @@ async def _handle_message(
 
         await manager.send_json(conn_id, response)
 
-        # If tasks tool was used, send tasks_updated to sync frontend store
-        if result.get("tool") == "tasks" and result.get("data", {}).get("tasks") is not None:
-            await manager.send_json(
-                conn_id,
-                {
-                    "type": "tasks_updated",
-                    "tasks": chat["tasks"],
-                },
-            )
-
         # Send status update after tool results (counts may have changed)
         if result.get("type") == "tool_result":
             updated_status = await _quick_status(
@@ -586,7 +505,6 @@ async def _handle_message(
                 messages_to_save,
                 user_slug=user_slug,
                 model=chat.get("model"),
-                tasks=chat.get("tasks"),
             )
 
             # Generate title once (LLM with fallback to first message words)

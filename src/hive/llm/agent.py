@@ -9,8 +9,7 @@ import re
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 
-from hive.context import current_chat_tasks
-from hive.llm.commands import PLAN_CMD, PLANNER_CMDS, TASKS_CMD, python_cmd
+from hive.llm.commands import PLAN_CMD, PLANNER_CMDS, python_cmd
 from hive.sandbox import SandboxRunner, Workspace
 from hive.tools import ToolRegistry
 
@@ -81,7 +80,6 @@ Once report is populated, you are DONE. Do NOT call Python again to verify, \
 print, inspect, or reformat. The report is already visible to the user.
 
 ## Tools
-- Tasks(action, text, task_id) -- manage the chat task list.
 - Python(description, code) -- describe what you plan to do, then write the code. \
 All tools (search, blast, profile, parts, ...) are callable inside python.
 - Plan() -- switch to planner mode to research skills.
@@ -354,8 +352,6 @@ class Agent:
             self._cmd_search(tc)
         elif name == "Read":
             self._cmd_read(tc)
-        elif name == "Tasks":
-            await self._cmd_tasks(tc)
         elif name == "Python":
             await self._cmd_python(tc)
         elif name == "Plan":
@@ -477,10 +473,6 @@ class Agent:
         if self._plan:
             system += f"\n\n## Plan\n{self._plan}"
 
-        task_ctx = self._task_context()
-        if task_ctx:
-            system += f"\n\n{task_ctx}"
-
         msgs: list[dict] = [{"role": "system", "content": system}]
 
         # History (only when no plan -- plan already contains resolved context)
@@ -507,7 +499,7 @@ class Agent:
         return msgs
 
     def _build_worker_tools(self) -> list[dict]:
-        tools = [TASKS_CMD]
+        tools = []
         py_tool = self._sandbox.tool_schema()
         py_tool["function"]["name"] = "Python"
         tools.append(py_tool)
@@ -559,27 +551,6 @@ class Agent:
         })
 
     # -- Worker commands --
-
-    async def _cmd_tasks(self, tc: dict) -> None:
-        from hive.context import tasks as ctx_tasks
-
-        params = self._parse_tool_args(tc)
-        action = params.get("action", "list")
-        try:
-            if action == "add":
-                ctx_tasks.add_task(params.get("text", ""))
-            elif action == "toggle":
-                ctx_tasks.toggle_task(params.get("task_id", ""))
-            elif action == "remove":
-                ctx_tasks.remove_task(params.get("task_id", ""))
-            tasks = ctx_tasks.list_tasks()
-            done = sum(1 for t in tasks if t.get("done"))
-            compact = f"{len(tasks)} task(s), {done} done"
-        except RuntimeError as e:
-            compact = f"Error: {e}"
-        self._workspace.add_step("tasks", compact)
-        self._chain.append({"tool": "tasks", "params": params, "summary": compact})
-        logger.info("Agent tasks(%s)", json.dumps(params))
 
     async def _cmd_python(self, tc: dict) -> None:
         params = self._parse_tool_args(tc)
@@ -655,17 +626,6 @@ class Agent:
                 **extra,
             }
             await self._on_progress(data)
-
-    @staticmethod
-    def _task_context() -> str:
-        chat_tasks = current_chat_tasks.get()
-        if not chat_tasks:
-            return ""
-        lines = []
-        for t in chat_tasks:
-            mark = "x" if t.get("done") else " "
-            lines.append(f"- [{mark}] {t.get('text', '')}")
-        return "Current tasks:\n" + "\n".join(lines)
 
     # -- LLM call + utilities --
 

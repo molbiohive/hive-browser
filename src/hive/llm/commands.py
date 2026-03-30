@@ -45,27 +45,6 @@ PLAN_CMD: dict[str, Any] = {
 PLANNER_CMDS: list[dict[str, Any]] = [SEARCH_CMD, READ_CMD]
 
 
-TASKS_CMD: dict[str, Any] = {
-    "type": "function",
-    "function": {
-        "name": "Tasks",
-        "description": "Manage the chat task list.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "action": {
-                    "type": "string",
-                    "description": "Action: add, toggle, remove, or list",
-                    "default": "list",
-                },
-                "text": {"type": "string", "description": "Task text (for add)"},
-                "task_id": {"type": "string", "description": "Task ID (for toggle/remove)"},
-            },
-        },
-    },
-}
-
-
 def python_cmd(description: str) -> dict[str, Any]:
     """Build Python command schema with dynamic workspace description."""
     return {
