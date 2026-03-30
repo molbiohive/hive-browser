@@ -107,7 +107,7 @@ class TestDigest:
         mock_factory.return_value = mock_factory
         with (
             patch("hive.tools.tools.digest.db.async_session_factory", mock_factory),
-            patch("hive.molbio.enzymes.load_enzymes", AsyncMock(return_value=enzymes)),
+            patch("hive.libs.enzymes.load_enzymes", AsyncMock(return_value=enzymes)),
         ):
             yield
 
@@ -373,7 +373,7 @@ class TestSites:
         mock_factory.return_value = mock_factory
         with (
             patch("hive.tools.tools.sites.db.async_session_factory", mock_factory),
-            patch("hive.molbio.enzymes.load_enzymes", AsyncMock(return_value=enzymes)),
+            patch("hive.libs.enzymes.load_enzymes", AsyncMock(return_value=enzymes)),
         ):
             yield
 
