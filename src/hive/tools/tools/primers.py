@@ -84,8 +84,8 @@ class PrimersTool(Tool):
             # Predicted primers from user's collection
             predicted_primers: list[dict] = []
             try:
-                from hive.cloning.collections import get_active_primer_parts
-                from hive.cloning.primers import find_primer_sites
+                from hive.molbio.collections import get_active_primer_parts
+                from hive.molbio.primers import find_primer_sites
 
                 user_id = current_user_id.get()
                 primer_parts = await get_active_primer_parts(session, user_id)

@@ -6,7 +6,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from hive.cloning.seq import reverse_complement
+from hive.molbio.seq import reverse_complement
 from hive.tools.base import Tool
 from hive.tools.resolve import resolve_and_clean
 

@@ -119,7 +119,7 @@ class DigestTool(Tool):
         if len(cleaned) < 1:
             return {"error": "Empty sequence"}
 
-        from hive.cloning.enzymes import find_cut_sites, load_enzymes
+        from hive.molbio.enzymes import find_cut_sites, load_enzymes
 
         if not db.async_session_factory:
             return {"error": "Database not available"}

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from hive.cloning.seq import reverse_complement
+from hive.molbio.seq import reverse_complement
 
 
 def find_primer_sites(

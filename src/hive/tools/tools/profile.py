@@ -86,8 +86,8 @@ class ProfileTool(Tool):
             cut_sites: list[dict] = []
             if seq.sequence and seq.molecule in (None, "DNA", "dna"):
                 try:
-                    from hive.cloning.collections import get_active_enzyme_names
-                    from hive.cloning.enzymes import (
+                    from hive.molbio.collections import get_active_enzyme_names
+                    from hive.molbio.enzymes import (
                         find_all_cutters,
                         find_cut_sites,
                         load_enzymes,
@@ -157,8 +157,8 @@ class ProfileTool(Tool):
             predicted_primers: list[dict] = []
             if seq.sequence and seq.molecule in (None, "DNA", "dna"):
                 try:
-                    from hive.cloning.collections import get_active_primer_parts
-                    from hive.cloning.primers import find_primer_sites
+                    from hive.molbio.collections import get_active_primer_parts
+                    from hive.molbio.primers import find_primer_sites
 
                     user_id = current_user_id.get()
                     primer_parts = await get_active_primer_parts(session, user_id)

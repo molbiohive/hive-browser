@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from hive.cloning.primers import find_primer_sites
+from hive.molbio.primers import find_primer_sites
 from hive.parsers.base import ParsedFeature, ParsedPrimer, ParseResult
 
 # sgffp block IDs -> molecule type

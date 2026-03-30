@@ -52,7 +52,7 @@ class SitesTool(Tool):
         if len(cleaned) < 1:
             return {"error": "Empty sequence"}
 
-        from hive.cloning.enzymes import find_all_cutters, load_enzymes
+        from hive.molbio.enzymes import find_all_cutters, load_enzymes
 
         if not db.async_session_factory:
             return {"error": "Database not available"}
@@ -61,7 +61,7 @@ class SitesTool(Tool):
             enzymes = await load_enzymes(session)
 
             # Filter to user's active enzyme collection if one is selected
-            from hive.cloning.collections import get_active_enzyme_names
+            from hive.molbio.collections import get_active_enzyme_names
 
             user_id = current_user_id.get()
             active_names = await get_active_enzyme_names(session, user_id)

@@ -8,7 +8,7 @@ from pathlib import Path
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from hive.cloning.seq import reverse_complement
+from hive.molbio.seq import reverse_complement
 from hive.db import (
     CloningStep,
     IndexedFile,

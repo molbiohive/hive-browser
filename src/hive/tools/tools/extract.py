@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import case, select
 from sqlalchemy.orm import selectinload
 
-from hive.cloning.seq import reverse_complement
+from hive.molbio.seq import reverse_complement
 from hive.db import Part, PartInstance, PartName
 from hive.db import session as db
 from hive.tools.base import Tool
