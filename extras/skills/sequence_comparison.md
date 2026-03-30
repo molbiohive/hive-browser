@@ -22,10 +22,8 @@ report["comparison"] = [
 ]
 ```
 
-## Red Flags
+## Rules
 - Use BLAST for sequence-level similarity, not search()
 - Two different sequences may share the same name in different directories
-
-## Rules
 - 2-3 Python calls max
 - Side-by-side comparison table

@@ -22,8 +22,6 @@ report["parts"] = [
 ]
 ```
 
-## Red Flags
-- parts(sid=N) lists features on a sequence — different from parts(pid=N)
-
 ## Rules
+- parts(sid=N) lists features on a sequence — different from parts(pid=N)
 - 1-2 Python calls, 1 table

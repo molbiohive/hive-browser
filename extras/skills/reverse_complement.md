@@ -18,8 +18,5 @@ report["revcomp"] = [
 ]
 ```
 
-## Red Flags
-- None
-
 ## Rules
 - 1 Python call, property-value table

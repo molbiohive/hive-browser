@@ -24,9 +24,7 @@ report["profile"] = [
 ]
 ```
 
-## Red Flags
+## Rules
 - Do not put sequence_data in the report
 - Do not list all features — use part_list skill for that
-
-## Rules
 - 1-2 Python calls, property-value table

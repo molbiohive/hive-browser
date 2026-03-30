@@ -19,9 +19,7 @@ report["candidates"] = [
 ]
 ```
 
-## Red Flags
+## Rules
 - Unique cutters only (num_cuts == 1) — multi-cutters destroy the insert
 - Check if enzyme cuts inside vs outside the region of interest
-
-## Rules
 - 1 Python call, 1 table

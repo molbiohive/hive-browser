@@ -21,9 +21,7 @@ report["translation"] = [
 ]
 ```
 
-## Red Flags
+## Rules
 - For a specific CDS, extract() it first, then translate the extracted sequence
 - For protein properties after translation, use protparam(sequence=protein)
-
-## Rules
 - 1 Python call, property-value table

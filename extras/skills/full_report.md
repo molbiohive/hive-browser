@@ -41,12 +41,10 @@ report["unique_sites"] = [
 report["history"] = h
 ```
 
-## Red Flags
+## Rules
 - Batch all tool calls in ONE Python call — do not call one-by-one
 - history() returns widget-ready data — pass through to report as-is
 - Do not put sequence_data in report
 - For DNA sequences, include orf_find() and protparam() for the main CDS if relevant
-
-## Rules
 - 2 Python calls max: resolve name + fetch all & build report
 - If user says "concise", skip history and sites sections

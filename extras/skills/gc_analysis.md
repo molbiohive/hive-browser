@@ -23,8 +23,6 @@ report["composition"] = [
 ]
 ```
 
-## Red Flags
-- gc() accepts sid:N directly — no need to resolve name first if SID known
-
 ## Rules
+- gc() accepts sid:N directly — no need to resolve name first if SID known
 - 1 Python call, 1 table

@@ -18,10 +18,8 @@ report["history"] = h
 
 history() returns widget-ready data — pass through as-is.
 
-## Red Flags
+## Rules
 - history() result is a nested tree structure — do not flatten or reformat
 - Not all sequences have cloning history (only SnapGene files with assembly info)
-
-## Rules
 - 1-2 Python calls
 - Pass history result through untampered

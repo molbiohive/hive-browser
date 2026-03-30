@@ -20,10 +20,8 @@ report["properties"] = r["properties"]  # [{property, value, unit}, ...]
 report["composition"] = r["composition"]  # [{amino_acid, name, count, percent}, ...]
 ```
 
-## Red Flags
+## Rules
 - For a specific CDS, extract() it first -- don't feed the whole plasmid
 - protparam auto-translates DNA input, no need to call translate() first
 - Do not include the full protein sequence in report unless asked
-
-## Rules
 - 1-2 Python calls, property-value table + composition table

@@ -18,8 +18,6 @@ report["transcription"] = [
 ]
 ```
 
-## Red Flags
-- Transcription is simple T->U replacement — not translation
-
 ## Rules
+- Transcription is simple T->U replacement — not translation
 - 1 Python call, property-value table

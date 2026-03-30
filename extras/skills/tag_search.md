@@ -18,9 +18,7 @@ report["sequences"] = [
 ]
 ```
 
-## Red Flags
+## Rules
 - tags param matches directory/folder context, not biological tags
 - Use query="*" with tags to list all in a directory
-
-## Rules
 - 1 Python call, 1 table

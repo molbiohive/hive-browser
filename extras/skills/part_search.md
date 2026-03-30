@@ -18,9 +18,7 @@ report["parts"] = [
 ]
 ```
 
-## Red Flags
+## Rules
 - search() returns both sequences and parts — use the parts field
 - Part names and types are lists (same part can have multiple annotations)
-
-## Rules
 - 1 tool call, 1 table, 1 Python call

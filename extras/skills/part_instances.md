@@ -21,8 +21,6 @@ report["instances"] = [
 ]
 ```
 
-## Red Flags
-- Need PID, not SID. Get PID from search results parts field.
-
 ## Rules
+- Need PID, not SID. Get PID from search results parts field.
 - 1-2 Python calls, 1 table

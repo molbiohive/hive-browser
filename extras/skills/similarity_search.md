@@ -20,11 +20,9 @@ report["blast_hits"] = [
 ]
 ```
 
-## Red Flags
+## Rules
 - BLAST needs a sequence string or sid:N, not a name
 - search() does text matching, BLAST does alignment — different tools
 - Short sequences (<30bp) may need lower word_size
-
-## Rules
 - 1-2 Python calls (resolve name + blast)
 - 1 report table, do not profile each hit

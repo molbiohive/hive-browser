@@ -19,10 +19,8 @@ report["sequences"] = [
 ]
 ```
 
-## Red Flags
+## Rules
 - BLAST is for sequence similarity, not keyword search
 - Do not profile each result
 - tags param filters by directory, not biological tags
-
-## Rules
 - 1 tool call, 1 table, 1 Python call

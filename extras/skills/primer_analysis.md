@@ -20,9 +20,7 @@ report["primers"] = [
 ]
 ```
 
-## Red Flags
+## Rules
 - Not all sequences have annotated primers
 - Predicted primers may differ from file-annotated ones
-
-## Rules
 - 1 Python call, 1 table

@@ -27,10 +27,8 @@ report["orfs"] = [
 ]
 ```
 
-## Red Flags
+## Rules
 - Default min_length is 100 nt -- lower it for short sequences
 - Do not include full protein sequences in ORF table -- too long
 - Truncate protein to first 20 chars + "..." if showing
-
-## Rules
 - 1-2 Python calls, summary table + ORF table

@@ -22,10 +22,8 @@ report["extracted"] = [
 ]
 ```
 
-## Red Flags
+## Rules
 - extract() needs SID + feature_name or region, not just a name
 - Region is 1-based inclusive: "100:500"
 - Never trim sequence data — frontend handles display
-
-## Rules
 - 1-2 Python calls, property-value table

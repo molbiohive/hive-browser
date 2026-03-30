@@ -19,9 +19,7 @@ report["inventory"] = [
 ]
 ```
 
-## Red Flags
+## Rules
 - Do not list features per sequence — too noisy
 - If > 100 sequences, show count and suggest filtering
-
-## Rules
 - 1 tool call, 1 table, 1 Python call

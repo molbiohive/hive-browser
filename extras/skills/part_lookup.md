@@ -26,8 +26,6 @@ report["instances"] = [
 ]
 ```
 
-## Red Flags
-- parts(pid=N) returns single part detail, parts(sid=N) returns list on a sequence
-
 ## Rules
+- parts(pid=N) returns single part detail, parts(sid=N) returns list on a sequence
 - 1 Python call, 2 tables (part info + instances)

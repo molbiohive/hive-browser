@@ -19,10 +19,8 @@ report["cutters"] = [
 ]
 ```
 
-## Red Flags
+## Rules
 - sites() scans hundreds of enzymes — filter by max_cuts for useful results
 - Single cutters (num_cuts=1) are most useful for cloning
-
-## Rules
 - 1 Python call, 1 table
 - Default to unique cutters unless user asks for all

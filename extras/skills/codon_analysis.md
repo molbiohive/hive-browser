@@ -29,10 +29,8 @@ report["rare_codons"] = [
 report["codons"] = r["codons"]
 ```
 
-## Red Flags
+## Rules
 - Feed coding DNA only -- not a whole plasmid
 - extract() the CDS first for accurate codon usage
 - Use table=11 for bacterial sequences
-
-## Rules
 - 1-2 Python calls, summary + rare codon table (full table on request)

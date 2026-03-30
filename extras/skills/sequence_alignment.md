@@ -18,11 +18,9 @@ report["alignment"] = a
 
 align() returns widget-ready data — pass through as-is.
 
-## Red Flags
+## Rules
 - Need at least 2 sequences
 - Large sequences (>50kb) may be slow
 - MAFFT must be installed (dependency)
-
-## Rules
 - 1-2 Python calls
 - Pass alignment result through untampered
