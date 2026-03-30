@@ -22,9 +22,7 @@
 	const isStale = $derived(widget.stale || (!widget.data && widget.type !== 'form'));
 
 	// Data-shape detection for domain widgets
-	const WidgetComponent = $derived.by(() => {
-		if (widget.type === 'form') return FormWidget;
-		const d = widget.data;
+	function detectWidget(d) {
 		if (!d || d.error) return null;
 		if (d.sequence_data || d.sequence?.sequence_data) return ProfileWidget;
 		if (d.gel_data) return DigestWidget;
@@ -34,6 +32,11 @@
 		if (d.protein && d.protein_length != null) return ProteinWidget;
 		if (d.gc_percent != null && d.a != null) return CompositionWidget;
 		return null;
+	}
+
+	const WidgetComponent = $derived.by(() => {
+		if (widget.type === 'form') return FormWidget;
+		return detectWidget(widget.data);
 	});
 
 	// Decompose a data object into scalars, sequences, and tables
@@ -168,8 +171,11 @@
 					active={activeTab} onchange={(id) => activeTab = id} />
 				{#each reportTabs as tab}
 					{#if tab.id === activeTab}
-						{@const d = typeof tab.data === 'object' && tab.data !== null && !Array.isArray(tab.data) ? decompose(tab.data) : null}
-						{#if Array.isArray(tab.data) && tab.data.length > 0 && typeof tab.data[0] === 'object'}
+						{@const tabWidget = typeof tab.data === 'object' && tab.data !== null && !Array.isArray(tab.data) ? detectWidget(tab.data) : null}
+						{@const d = !tabWidget && typeof tab.data === 'object' && tab.data !== null && !Array.isArray(tab.data) ? decompose(tab.data) : null}
+						{#if tabWidget}
+							<svelte:component this={tabWidget} data={tab.data} {messageIndex} />
+						{:else if Array.isArray(tab.data) && tab.data.length > 0 && typeof tab.data[0] === 'object'}
 							<DataTable rows={tab.data}
 								columns={Object.keys(tab.data[0]).map(k => ({ key: k, label: k.replace(/_/g, ' ') }))}
 								defaultPageSize={10} />
