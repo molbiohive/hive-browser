@@ -4,7 +4,7 @@ import json
 import math
 from pathlib import Path
 
-_EXTRAS_DIR = Path(__file__).resolve().parent.parent / "extras"
+_EXTRAS_DIR = Path(__file__).resolve().parents[3] / "extras"
 
 # Lazy-loaded amino acid residue weights
 _residue_weights: dict[str, float] | None = None

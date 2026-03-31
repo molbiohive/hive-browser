@@ -23,6 +23,7 @@ WORKDIR /app
 COPY --from=deps /app/.venv /app/.venv
 COPY --from=frontend /app/build /app/static
 COPY src/ /app/src/
+COPY extras/ /app/extras/
 COPY alembic/ /app/alembic/
 COPY alembic.ini /app/
 COPY docker/entrypoint.sh /app/docker/entrypoint.sh

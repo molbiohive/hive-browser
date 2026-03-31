@@ -5,7 +5,7 @@ from pathlib import Path
 
 _COMPLEMENT = str.maketrans("ACGTRYWSMKBDHVN", "TGCAYRWSKMVHDBN")
 
-_EXTRAS_DIR = Path(__file__).resolve().parent.parent / "extras"
+_EXTRAS_DIR = Path(__file__).resolve().parents[3] / "extras"
 
 # Module-level cache for codon tables
 _codon_tables: dict[int, dict] | None = None

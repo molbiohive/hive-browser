@@ -11,7 +11,7 @@ from hive.db import Collection, Enzyme
 
 logger = logging.getLogger(__name__)
 
-_EXTRAS_DIR = Path(__file__).resolve().parent.parent / "extras"
+_EXTRAS_DIR = Path(__file__).resolve().parents[3] / "extras"
 
 # Module-level cache: {UPPER_NAME: Enzyme}
 _enzyme_cache: dict[str, Enzyme] | None = None
