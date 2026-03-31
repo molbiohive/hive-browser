@@ -68,18 +68,23 @@ async def audit(
 
     hash_dupe_details = []
     if verbose and dupe_rows:
-        for row in dupe_rows:
-            paths_q = (
-                select(IndexedFile.id, IndexedFile.file_path)
-                .where(IndexedFile.status == "active", IndexedFile.file_hash == row.file_hash)
-                .order_by(IndexedFile.id)
+        dupe_hashes = [r.file_hash for r in dupe_rows]
+        all_dupes = (
+            await session.execute(
+                select(IndexedFile.id, IndexedFile.file_path, IndexedFile.file_hash)
+                .where(IndexedFile.status == "active", IndexedFile.file_hash.in_(dupe_hashes))
+                .order_by(IndexedFile.file_hash, IndexedFile.id)
             )
-            paths = (await session.execute(paths_q)).all()
+        ).all()
+        by_hash: dict[str, list[dict]] = {}
+        for d in all_dupes:
+            by_hash.setdefault(d.file_hash, []).append({"id": d.id, "path": d.file_path})
+        for row in dupe_rows:
             hash_dupe_details.append(
                 {
                     "hash": row.file_hash[:12],
                     "count": row.cnt,
-                    "files": [{"id": p.id, "path": p.file_path} for p in paths],
+                    "files": by_hash.get(row.file_hash, []),
                 }
             )
 
@@ -218,58 +223,65 @@ async def prune(
     if dry_run or not orphans:
         return {"dry_run": dry_run, "pruned": len(orphans), "details": details}
 
+    orphan_ids = [f.id for f in orphans]
+
     # Archive before deleting
     if not no_archive and archive_dir:
+        from sqlalchemy.orm import selectinload
+
         archive_path = Path(archive_dir)
         archive_path.mkdir(parents=True, exist_ok=True)
         ts = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
         jsonl_path = archive_path / f"prune-{ts}.jsonl"
 
+        # Bulk-load sequences + part instances for all orphan files
+        seqs = (
+            await session.execute(
+                select(Sequence)
+                .where(Sequence.file_id.in_(orphan_ids))
+                .options(selectinload(Sequence.part_instances))
+            )
+        ).scalars().all()
+
+        file_map = {f.id: f for f in orphans}
         with open(jsonl_path, "w") as fh:
-            for f in orphans:
-                seqs_q = select(Sequence).where(Sequence.file_id == f.id)
-                seqs = (await session.execute(seqs_q)).scalars().all()
-
-                for seq in seqs:
-                    pis_q = select(PartInstance).where(PartInstance.seq_id == seq.id)
-                    pis = (await session.execute(pis_q)).scalars().all()
-
-                    record = {
-                        "file_path": f.file_path,
-                        "file_hash": f.file_hash,
-                        "format": f.format,
-                        "name": seq.name,
-                        "length": seq.length,
-                        "sequence_hash": (
-                            seq.sequence_hash or hash_sequence(seq.sequence)
-                            if seq.sequence
-                            else None
-                        ),
-                        "topology": seq.topology,
-                        "molecule": seq.molecule,
-                        "description": seq.description,
-                        "meta": seq.meta,
-                        "parts": [
-                            {
-                                "part_id": pi.part_id,
-                                "type": pi.annotation_type,
-                                "start": pi.start,
-                                "end": pi.end,
-                                "strand": pi.strand,
-                            }
-                            for pi in pis
-                        ],
-                    }
-                    fh.write(json.dumps(record) + "\n")
+            for seq in seqs:
+                f = file_map[seq.file_id]
+                record = {
+                    "file_path": f.file_path,
+                    "file_hash": f.file_hash,
+                    "format": f.format,
+                    "name": seq.name,
+                    "length": seq.length,
+                    "sequence_hash": (
+                        seq.sequence_hash or hash_sequence(seq.sequence)
+                        if seq.sequence
+                        else None
+                    ),
+                    "topology": seq.topology,
+                    "molecule": seq.molecule,
+                    "description": seq.description,
+                    "meta": seq.meta,
+                    "parts": [
+                        {
+                            "part_id": pi.part_id,
+                            "type": pi.annotation_type,
+                            "start": pi.start,
+                            "end": pi.end,
+                            "strand": pi.strand,
+                        }
+                        for pi in seq.part_instances
+                    ],
+                }
+                fh.write(json.dumps(record) + "\n")
 
         logger.info("Archived %d orphan records to %s", len(orphans), jsonl_path)
 
-    # Delete orphan records
+    # Bulk delete orphan records (CASCADE handles sequences)
     from sqlalchemy import delete
 
-    for f in orphans:
-        await session.execute(delete(Sequence).where(Sequence.file_id == f.id))
-        await session.execute(delete(IndexedFile).where(IndexedFile.id == f.id))
+    await session.execute(delete(Sequence).where(Sequence.file_id.in_(orphan_ids)))
+    await session.execute(delete(IndexedFile).where(IndexedFile.id.in_(orphan_ids)))
     await session.commit()
 
     return {"dry_run": False, "pruned": len(orphans), "details": details}
