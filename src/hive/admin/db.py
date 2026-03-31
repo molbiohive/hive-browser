@@ -144,47 +144,53 @@ async def dedupe(session: AsyncSession, dry_run: bool = True) -> dict:
     """Remove duplicate IndexedFile records (same file_hash).
 
     Keeps the newest record (highest id), deletes older ones.
-    Returns dict with removed count and details.
+    Uses bulk queries to handle thousands of duplicates efficiently.
     """
-    dupe_q = (
-        select(IndexedFile.file_hash)
+    from sqlalchemy import delete
+
+    # Single query: for each hash with duplicates, get the max id to keep
+    keep_q = (
+        select(IndexedFile.file_hash, func.max(IndexedFile.id).label("keep_id"))
         .where(IndexedFile.status == "active")
         .group_by(IndexedFile.file_hash)
         .having(func.count() > 1)
     )
-    dupe_hashes = (await session.execute(dupe_q)).scalars().all()
+    keep_rows = (await session.execute(keep_q)).all()
+    if not keep_rows:
+        return {"dry_run": dry_run, "removed": 0, "details": []}
 
-    to_remove = []
-    for file_hash in dupe_hashes:
-        rows = (
-            (
-                await session.execute(
-                    select(IndexedFile)
-                    .where(IndexedFile.status == "active", IndexedFile.file_hash == file_hash)
-                    .order_by(IndexedFile.id.desc())
-                )
+    keep_ids = {r.keep_id for r in keep_rows}
+    dupe_hashes = [r.file_hash for r in keep_rows]
+
+    # Fetch all duplicates (files with these hashes, excluding the kept ones)
+    dupes = (
+        await session.execute(
+            select(IndexedFile.id, IndexedFile.file_path, IndexedFile.file_hash)
+            .where(
+                IndexedFile.status == "active",
+                IndexedFile.file_hash.in_(dupe_hashes),
+                IndexedFile.id.notin_(keep_ids),
             )
-            .scalars()
-            .all()
+            .order_by(IndexedFile.id)
         )
+    ).all()
 
-        # Keep newest (first), remove rest
-        for old in rows[1:]:
-            to_remove.append({"id": old.id, "path": old.file_path, "hash": old.file_hash[:12]})
+    to_remove = [
+        {"id": r.id, "path": r.file_path, "hash": r.file_hash[:12]}
+        for r in dupes
+    ]
 
     if not dry_run and to_remove:
-        from sqlalchemy import delete
-
         ids = [r["id"] for r in to_remove]
-        for file_id in ids:
-            await session.execute(delete(Sequence).where(Sequence.file_id == file_id))
-            await session.execute(delete(IndexedFile).where(IndexedFile.id == file_id))
+        # Bulk delete sequences then files (CASCADE handles it, but be explicit)
+        await session.execute(delete(Sequence).where(Sequence.file_id.in_(ids)))
+        await session.execute(delete(IndexedFile).where(IndexedFile.id.in_(ids)))
         await session.commit()
 
     return {
         "dry_run": dry_run,
         "removed": len(to_remove),
-        "details": to_remove,
+        "details": to_remove[:200],  # cap response size for large dedupes
     }
 
 

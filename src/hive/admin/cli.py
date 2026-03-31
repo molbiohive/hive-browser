@@ -22,7 +22,7 @@ def _client(args) -> tuple[httpx.Client, dict]:
         print(f"No admin token found. Check {HIVE_HOME / 'admin.token'}", file=sys.stderr)
         sys.exit(1)
     headers = {"Authorization": f"Bearer {token}"}
-    return httpx.Client(base_url=args.url, timeout=30), headers
+    return httpx.Client(base_url=args.url, timeout=120), headers
 
 
 def _request(client, method, path, headers):
