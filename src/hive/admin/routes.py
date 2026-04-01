@@ -1,5 +1,6 @@
 """Admin API endpoints -- protected by bearer token."""
 
+import hmac
 import logging
 from datetime import UTC, datetime
 from pathlib import Path
@@ -25,7 +26,7 @@ async def verify_token(
 ):
     """Verify the admin bearer token."""
     expected = getattr(request.app.state, "admin_token", None)
-    if not expected or credentials.credentials != expected:
+    if not expected or not hmac.compare_digest(credentials.credentials, expected):
         raise HTTPException(status_code=401, detail="Invalid admin token")
 
 
