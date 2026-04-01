@@ -115,69 +115,63 @@ class BlastDep(Dep):
         for old in blast_dir.glob("hive_prot.*"):
             old.unlink()
 
-        async with db.async_session_factory() as session:
-            # Full sequences
-            seq_rows = (
-                await session.execute(
-                    select(Sequence.id, Sequence.name, Sequence.sequence, Sequence.molecule)
-                    .join(IndexedFile, Sequence.file_id == IndexedFile.id)
-                    .where(IndexedFile.status == "active")
-                )
-            ).all()
-
-            # Parts (canonical subsequences: CDS, promoters, etc.)
-            part_rows = (
-                await session.execute(
-                    select(Part.id, Part.sequence, Part.molecule, PartName.name).join(
-                        PartName, Part.id == PartName.part_id
-                    )
-                )
-            ).all()
-
-        if not seq_rows and not part_rows:
-            logger.info("No sequences or parts to index for BLAST")
-            return False
-
-        # Split sequences by type
+        # Stream sequences to FASTA files without loading all into memory
         nucl_fasta = blast_dir / "nucl_sequences.fasta"
         prot_fasta = blast_dir / "prot_sequences.fasta"
         nucl_count = 0
         prot_count = 0
 
-        # Deduplicate parts: keep first name per PID
-        seen_pids: set[int] = set()
+        async with db.async_session_factory() as session:
+            with open(nucl_fasta, "w") as nf, open(prot_fasta, "w") as pf:
+                # Stream full sequences
+                seq_q = (
+                    select(Sequence.id, Sequence.name, Sequence.sequence, Sequence.molecule)
+                    .join(IndexedFile, Sequence.file_id == IndexedFile.id)
+                    .where(IndexedFile.status == "active")
+                )
+                result = await session.stream(seq_q)
+                async for sid, name, seq, molecule in result:
+                    safe_name = f"sid_{sid}_{_sanitize_fasta_name(name)}"
+                    if molecule == "protein":
+                        pf.write(f">{safe_name}\n{seq}\n")
+                        prot_count += 1
+                    else:
+                        nucl_seq = (
+                            seq.replace("U", "T").replace("u", "t") if molecule == "RNA" else seq
+                        )
+                        nucl_seq = _clean_nucl_seq(nucl_seq)
+                        if not nucl_seq:
+                            continue
+                        nf.write(f">{safe_name}\n{nucl_seq}\n")
+                        nucl_count += 1
 
-        with open(nucl_fasta, "w") as nf, open(prot_fasta, "w") as pf:
-            # Write full sequences with sid_ prefix
-            for sid, name, seq, molecule in seq_rows:
-                safe_name = f"sid_{sid}_{_sanitize_fasta_name(name)}"
-                if molecule == "protein":
-                    pf.write(f">{safe_name}\n{seq}\n")
-                    prot_count += 1
-                else:
-                    nucl_seq = seq.replace("U", "T").replace("u", "t") if molecule == "RNA" else seq
-                    nucl_seq = _clean_nucl_seq(nucl_seq)
-                    if not nucl_seq:
+                # Stream parts (canonical subsequences)
+                seen_pids: set[int] = set()
+                part_q = select(Part.id, Part.sequence, Part.molecule, PartName.name).join(
+                    PartName, Part.id == PartName.part_id
+                )
+                result = await session.stream(part_q)
+                async for pid, seq, molecule, pname in result:
+                    if pid in seen_pids:
                         continue
-                    nf.write(f">{safe_name}\n{nucl_seq}\n")
-                    nucl_count += 1
+                    seen_pids.add(pid)
+                    safe_name = f"pid_{pid}_{_sanitize_fasta_name(pname)}"
+                    if molecule == "AA":
+                        pf.write(f">{safe_name}\n{seq}\n")
+                        prot_count += 1
+                    else:
+                        nucl_seq = (
+                            seq.replace("U", "T").replace("u", "t") if molecule == "RNA" else seq
+                        )
+                        nucl_seq = _clean_nucl_seq(nucl_seq)
+                        if not nucl_seq:
+                            continue
+                        nf.write(f">{safe_name}\n{nucl_seq}\n")
+                        nucl_count += 1
 
-            # Write parts with pid_ prefix
-            for pid, seq, molecule, pname in part_rows:
-                if pid in seen_pids:
-                    continue
-                seen_pids.add(pid)
-                safe_name = f"pid_{pid}_{_sanitize_fasta_name(pname)}"
-                if molecule == "AA":
-                    pf.write(f">{safe_name}\n{seq}\n")
-                    prot_count += 1
-                else:
-                    nucl_seq = seq.replace("U", "T").replace("u", "t") if molecule == "RNA" else seq
-                    nucl_seq = _clean_nucl_seq(nucl_seq)
-                    if not nucl_seq:
-                        continue
-                    nf.write(f">{safe_name}\n{nucl_seq}\n")
-                    nucl_count += 1
+        if nucl_count == 0 and prot_count == 0:
+            logger.info("No sequences or parts to index for BLAST")
+            return False
 
         makeblastdb = self.resolve_binary("makeblastdb")
         ok = True
@@ -190,12 +184,7 @@ class BlastDep(Dep):
                 )
                 and ok
             )
-            logger.info(
-                "BLAST nucl index: %d entries (%d seq + %d parts)",
-                nucl_count,
-                len(seq_rows),
-                len(seen_pids),
-            )
+            logger.info("BLAST nucl index: %d entries", nucl_count)
         else:
             logger.info("No nucleotide sequences to index for BLAST")
 
