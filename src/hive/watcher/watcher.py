@@ -124,26 +124,42 @@ async def watch_directory(
     async for changes in awatch(root, recursive=config.recursive, stop_event=stop_event):
         if ctx:
             await ctx.check()
-        for change_type, path_str in changes:
-            path = Path(path_str)
 
-            if change_type == Change.deleted:
-                async with db.async_session_factory() as session:
+        ingested = 0
+
+        # Process all changes in a single session
+        async with db.async_session_factory() as session:
+            for change_type, path_str in changes:
+                path = Path(path_str)
+
+                if change_type == Change.deleted:
                     await remove_file(session, path)
-                continue
+                    ingested += 1
+                    continue
 
-            if not path.is_file():
-                continue
+                if not path.is_file():
+                    continue
 
-            match = match_file(path, config.rules)
+                match = match_file(path, config.rules)
 
-            if match.action == "parse":
-                try:
-                    async with db.async_session_factory() as session:
-                        await ingest_file(session, path, match, watcher_root=watcher_root)
-                    if dep_registry:
-                        await dep_registry.rebuild_all()
-                except Exception as e:
-                    logger.error("Failed to ingest %s: %s", path.name, e)
-            elif match.action == "log" and match.message:
-                logger.debug(match.message)
+                if match.action == "parse":
+                    try:
+                        result = await ingest_file(
+                            session, path, match, commit=False, watcher_root=watcher_root
+                        )
+                        if result is not None:
+                            ingested += 1
+                    except Exception as e:
+                        logger.error("Failed to ingest %s: %s", path.name, e)
+                elif match.action == "log" and match.message:
+                    logger.debug(match.message)
+
+            if ingested:
+                await session.commit()
+
+        # Rebuild deps once after processing all changes in the batch
+        if ingested and dep_registry:
+            try:
+                await dep_registry.rebuild_all()
+            except Exception as e:
+                logger.warning("Dep rebuild failed after batch: %s", e)
