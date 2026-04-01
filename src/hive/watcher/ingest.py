@@ -102,16 +102,34 @@ def _extract_subseq(
     return subseq
 
 
+async def preload_parts(
+    session: AsyncSession,
+    hashes: set[str],
+) -> dict[str, Part]:
+    """Bulk-fetch existing Parts by sequence hash. Returns {hash: Part}."""
+    if not hashes:
+        return {}
+    rows = (
+        await session.execute(select(Part).where(Part.sequence_hash.in_(hashes)))
+    ).scalars().all()
+    return {p.sequence_hash: p for p in rows}
+
+
 async def get_or_create_part(
     session: AsyncSession,
     sequence: str,
     molecule: str,
+    cache: dict[str, Part] | None = None,
 ) -> Part:
     """Find Part by sequence_hash or create new one."""
     seq_hash = hash_sequence(sequence)
+    if cache is not None and seq_hash in cache:
+        return cache[seq_hash]
     existing = await session.execute(select(Part).where(Part.sequence_hash == seq_hash))
     part = existing.scalar_one_or_none()
     if part:
+        if cache is not None:
+            cache[seq_hash] = part
         return part
     part = Part(
         sequence_hash=seq_hash,
@@ -121,6 +139,8 @@ async def get_or_create_part(
     )
     session.add(part)
     await session.flush()
+    if cache is not None:
+        cache[seq_hash] = part
     return part
 
 
@@ -280,6 +300,21 @@ async def ingest_file(
         session.add(seq)
         await session.flush()  # Get seq.id
 
+    # Pre-compute all subsequence hashes and bulk-fetch existing Parts
+    all_hashes: set[str] = set()
+    for f in result.features:
+        subseq = _extract_subseq(result.sequence, f.start, f.end, f.strand, result.topology)
+        if subseq:
+            all_hashes.add(hash_sequence(subseq))
+    for p in result.primers:
+        if p.sequence:
+            all_hashes.add(hash_sequence(p.sequence))
+    for step_data in meta.get("history", []):
+        for oligo in step_data.get("oligos", []):
+            if oligo.get("sequence"):
+                all_hashes.add(hash_sequence(oligo["sequence"]))
+    parts_cache = await preload_parts(session, all_hashes)
+
     # For each ParsedFeature: extract subsequence, hash, get_or_create Part
     for f in result.features:
         subseq = _extract_subseq(
@@ -291,7 +326,7 @@ async def ingest_file(
         )
         if not subseq:
             continue
-        part = await get_or_create_part(session, subseq, result.molecule)
+        part = await get_or_create_part(session, subseq, result.molecule, cache=parts_cache)
         await add_part_name(
             session,
             part.id,
@@ -316,7 +351,7 @@ async def ingest_file(
     for p in result.primers:
         if not p.sequence:
             continue
-        part = await get_or_create_part(session, p.sequence, "DNA")
+        part = await get_or_create_part(session, p.sequence, "DNA", cache=parts_cache)
         await add_part_name(
             session,
             part.id,
@@ -368,7 +403,7 @@ async def ingest_file(
                 oligo_seq = oligo.get("sequence")
                 if not oligo_seq:
                     continue
-                part = await get_or_create_part(session, oligo_seq, "DNA")
+                part = await get_or_create_part(session, oligo_seq, "DNA", cache=parts_cache)
                 await add_part_name(
                     session,
                     part.id,
