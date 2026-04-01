@@ -21,7 +21,14 @@ async def init_db(config: DatabaseConfig) -> bool:
     """
     global engine, async_session_factory
 
-    engine = create_async_engine(config.url, echo=False)
+    engine = create_async_engine(
+        config.url,
+        echo=False,
+        pool_size=5,
+        max_overflow=10,
+        pool_pre_ping=True,
+        pool_recycle=1800,
+    )
     async_session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     try:
