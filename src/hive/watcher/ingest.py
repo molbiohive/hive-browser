@@ -1,8 +1,10 @@
 """Ingestion pipeline -- parse file, upsert into database with Part-based identity."""
 
+import asyncio
 import hashlib
 import logging
 from datetime import UTC, datetime
+from functools import partial
 from pathlib import Path
 
 from sqlalchemy import delete, select
@@ -169,6 +171,8 @@ async def ingest_file(
     )
     existing_file = existing.scalar_one_or_none()
 
+    loop = asyncio.get_running_loop()
+
     if not force:
         if existing_file and existing_file.file_mtime:
             existing_ts = existing_file.file_mtime.timestamp()
@@ -176,18 +180,20 @@ async def ingest_file(
                 logger.debug("Unchanged (mtime): %s", file_path.name)
                 return None
 
-        file_hash = hash_file(file_path)
+        file_hash = await loop.run_in_executor(None, hash_file, file_path)
 
         if existing_file and existing_file.file_hash == file_hash:
             logger.debug("Unchanged (hash): %s", file_path.name)
             return None
     else:
-        file_hash = hash_file(file_path)
+        file_hash = await loop.run_in_executor(None, hash_file, file_path)
 
-    # Parse the file
+    # Parse the file (sync I/O -- run off event loop)
     try:
         parser_fn = _resolve_parser(match, file_path)
-        result: ParseResult = parser_fn(file_path, extract=match.extract)
+        result: ParseResult = await loop.run_in_executor(
+            None, partial(parser_fn, file_path, extract=match.extract)
+        )
     except Exception as e:
         logger.error("Parse error %s: %s", file_path.name, e)
         if existing_file:
