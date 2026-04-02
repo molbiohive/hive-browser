@@ -4,6 +4,7 @@
 	import DataTable from '$lib/DataTable.svelte';
 	import TabBar from '$lib/TabBar.svelte';
 	import CopyableSequence from '$lib/CopyableSequence.svelte';
+	import HistoryWidget from '$lib/HistoryWidget.svelte';
 
 	let { data } = $props();
 
@@ -143,13 +144,39 @@
 		if (data?.primers?.length) t.push({ id: 'primers', label: `Primers (${data.primers.length})` });
 		if (translationRows.length) t.push({ id: 'translations', label: `Translations (${translationRows.length})` });
 		if (uniqueCutSites.length) t.push({ id: 'sites', label: `Sites (${uniqueCutSites.length})` });
+		if (seq?.has_history) t.push({ id: 'history', label: 'History' });
 		return t;
 	});
+	let historyData = $state(null);
+	let historyLoading = $state(false);
+	let historyFetched = $state(false);
+
+	async function fetchHistory() {
+		if (historyFetched || historyLoading || !seq?.sid) return;
+		historyLoading = true;
+		try {
+			const res = await fetch('/api/tools/history', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ sid: seq.sid }),
+			});
+			historyData = await res.json();
+		} catch {
+			historyData = { error: 'Failed to load history' };
+		} finally {
+			historyLoading = false;
+			historyFetched = true;
+		}
+	}
+
 	let activeTab = $state('info');
 	$effect(() => {
 		if (tabs.length && !tabs.find(t => t.id === activeTab)) {
 			activeTab = tabs[0].id;
 		}
+	});
+	$effect(() => {
+		if (activeTab === 'history') fetchHistory();
 	});
 
 </script>
@@ -237,6 +264,12 @@
 			<DataTable rows={translationRows} columns={translationColumns} defaultPageSize={10} />
 		{:else if activeTab === 'sites' && uniqueCutSites.length}
 			<DataTable rows={uniqueCutSites} columns={cutSiteColumns} defaultPageSize={10} />
+		{:else if activeTab === 'history'}
+			{#if historyLoading}
+				<p class="loading">Loading history...</p>
+			{:else if historyData}
+				<HistoryWidget data={historyData} />
+			{/if}
 		{/if}
 	</div>
 	{/if}
@@ -263,6 +296,7 @@
 		max-height: 70vh;
 		overflow: auto;
 	}
+	.loading { font-size: 0.82rem; color: var(--text-muted); margin: 0.5rem 0; }
 	.error { color: var(--color-err); font-size: 0.85rem; }
 	.empty { color: var(--text-placeholder); font-size: 0.85rem; }
 	.tab-content { margin-top: 0.25rem; }
