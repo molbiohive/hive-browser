@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from hive.config import WatcherConfig
 from hive.ps.base import Process, ProcessContext
+from hive.utils import timed
 from hive.watcher import scan_and_ingest
 
 if TYPE_CHECKING:
@@ -28,8 +29,9 @@ class ScanProcess(Process):
         self.dep_registry = dep_registry
 
     async def run(self, ctx: ProcessContext) -> str:
-        count = await scan_and_ingest(self.config, dep_registry=self.dep_registry, ctx=ctx)
-        return f"{count} files indexed"
+        with timed() as t:
+            count = await scan_and_ingest(self.config, dep_registry=self.dep_registry, ctx=ctx)
+        return f"{count} files indexed in {t}"
 
 
 class RescanProcess(Process):
@@ -45,8 +47,9 @@ class RescanProcess(Process):
         self.dep_registry = dep_registry
 
     async def run(self, ctx: ProcessContext) -> str:
-        count = await scan_and_ingest(self.config, dep_registry=self.dep_registry, ctx=ctx)
-        return f"{count} files indexed"
+        with timed() as t:
+            count = await scan_and_ingest(self.config, dep_registry=self.dep_registry, ctx=ctx)
+        return f"{count} files indexed in {t}"
 
 
 class ReindexProcess(Process):
@@ -62,10 +65,11 @@ class ReindexProcess(Process):
         self.dep_registry = dep_registry
 
     async def run(self, ctx: ProcessContext) -> str:
-        count = await scan_and_ingest(
-            self.config,
-            dep_registry=self.dep_registry,
-            ctx=ctx,
-            force=True,
-        )
-        return f"{count} files re-parsed"
+        with timed() as t:
+            count = await scan_and_ingest(
+                self.config,
+                dep_registry=self.dep_registry,
+                ctx=ctx,
+                force=True,
+            )
+        return f"{count} files re-parsed in {t}"

@@ -11,6 +11,7 @@ from watchfiles import Change, awatch
 
 from hive.config import WatcherConfig
 from hive.db import session as db
+from hive.utils import timed
 from hive.watcher.ingest import ingest_file, remove_file
 from hive.watcher.rules import match_file
 
@@ -95,10 +96,12 @@ async def scan_and_ingest(
     logger.info("Scan complete: %d indexed, %d errors out of %d files", indexed, errors, total)
 
     if indexed > 0 and dep_registry:
-        try:
-            await dep_registry.rebuild_all()
-        except Exception as e:
-            logger.warning("Dep rebuild failed after scan: %s", e)
+        with timed() as t:
+            try:
+                await dep_registry.rebuild_all()
+            except Exception as e:
+                logger.warning("Dep rebuild failed after scan: %s", e)
+        logger.info("Dep rebuild after scan in %s", t)
 
     return indexed
 
@@ -159,7 +162,9 @@ async def watch_directory(
 
         # Rebuild deps once after processing all changes in the batch
         if ingested and dep_registry:
-            try:
-                await dep_registry.rebuild_all()
-            except Exception as e:
-                logger.warning("Dep rebuild failed after batch: %s", e)
+            with timed() as t:
+                try:
+                    await dep_registry.rebuild_all()
+                except Exception as e:
+                    logger.warning("Dep rebuild failed after batch: %s", e)
+            logger.info("Dep rebuild after %d changes in %s", ingested, t)

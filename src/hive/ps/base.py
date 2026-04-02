@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 
+from hive.utils import format_elapsed
+
 
 class ProcessState(StrEnum):
     pending = "pending"
@@ -66,6 +68,15 @@ class ProcessInfo:
     error: str | None = None
     result: str | None = None
 
+    @property
+    def elapsed(self) -> str | None:
+        """Human-friendly elapsed time string."""
+        if not self.started_at:
+            return None
+        end = self.finished_at or datetime.now(self.started_at.tzinfo)
+        seconds = (end - self.started_at).total_seconds()
+        return format_elapsed(seconds)
+
     def to_dict(self) -> dict:
         return {
             "name": self.name,
@@ -73,6 +84,7 @@ class ProcessInfo:
             "state": self.state.value,
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "finished_at": self.finished_at.isoformat() if self.finished_at else None,
+            "elapsed": self.elapsed,
             "error": self.error,
             "result": self.result,
         }

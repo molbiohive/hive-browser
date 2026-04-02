@@ -15,6 +15,7 @@ from sqlalchemy import select
 from hive.db import IndexedFile, Part, PartName, Sequence
 from hive.db import session as db
 from hive.deps.base import Dep
+from hive.utils import timed
 
 logger = logging.getLogger(__name__)
 
@@ -103,7 +104,10 @@ class BlastDep(Dep):
             logger.info("BLAST index build already in progress, skipping")
             return True
         try:
-            return await self._do_build_index(blast_dir)
+            with timed() as t:
+                result = await self._do_build_index(blast_dir)
+            logger.info("BLAST index built in %s", t)
+            return result
         finally:
             fd.close()
             lock_file.unlink(missing_ok=True)
