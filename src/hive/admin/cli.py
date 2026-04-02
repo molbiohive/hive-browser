@@ -148,8 +148,8 @@ def cmd_ps_resume(args):
 # -- db ----------------------------------------------------------------
 
 
-def cmd_db_errors(args):
-    data = _get(args, "/admin/db/errors")
+def cmd_audit_errors(args):
+    data = _get(args, "/admin/audit/errors")
     errors = data.get("errors", [])
     if not errors:
         print("No parse errors.")
@@ -159,8 +159,8 @@ def cmd_db_errors(args):
         print(f"    {e['error']}")
 
 
-def cmd_db_audit(args):
-    data = _post_json(args, "/admin/db/audit", {"verbose": args.verbose})
+def cmd_audit_db(args):
+    data = _post_json(args, "/admin/audit/db", {"verbose": args.verbose})
     t = data["totals"]
     fi = t["indexed_files"]
     print("Database audit:")
@@ -187,27 +187,22 @@ def cmd_db_audit(args):
             print(f"\n  Orphan [{o['id']}] {o['path']}")
 
 
-def cmd_db_dedupe(args):
-    data = _post_json(args, "/admin/db/dedupe", {"dry_run": args.dry_run})
-    prefix = "Would remove" if data["dry_run"] else "Removed"
-    print(f"{prefix} {data['removed']} duplicate file(s)")
+def cmd_audit_dupes(args):
+    data = _post(args, "/admin/audit/dupes")
+    print(f"Would remove {data['removed']} duplicate file(s)")
     for d in data.get("details", []):
         print(f"  [{d['id']}] {d['path']}  (hash: {d['hash']}...)")
+    if data["removed"] > 0:
+        print(f"\nTo execute: admin ps start dedupe")
 
 
-def cmd_db_prune(args):
-    data = _post_json(
-        args,
-        "/admin/db/prune",
-        {
-            "dry_run": args.dry_run,
-            "no_archive": args.no_archive,
-        },
-    )
-    prefix = "Would prune" if data.get("dry_run") else "Pruned"
-    print(f"{prefix} {data['pruned']} orphan file(s)")
+def cmd_audit_prunes(args):
+    data = _post(args, "/admin/audit/prunes")
+    print(f"Would prune {data['pruned']} orphan file(s)")
     for d in data.get("details", []):
         print(f"  [{d['id']}] {d['path']}")
+    if data["pruned"] > 0:
+        print(f"\nTo execute: admin ps start prune")
 
 
 # -- users -------------------------------------------------------------
@@ -491,17 +486,16 @@ def main():
         ],
     )
 
-    # admin db <errors|audit|dedupe|prune>
+    # admin audit <db|dupes|prunes|errors>
     _add_group(
         sub,
-        "db",
-        "Database inspection and cleanup",
+        "audit",
+        "Database inspection (read-only)",
         [
-            ("errors", "List parse errors", cmd_db_errors, []),
             (
-                "audit",
+                "db",
                 "Audit database integrity",
-                cmd_db_audit,
+                cmd_audit_db,
                 [
                     (
                         ["-v", "--verbose"],
@@ -509,23 +503,9 @@ def main():
                     ),
                 ],
             ),
-            (
-                "dedupe",
-                "Remove duplicate file records",
-                cmd_db_dedupe,
-                [
-                    (["--dry-run"], {"action": "store_true", "help": "Preview only, don't delete"}),
-                ],
-            ),
-            (
-                "prune",
-                "Remove records for missing files",
-                cmd_db_prune,
-                [
-                    (["--dry-run"], {"action": "store_true", "help": "Preview only, don't delete"}),
-                    (["--no-archive"], {"action": "store_true", "help": "Skip JSONL archiving"}),
-                ],
-            ),
+            ("dupes", "Preview duplicate file records", cmd_audit_dupes, []),
+            ("prunes", "Preview orphan file records", cmd_audit_prunes, []),
+            ("errors", "List parse errors", cmd_audit_errors, []),
         ],
     )
 

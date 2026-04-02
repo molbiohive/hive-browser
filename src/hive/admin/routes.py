@@ -3,7 +3,6 @@
 import hmac
 import logging
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -174,8 +173,8 @@ async def ps_resume(name: str, request: Request):
 # -- Database ---------------------------------------------------------
 
 
-@admin_router.get("/db/errors", dependencies=[Depends(verify_token)])
-async def db_errors(request: Request):
+@admin_router.get("/audit/errors", dependencies=[Depends(verify_token)])
+async def audit_errors(request: Request):
     """List files that failed to parse."""
     if not getattr(request.app.state, "db_ready", False):
         raise HTTPException(status_code=503, detail="Database not available")
@@ -203,11 +202,11 @@ async def db_errors(request: Request):
     }
 
 
-# -- DB Audit/Cleanup -------------------------------------------------
+# -- Audit (read-only previews) ---------------------------------------
 
 
-@admin_router.post("/db/audit", dependencies=[Depends(verify_token)])
-async def db_audit(request: Request, body: dict | None = None):
+@admin_router.post("/audit/db", dependencies=[Depends(verify_token)])
+async def audit_db(request: Request, body: dict | None = None):
     """Audit database integrity -- counts, duplicates, orphans."""
     if not getattr(request.app.state, "db_ready", False):
         raise HTTPException(status_code=503, detail="Database not available")
@@ -220,42 +219,31 @@ async def db_audit(request: Request, body: dict | None = None):
         return await audit(s, watcher_root, verbose=verbose)
 
 
-@admin_router.post("/db/dedupe", dependencies=[Depends(verify_token)])
-async def db_dedupe(request: Request, body: dict | None = None):
-    """Remove duplicate IndexedFile records (same file_hash)."""
+@admin_router.post("/audit/dupes", dependencies=[Depends(verify_token)])
+async def audit_dupes(request: Request):
+    """Dry-run dedupe preview -- always read-only."""
     if not getattr(request.app.state, "db_ready", False):
         raise HTTPException(status_code=503, detail="Database not available")
 
     from hive.admin.db import dedupe
 
-    dry_run = (body or {}).get("dry_run", True)
     async with db.async_session_factory() as s:
-        return await dedupe(s, dry_run=dry_run)
+        return await dedupe(s, dry_run=True)
 
 
-@admin_router.post("/db/prune", dependencies=[Depends(verify_token)])
-async def db_prune(request: Request, body: dict | None = None):
-    """Remove IndexedFile records for files that no longer exist on disk."""
+@admin_router.post("/audit/prunes", dependencies=[Depends(verify_token)])
+async def audit_prunes(request: Request):
+    """Dry-run prune preview -- always read-only."""
     if not getattr(request.app.state, "db_ready", False):
         raise HTTPException(status_code=503, detail="Database not available")
 
     from hive.admin.db import prune
 
-    params = body or {}
-    dry_run = params.get("dry_run", True)
-    no_archive = params.get("no_archive", False)
     config = request.app.state.config
     watcher_root = config.watcher.root
-    archive_dir = str(Path(config.data_root).expanduser() / "archive")
 
     async with db.async_session_factory() as s:
-        return await prune(
-            s,
-            watcher_root,
-            archive_dir=archive_dir,
-            dry_run=dry_run,
-            no_archive=no_archive,
-        )
+        return await prune(s, watcher_root, dry_run=True)
 
 
 # -- Libraries --------------------------------------------------------
