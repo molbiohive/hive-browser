@@ -104,8 +104,10 @@ async def lifespan(app: FastAPI):
 
     # --- Process registry ---
     from hive.ps import (
+        DedupeProcess,
         MatchProcess,
         ProcessRegistry,
+        PruneProcess,
         ReindexProcess,
         RescanProcess,
         ScanProcess,
@@ -118,6 +120,8 @@ async def lifespan(app: FastAPI):
     ps.register(RescanProcess(config.watcher, config.data_root, dep_registry))
     ps.register(ReindexProcess(config.watcher, config.data_root, dep_registry))
     ps.register(MatchProcess(config, dep_registry))
+    ps.register(DedupeProcess())
+    ps.register(PruneProcess(config))
     app.state.ps = ps
 
     if app.state.db_ready and config.watcher.rules:
