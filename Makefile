@@ -2,7 +2,7 @@
 
 .PHONY: setup \
         dev back-dev front-dev static build \
-        docker-init docker-build docker-up docker-down docker-update docker-all docker-logs \
+        docker-init docker-build docker-up docker-down docker-update docker-all docker-logs admin \
         test test-all test-backend test-frontend lint fmt \
         check-deps check-backend check-frontend check-all clean
 
@@ -90,6 +90,12 @@ docker-all:
 
 docker-logs:
 	docker compose logs -f hive
+
+admin:
+	docker compose exec hive admin $(filter-out $@,$(MAKECMDGOALS))
+
+%:
+	@:
 
 # ── Quality ───────────────────────────────────────────────
 
