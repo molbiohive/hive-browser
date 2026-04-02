@@ -48,6 +48,8 @@
 		const tables = [];
 		const sequences = [];
 		const seqKeys = new Set();
+		const nestedScalars = [];
+
 		for (const [key, val] of Object.entries(data)) {
 			if (Array.isArray(val) && val.length > 0 && typeof val[0] === 'object') {
 				tables.push({
@@ -59,12 +61,21 @@
 			} else if (typeof val === 'string' && val.length >= SEQ_MIN && SEQ_RE.test(val)) {
 				sequences.push({ key, sequence: val });
 				seqKeys.add(key);
+			} else if (val && typeof val === 'object' && !Array.isArray(val)) {
+				for (const [k2, v2] of Object.entries(val)) {
+					if (typeof v2 === 'string' && v2.length >= SEQ_MIN && SEQ_RE.test(v2)) {
+						sequences.push({ key: k2, sequence: v2 });
+						seqKeys.add(`${key}.${k2}`);
+					} else if (v2 != null && typeof v2 !== 'object') {
+						nestedScalars.push([k2, v2]);
+					}
+				}
 			}
 		}
-		const scalars = Object.entries(data).filter(
+		const topScalars = Object.entries(data).filter(
 			([k, v]) => !Array.isArray(v) && typeof v !== 'object' && !seqKeys.has(k)
 		);
-		return { tables, sequences, scalars };
+		return { tables, sequences, scalars: [...topScalars, ...nestedScalars] };
 	}
 
 	const fallback = $derived.by(() => {
