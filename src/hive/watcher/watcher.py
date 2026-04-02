@@ -11,7 +11,7 @@ from watchfiles import Change, awatch
 
 from hive.config import WatcherConfig
 from hive.db import session as db
-from hive.utils import timed
+from hive.utils import Stopwatch, timed
 from hive.watcher.ingest import ingest_file, remove_file
 from hive.watcher.rules import match_file
 
@@ -58,6 +58,7 @@ async def scan_and_ingest(
 
     indexed = 0
     errors = 0
+    sw = Stopwatch()
 
     for batch_start in range(0, total, batch_size):
         batch = files[batch_start : batch_start + batch_size]
@@ -93,7 +94,11 @@ async def scan_and_ingest(
         else:
             await asyncio.sleep(0)  # yield to event loop
 
-    logger.info("Scan complete: %d indexed, %d errors out of %d files", indexed, errors, total)
+    sw.stop()
+    logger.info(
+        "Scan complete: %d indexed, %d errors out of %d files in %s",
+        indexed, errors, total, sw,
+    )
 
     if indexed > 0 and dep_registry:
         with timed() as t:
