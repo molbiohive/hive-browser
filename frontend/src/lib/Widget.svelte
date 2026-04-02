@@ -25,6 +25,7 @@
 	function detectWidget(d) {
 		if (!d || d.error) return null;
 		if (d.sequence_data || d.sequence?.sequence_data) return ProfileWidget;
+		if (d.sequence?.sid != null && d.features) return ProfileWidget;
 		if (d.gel_data) return DigestWidget;
 		if (d.aligned) return AlignWidget;
 		if (d.root && d.steps) return HistoryWidget;
