@@ -20,9 +20,18 @@
 
 	// Skill form state
 	let skillName = $state('');
-	let skillContent = $state('');
+	let skillContent = $state('');  // kept for view-skill mode
 	let editSkillId = $state(null);
 	let skillIssues = $state([]);
+
+	// Structured skill fields
+	let skillWhen = $state('');
+	let skillWorkflow = $state('');
+	let skillReport = $state('');
+	let skillRules = $state('');
+	let skillTools = $state(new Set());
+	let availableTools = $state([]);
+	let toolPickerFiltered = $state([]);
 
 	// Item picker state
 	let allItems = $state([]);
@@ -34,7 +43,7 @@
 
 	const selectedCount = $derived(selected.size);
 
-	onMount(() => { fetchCollections(); fetchSkills(); });
+	onMount(() => { fetchCollections(); fetchSkills(); fetchTools(); });
 
 	// ── API ──
 
@@ -183,6 +192,11 @@
 		mode = 'create-skill';
 		skillName = '';
 		skillContent = '';
+		skillWhen = '';
+		skillWorkflow = '';
+		skillReport = '';
+		skillRules = '';
+		skillTools = new Set();
 		skillIssues = [];
 	}
 
@@ -199,6 +213,7 @@
 		editSkillId = sk.id;
 		skillName = sk.name;
 		skillContent = sk.content;
+		parseSkillContent(sk.content);
 		skillIssues = sk.issues || [];
 	}
 
@@ -207,24 +222,30 @@
 		editSkillId = null;
 		skillName = '';
 		skillContent = '';
+		skillWhen = '';
+		skillWorkflow = '';
+		skillReport = '';
+		skillRules = '';
+		skillTools = new Set();
 		skillIssues = [];
 	}
 
 	async function saveSkill() {
-		if (!skillName.trim() || !skillContent.trim()) return;
+		if (!skillName.trim()) return;
+		const content = assembleSkillContent();
 		try {
 			let res;
 			if (mode === 'create-skill') {
 				res = await fetch('/api/skills', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ name: skillName.trim(), content: skillContent }),
+					body: JSON.stringify({ name: skillName.trim(), content }),
 				});
 			} else {
 				res = await fetch(`/api/skills/${editSkillId}`, {
 					method: 'PUT',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ name: skillName.trim(), content: skillContent }),
+					body: JSON.stringify({ name: skillName.trim(), content }),
 				});
 			}
 			if (!res.ok) return;
@@ -249,6 +270,86 @@
 		} catch (e) {
 			console.error('Failed to delete skill:', e);
 		}
+	}
+
+	async function fetchTools() {
+		try {
+			const res = await fetch('/api/tools');
+			if (res.ok) availableTools = await res.json();
+		} catch (e) {
+			console.error('Failed to fetch tools:', e);
+		}
+	}
+
+	function parseSkillContent(content) {
+		skillWhen = '';
+		skillWorkflow = '';
+		skillReport = '';
+		skillRules = '';
+		skillTools = new Set();
+
+		const sections = content.split(/^## /m).slice(1);
+		for (const sec of sections) {
+			const nl = sec.indexOf('\n');
+			if (nl === -1) continue;
+			const heading = sec.slice(0, nl).trim().toLowerCase();
+			let body = sec.slice(nl + 1).trim();
+
+			if (heading === 'when') {
+				skillWhen = body;
+			} else if (heading === 'tools') {
+				const names = body.split('\n')
+					.map(l => l.replace(/^[-*]\s*/, '').trim())
+					.filter(Boolean);
+				skillTools = new Set(names);
+			} else if (heading === 'workflow') {
+				skillWorkflow = body;
+			} else if (heading === 'report') {
+				body = body.replace(/^```python\n?/, '').replace(/\n?```$/, '');
+				skillReport = body;
+			} else if (heading === 'rules') {
+				skillRules = body;
+			}
+		}
+	}
+
+	function assembleSkillContent() {
+		const parts = [`# ${skillName.trim()}`];
+
+		if (skillWhen.trim()) parts.push(`## When\n${skillWhen.trim()}`);
+
+		if (skillTools.size > 0) {
+			const list = [...skillTools].map(t => `- ${t}`).join('\n');
+			parts.push(`## Tools\n${list}`);
+		}
+
+		if (skillWorkflow.trim()) parts.push(`## Workflow\n${skillWorkflow.trim()}`);
+
+		if (skillReport.trim()) parts.push(`## Report\n\`\`\`python\n${skillReport.trim()}\n\`\`\``);
+
+		if (skillRules.trim()) parts.push(`## Rules\n${skillRules.trim()}`);
+
+		return parts.join('\n\n') + '\n';
+	}
+
+	const skillToolCount = $derived(skillTools.size);
+
+	function toggleSkillTool(name) {
+		const next = new Set(skillTools);
+		if (next.has(name)) next.delete(name);
+		else next.add(name);
+		skillTools = next;
+	}
+
+	function toggleAllSkillTools() {
+		const allNames = toolPickerFiltered.map(t => t.name);
+		const allSelected = allNames.length > 0 && allNames.every(n => skillTools.has(n));
+		const next = new Set(skillTools);
+		for (const n of allNames) {
+			if (allSelected) next.delete(n);
+			else next.add(n);
+		}
+		skillTools = next;
 	}
 
 	function isSkillMode(m) {
@@ -390,11 +491,11 @@
 				</div>
 
 			{:else if mode === 'create-skill' || mode === 'edit-skill'}
-				<!-- Skill create/edit form -->
+				<!-- Skill create/edit form (structured) -->
 				<div class="form-top">
 					<div class="form-row" style="flex:1">
 						<label for="skill-name">Name</label>
-						<input id="skill-name" type="text" bind:value={skillName} placeholder="skill_name" />
+						<input id="skill-name" type="text" bind:value={skillName} placeholder="full_report" />
 					</div>
 				</div>
 				{#if skillIssues.length > 0}
@@ -404,19 +505,71 @@
 						{/each}
 					</div>
 				{/if}
+
 				<div class="form-row">
-					<label for="skill-content">Content (markdown)</label>
-					<textarea
-						id="skill-content"
-						class="skill-textarea"
-						bind:value={skillContent}
-						placeholder={"# Skill Name\n\n## When\nDescribe trigger.\n\n## Tools\n- tool_name\n\n## Workflow\n1. Step one.\n\n## Report\n```python\nreport[\"key\"] = []\n```\n\n## Rules\n- Rule one"}
-						rows="14"
-					></textarea>
+					<label for="skill-when">When</label>
+					<textarea id="skill-when" class="skill-field" bind:value={skillWhen} placeholder="Describe when this skill triggers..." rows="3"></textarea>
 				</div>
+
+				<div class="form-row">
+					<label>Tools</label>
+					{#if availableTools.length === 0}
+						<div class="placeholder">Loading tools...</div>
+					{:else}
+						<PickerTable
+							items={availableTools}
+							searchFields={['name', 'description']}
+							placeholder="Search tools..."
+							searchThreshold={0}
+							bind:filtered={toolPickerFiltered}
+							onRowClick={(t) => toggleSkillTool(t.name)}
+							rowClass={(t) => skillTools.has(t.name) ? 'selected' : ''}
+						>
+							{#snippet toolbar()}
+								<span class="picker-count">{skillToolCount} selected</span>
+							{/snippet}
+							{#snippet head()}
+								<tr>
+									<th class="check-col">
+										<input
+											type="checkbox"
+											checked={toolPickerFiltered.length > 0 && toolPickerFiltered.every(t => skillTools.has(t.name))}
+											onchange={toggleAllSkillTools}
+										/>
+									</th>
+									<th>Tool</th>
+									<th>Description</th>
+								</tr>
+							{/snippet}
+							{#snippet row(t)}
+								<td class="check-col">
+									<input type="checkbox" checked={skillTools.has(t.name)} onclick={(e) => e.stopPropagation()} onchange={() => toggleSkillTool(t.name)} />
+								</td>
+								<td class="item-name">{t.name}</td>
+								<td class="tool-desc">{t.description}</td>
+							{/snippet}
+						</PickerTable>
+					{/if}
+				</div>
+
+				<div class="form-row">
+					<label for="skill-workflow">Workflow</label>
+					<textarea id="skill-workflow" class="skill-field" bind:value={skillWorkflow} placeholder={"1. search() to resolve name\n2. profile(sid=...)"} rows="4"></textarea>
+				</div>
+
+				<div class="form-row">
+					<label for="skill-report">Report</label>
+					<textarea id="skill-report" class="skill-field mono" bind:value={skillReport} placeholder={'report["overview"] = [...]\nreport["details"] = [...]'} rows="6"></textarea>
+				</div>
+
+				<div class="form-row">
+					<label for="skill-rules">Rules</label>
+					<textarea id="skill-rules" class="skill-field" bind:value={skillRules} placeholder="- Batch tool calls in ONE Python call" rows="4"></textarea>
+				</div>
+
 				<div class="form-actions">
 					<button class="btn-secondary" onclick={cancelSkillForm}>Cancel</button>
-					<button class="btn-primary" onclick={saveSkill} disabled={!skillName.trim() || !skillContent.trim()}>
+					<button class="btn-primary" onclick={saveSkill} disabled={!skillName.trim()}>
 						{mode === 'create-skill' ? 'Create' : 'Save'}
 					</button>
 				</div>
@@ -797,23 +950,35 @@
 		padding: 0.2rem 0;
 	}
 
-	.skill-textarea {
+	.skill-field {
 		width: 100%;
-		min-height: 200px;
 		padding: 0.5rem 0.6rem;
 		border: 1px solid var(--border);
 		border-radius: 6px;
 		background: var(--bg-app);
 		color: var(--text);
 		font-size: 0.82rem;
-		font-family: var(--font-mono);
+		font-family: inherit;
 		resize: vertical;
 		outline: none;
 		line-height: 1.5;
 		box-sizing: border-box;
 	}
 
-	.skill-textarea:focus {
+	.skill-field:focus {
 		border-color: var(--color-accent);
+	}
+
+	.skill-field.mono {
+		font-family: var(--font-mono);
+	}
+
+	.tool-desc {
+		font-size: 0.78rem;
+		color: var(--text-secondary);
+		max-width: 260px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 </style>
